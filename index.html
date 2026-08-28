@@ -854,7 +854,8 @@
         if (statusEl) statusEl.innerText = "✅ Upload ảnh thành công!";
       } catch (err) {
         console.error("Supabase Upload Error:", err);
-        if (statusEl) statusEl.innerText = "❌ Upload ảnh thất bại!";
+        const errorText = err?.message || err?.error_description || String(err);
+        if (statusEl) statusEl.innerText = `❌ Upload thất bại: ${errorText}`;
       }
     }
 
