@@ -656,7 +656,6 @@
     let assistantTeachers = [], accountPasswords = { 'director': '123456' }, currentUserRole = null, currentUserName = '';
     let studentsData = [], inactiveStudentsData = [];
     let currentReportStudent = null;
-    let currentUploadStudentId = null;
 
     let profileCurrentPage = 1, masterCurrentPage = 1;
     const PAGE_SIZE = 12;
@@ -838,22 +837,14 @@
         document.getElementById('add_avatar').value = avatarUrl;
         document.getElementById('avatar-preview').src = avatarUrl;
         if (statusEl) statusEl.innerText = "✅ Upload ảnh thành công!";
-        return avatarUrl;
       } catch (err) {
         console.error("Supabase Upload Error:", err);
         if (statusEl) statusEl.innerText = "❌ Upload ảnh thất bại!";
-        return null;
       }
     }
 
-    async function handleDirectAvatarUpload(input) {
-      const newAvatarUrl = await uploadAvatarToSupabase(input);
-      if (newAvatarUrl && currentUploadStudentId) {
-        const student = studentsData.find(st => st.id === currentUploadStudentId);
-        if (student) student.avatar = newAvatarUrl;
-        updateAllViews();
-      }
-      input.value = '';
+    function handleDirectAvatarUpload(input) {
+      uploadAvatarToSupabase(input);
     }
 
     function isComboClass(level) {
@@ -1381,7 +1372,7 @@ function setupAllDateInputs() {
             <td class="p-2 text-center font-bold text-[#8B1515] font-mono sticky-col-1 border-r border-slate-200">${s.id}</td>
             <td class="p-2 sticky-col-2 border-r border-slate-200">
               <div class="flex items-center gap-2">
-                <img src="${s.avatar || DEFAULT_AVATAR}" onclick="currentUploadStudentId='${s.id}'; document.getElementById('direct-avatar-input').click();" alt="Avatar" title="Bấm để đổi ảnh đại diện" class="w-7 h-7 rounded-full object-cover border shrink-0 cursor-pointer hover:opacity-80 transition">
+                <img src="${s.avatar || DEFAULT_AVATAR}" class="w-7 h-7 rounded-full object-cover border shrink-0">
                 <div class="truncate">
                   <div class="font-bold text-slate-800 text-xs truncate" title="${s.name}">${s.name}</div>
                   ${warn.badge ? `<div class="mt-0.5">${warn.badge}</div>` : ''}
@@ -1663,7 +1654,7 @@ function setupAllDateInputs() {
             <td class="p-3 text-center font-mono font-bold text-[#8B1515] border-r">${s.id}</td>
             <td class="p-3 border-r">
               <div class="flex items-center gap-2.5">
-                <img src="${s.avatar || DEFAULT_AVATAR}" onclick="currentUploadStudentId='${s.id}'; document.getElementById('direct-avatar-input').click();" alt="Avatar" title="Bấm để đổi ảnh đại diện" class="w-8 h-8 rounded-full object-cover border shrink-0 cursor-pointer hover:opacity-80 transition">
+                <img src="${s.avatar || DEFAULT_AVATAR}" class="w-8 h-8 rounded-full object-cover border shrink-0">
                 <div>
                   <h4 class="font-bold text-slate-800 text-xs">${s.name}</h4>
                   <p class="text-[10px] text-slate-400">PH: ${s.parentName} - SĐT: ${s.parentPhone || s.phone}</p>
@@ -1685,7 +1676,7 @@ function setupAllDateInputs() {
             <td class="p-3 text-center">
               <div class="flex justify-center gap-1.5">
                 <button onclick="openEditStudentModal(${idx})" class="p-1.5 bg-amber-500 text-white rounded-lg text-xs font-bold shadow">✏️ Sửa</button>
-                <button onclick="openPaymentPopup('${s.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">💰 Đóng Học Phí</button>
+                <button onclick="openPaymentPopup('${s.id}')" class="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow">💰 Thanh toán</button>
                 <button onclick="deleteStudent(${idx})" class="p-1.5 bg-red-600 text-white rounded-lg text-xs font-bold shadow">🚪 Dừng</button>
               </div>
             </td>
@@ -1761,7 +1752,7 @@ function setupAllDateInputs() {
           <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3 relative overflow-hidden flex flex-col justify-between">
             <div class="flex items-start justify-between gap-3 border-b pb-3">
               <div class="flex items-center gap-3">
-                <img src="${s.avatar || DEFAULT_AVATAR}" onclick="currentUploadStudentId='${s.id}'; document.getElementById('direct-avatar-input').click();" alt="Avatar" title="Bấm để đổi ảnh đại diện" class="w-12 h-12 rounded-full object-cover border-2 border-amber-300 shrink-0 cursor-pointer hover:opacity-80 transition">
+                <img src="${s.avatar || DEFAULT_AVATAR}" class="w-12 h-12 rounded-full object-cover border-2 border-amber-300 shrink-0">
                 <div>
                   <span class="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded">${s.id}</span>
                   <h3 class="font-bold text-slate-800 text-sm mt-0.5">${s.name}</h3>
@@ -1820,30 +1811,22 @@ function setupAllDateInputs() {
         const warn = getWarningConfig(s.completedSessions, s.level);
         const attendedToday = s.sessions?.includes(getFormattedToday());
         return `
-          <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col gap-3 border border-gray-100">
-            <div class="flex items-center justify-between gap-2 border-b pb-3">
-              <div class="flex items-center gap-3 min-w-0 flex-1">
-                <img src="${s.avatar || DEFAULT_AVATAR}" onclick="currentUploadStudentId='${s.id}'; document.getElementById('direct-avatar-input').click();" alt="Avatar" class="w-20 h-20 rounded-full object-cover border-2 border-emerald-100 cursor-pointer hover:opacity-80 transition">
-                <div class="text-left min-w-0">
-                  <h3 class="font-bold text-gray-800 text-lg truncate" title="${s.name}">${s.name}</h3>
-                  <p class="text-sm text-gray-500 font-medium truncate">ID: ${s.id}</p>
-                  <p class="text-[11px] text-slate-400 font-mono truncate">${s.level || 'Chưa xếp lớp'}</p>
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+            <div class="flex items-center justify-between border-b pb-3">
+              <div class="flex items-center gap-3">
+                <img src="${s.avatar || DEFAULT_AVATAR}" class="w-10 h-10 rounded-full object-cover border">
+                <div>
+                  <h3 class="font-bold text-slate-800 text-sm">${s.name}</h3>
+                  <p class="text-[11px] text-slate-400 font-mono">${s.id} - ${s.level}</p>
                 </div>
               </div>
-              <span class="shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-bold font-mono ${warn.bg} ${warn.text}">${s.completedSessions || 0} / 40b</span>
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold font-mono ${warn.bg} ${warn.text}">${s.completedSessions || 0} / 40b</span>
             </div>
             
             <div class="flex justify-between items-center text-xs">
               <span class="text-slate-500">Buổi kế tiếp: <strong class="text-slate-800">Buổi ${(s.completedSessions || 0) + 1}</strong></span>
-              <div class="flex flex-wrap items-center justify-end gap-2">
-                <button onclick="quickMasterAttendanceToday(${globalIdx}, ${s.completedSessions || 0})" ${attendedToday ? 'disabled' : ''} class="px-3 py-1.5 ${attendedToday ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white'} font-bold rounded-xl text-xs shadow disabled:shadow-none">
-                  ${attendedToday ? '✓ Đã điểm danh hôm nay' : '✓ Điểm Danh Hôm Nay'}
-                </button>
-              </div>
-            </div>
-            <div class="mt-2 w-full">
-              <button onclick="openPaymentPopup('${s.id}')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition flex justify-center items-center gap-2">
-                <span>💰</span> Đóng Học Phí
+              <button onclick="quickMasterAttendanceToday(${globalIdx}, ${s.completedSessions || 0})" ${attendedToday ? 'disabled' : ''} class="px-3 py-1.5 ${attendedToday ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white'} font-bold rounded-xl text-xs shadow disabled:shadow-none">
+                ${attendedToday ? '✓ Đã điểm danh hôm nay' : '✓ Điểm Danh Hôm Nay'}
               </button>
             </div>
           </div>`;
@@ -1875,7 +1858,7 @@ function setupAllDateInputs() {
       container.innerHTML = attended.map(s => `
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-emerald-200 flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <img src="${s.avatar || DEFAULT_AVATAR}" onclick="currentUploadStudentId='${s.id}'; document.getElementById('direct-avatar-input').click();" alt="Avatar" title="Bấm để đổi ảnh đại diện" class="w-10 h-10 rounded-full object-cover border cursor-pointer hover:opacity-80 transition">
+            <img src="${s.avatar || DEFAULT_AVATAR}" class="w-10 h-10 rounded-full object-cover border">
             <div>
               <h4 class="font-bold text-slate-800 text-sm">${s.name}</h4>
               <p class="text-[11px] text-slate-400">${s.id} - ${s.level}</p>
@@ -2065,7 +2048,7 @@ function setupAllDateInputs() {
       }
     }
 
-    async function handleLoginSubmit(role) {
+    function handleLoginSubmit(role) {
       document.getElementById('login-error-msg').classList.add('hidden');
       const isDirector = role === 'director';
       const username = isDirector ? 'director' : document.getElementById('login-teacher-select').value;
@@ -2127,12 +2110,8 @@ function setupAllDateInputs() {
       loadDataFromLocalStorage();
       updateAllViews();
       restoreSession();
+      await fetchDataFromGoogleSheet();
     };
-
-    window.addEventListener('DOMContentLoaded', () => {
-      // Tải dữ liệu ngầm không hiển thị thông báo (isManual = false)
-      fetchDataFromGoogleSheet(false);
-    });
     async function toggleFeeStatus(studentId, isChecked) {
       const student = studentsData.find(s => s.id === studentId);
       if (!student) return;
