@@ -489,6 +489,10 @@
             <button onclick="showPage('page-manage-teachers')" class="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-xl text-xs font-semibold shadow active:scale-[0.98]">⚙ Danh Sách Trợ Giảng</button>
           </div>
         </div>
+        <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2">
+          <span class="text-slate-400 text-sm pl-2">🔍</span>
+          <input type="text" id="director-search-input" oninput="renderDirectorTable()" placeholder="Tìm mã, tên, phụ huynh hoặc trợ giảng..." class="w-full text-xs outline-none bg-transparent py-1 text-slate-700 font-medium">
+        </div>
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden table-responsive">
           <table class="w-full text-left text-sm border-collapse min-w-[800px]">
             <thead class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] sm:text-xs">
@@ -1670,36 +1674,62 @@ function setupAllDateInputs() {
       const tbody = document.getElementById('director-table-body');
       if (!tbody) return;
 
-      tbody.innerHTML = studentsData.map((s, idx) => {
-        const warn = getWarningConfig(s.completedSessions, s.level);
+      const searchKey = (document.getElementById('director-search-input')?.value || '').toLowerCase().trim();
+      const filteredStudents = studentsData
+        .map((student, idx) => ({ student, idx }))
+        .filter(({ student }) => {
+          if (!searchKey) return true;
+          const searchableText = [
+            student.id || '',
+            student.name || '',
+            student.parentName || '',
+            student.parentPhone || student.phone || '',
+            (student.assistants || []).join(' '),
+          ].join(' ').toLowerCase();
+          return searchableText.includes(searchKey);
+        });
+
+      if (!filteredStudents.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="p-6 text-center text-xs text-slate-500">
+              Không tìm thấy học viên nào phù hợp với từ khóa tìm kiếm.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filteredStudents.map(({ student, idx }) => {
+        const warn = getWarningConfig(student.completedSessions, student.level);
         return `
           <tr class="hover:bg-slate-50 border-b">
-            <td class="p-3 text-center font-mono font-bold text-[#8B1515] border-r">${s.id}</td>
+            <td class="p-3 text-center font-mono font-bold text-[#8B1515] border-r">${student.id}</td>
             <td class="p-3 border-r">
               <div class="flex items-center gap-2.5">
-                <img src="${s.avatar || DEFAULT_AVATAR}" class="w-8 h-8 rounded-full object-cover border shrink-0">
+                <img src="${student.avatar || DEFAULT_AVATAR}" class="w-8 h-8 rounded-full object-cover border shrink-0">
                 <div>
-                  <h4 class="font-bold text-slate-800 text-xs">${s.name}</h4>
-                  <p class="text-[10px] text-slate-400">PH: ${s.parentName} - SĐT: ${s.parentPhone || s.phone}</p>
+                  <h4 class="font-bold text-slate-800 text-xs">${student.name}</h4>
+                  <p class="text-[10px] text-slate-400">PH: ${student.parentName} - SĐT: ${student.parentPhone || student.phone}</p>
                 </div>
               </div>
             </td>
-            <td class="p-2 border-r text-center">${renderLevelSelectHtml(s.level, `updateStudentLevel(${idx}, this.value)`)}</td>
-            <td class="p-3 border-r text-center font-mono font-bold ${warn.bg} ${warn.text}">${s.completedSessions || 0} / 40</td>
-            <td class="p-2 border-r">${generateAssistantCheckboxes(s, idx)}</td>
+            <td class="p-2 border-r text-center">${renderLevelSelectHtml(student.level, `updateStudentLevel(${idx}, this.value)`)}</td>
+            <td class="p-3 border-r text-center font-mono font-bold ${warn.bg} ${warn.text}">${student.completedSessions || 0} / 40</td>
+            <td class="p-2 border-r">${generateAssistantCheckboxes(student, idx)}</td>
             <td class="p-2 text-center border-r border-slate-200">
               <input 
                 type="checkbox" 
                 class="w-5 h-5 accent-emerald-600 rounded cursor-pointer align-middle"
-                onchange="toggleFeeStatus('${s.id}', this.checked)"
-                ${isFeePaid(s) ? 'checked' : ''}
+                onchange="toggleFeeStatus('${student.id}', this.checked)"
+                ${isFeePaid(student) ? 'checked' : ''}
               />
             </td>
-                <td class="p-3 border-r text-center font-mono text-xs text-slate-500">${s.regDate || '---'}</td>
+                <td class="p-3 border-r text-center font-mono text-xs text-slate-500">${student.regDate || '---'}</td>
             <td class="p-3 text-center">
               <div class="flex justify-center gap-1.5">
                 <button onclick="openEditStudentModal(${idx})" class="p-1.5 bg-amber-500 text-white rounded-lg text-xs font-bold shadow">✏️ Sửa</button>
-                <button onclick="openPaymentPopup('${s.id}')" class="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow">💰 Thanh toán</button>
+                <button onclick="openPaymentPopup('${student.id}')" class="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow">💰 Thanh toán</button>
                 <button onclick="deleteStudent(${idx})" class="p-1.5 bg-red-600 text-white rounded-lg text-xs font-bold shadow">🚪 Dừng</button>
               </div>
             </td>
@@ -2171,3 +2201,4 @@ function setupAllDateInputs() {
   </script>
 </body>
 </html>
+ 
