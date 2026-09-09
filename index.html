@@ -769,27 +769,36 @@
           throw new Error(res?.message || 'Google Apps Script không trả về success');
         }
 
-        // Hỗ trợ cả hai cấu trúc: res.students hoặc res.data
         const students = Array.isArray(res.students)
           ? res.students
           : Array.isArray(res.data)
             ? res.data
             : [];
 
-        studentsData = students;
+        if (students.length) {
+          studentsData = students;
+        } else if (!studentsData.length) {
+          studentsData = [];
+        }
+
         inactiveStudentsData = Array.isArray(res.inactive)
           ? res.inactive
-          : [];
+          : inactiveStudentsData;
 
-        // Chuẩn hóa danh sách trợ giảng
-        if (Array.isArray(res.teachers)) {
-          assistantTeachers = res.teachers
+        const fetchedTeachers = Array.isArray(res.teachers)
+          ? res.teachers
             .map(teacher => {
               if (typeof teacher === 'string') return teacher;
               return teacher?.name || '';
             })
-            .filter(Boolean);
+            .filter(Boolean)
+          : [];
 
+        if (fetchedTeachers.length) {
+          assistantTeachers = fetchedTeachers;
+        }
+
+        if (Array.isArray(res.teachers)) {
           res.teachers.forEach(teacher => {
             if (typeof teacher === 'object' && teacher?.name) {
               accountPasswords[teacher.name] = teacher.password || '123456';
@@ -797,14 +806,12 @@
           });
         }
 
-        // Hỗ trợ cả res.levels và res.config.customLevels
         if (Array.isArray(res.levels)) {
           customLevelsList = res.levels;
         } else if (Array.isArray(res.config?.customLevels)) {
           customLevelsList = res.config.customLevels;
         }
 
-        // Mật khẩu Admin
         if (res.passwords?.director) {
           accountPasswords.director = res.passwords.director;
         }
@@ -812,6 +819,16 @@
         if (res.config?.directorPassword) {
           accountPasswords.director = res.config.directorPassword;
         }
+
+        if (!accountPasswords.director) {
+          accountPasswords.director = '123456';
+        }
+
+        assistantTeachers.forEach(name => {
+          if (name && !accountPasswords[name]) {
+            accountPasswords[name] = '123456';
+          }
+        });
 
         updateAllViews();
 
@@ -874,6 +891,21 @@
 
     function isFeePaid(student) {
       return String(student?.feeStatus || '').trim() === 'Đã đóng';
+    }
+
+    function generateNextStudentId(existingList = studentsData) {
+      const list = Array.isArray(existingList) ? existingList : [];
+      const numbers = list
+        .map(student => String(student?.id || '').trim())
+        .filter(Boolean)
+        .map(id => {
+          const match = id.match(/(\d+)(?!.*\d)/);
+          return match ? Number(match[1]) : NaN;
+        })
+        .filter(num => Number.isFinite(num));
+
+      const maxNumber = numbers.length ? Math.max(...numbers) : 0;
+      return `HV${String(maxNumber + 1).padStart(3, '0')}`;
     }
 
     function getWarningConfig(count, level = '') {
@@ -1099,15 +1131,36 @@ function setupAllDateInputs() {
 
     function loadDataFromLocalStorage() {
       try {
-        if (localStorage.getItem(STORAGE_KEYS.TEACHERS)) assistantTeachers = JSON.parse(localStorage.getItem(STORAGE_KEYS.TEACHERS));
-        if (localStorage.getItem(STORAGE_KEYS.INACTIVE)) inactiveStudentsData = JSON.parse(localStorage.getItem(STORAGE_KEYS.INACTIVE));
-        if (localStorage.getItem(STORAGE_KEYS.PASSWORDS)) accountPasswords = JSON.parse(localStorage.getItem(STORAGE_KEYS.PASSWORDS));
-        if (localStorage.getItem(STORAGE_KEYS.LEVELS)) customLevelsList = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEVELS));
-        if (localStorage.getItem(STORAGE_KEYS.STUDENTS)) {
-          studentsData = JSON.parse(localStorage.getItem(STORAGE_KEYS.STUDENTS));
-          recalculateCompletedSessions();
-          return true;
+        if (localStorage.getItem(STORAGE_KEYS.TEACHERS)) {
+          const cachedTeachers = JSON.parse(localStorage.getItem(STORAGE_KEYS.TEACHERS));
+          if (Array.isArray(cachedTeachers)) assistantTeachers = cachedTeachers;
         }
+        if (localStorage.getItem(STORAGE_KEYS.INACTIVE)) {
+          const cachedInactive = JSON.parse(localStorage.getItem(STORAGE_KEYS.INACTIVE));
+          if (Array.isArray(cachedInactive)) inactiveStudentsData = cachedInactive;
+        }
+        if (localStorage.getItem(STORAGE_KEYS.PASSWORDS)) {
+          const cachedPasswords = JSON.parse(localStorage.getItem(STORAGE_KEYS.PASSWORDS));
+          if (cachedPasswords && typeof cachedPasswords === 'object') {
+            accountPasswords = { ...{ director: '123456' }, ...cachedPasswords };
+          }
+        }
+        if (localStorage.getItem(STORAGE_KEYS.LEVELS)) {
+          const cachedLevels = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEVELS));
+          if (Array.isArray(cachedLevels)) customLevelsList = cachedLevels;
+        }
+        if (localStorage.getItem(STORAGE_KEYS.STUDENTS)) {
+          const cachedStudents = JSON.parse(localStorage.getItem(STORAGE_KEYS.STUDENTS));
+          if (Array.isArray(cachedStudents)) {
+            studentsData = cachedStudents;
+            recalculateCompletedSessions();
+            return true;
+          }
+        }
+        if (!accountPasswords.director) accountPasswords.director = '123456';
+        assistantTeachers.forEach(name => {
+          if (name && !accountPasswords[name]) accountPasswords[name] = '123456';
+        });
       } catch (e) { console.error(e); }
       return false;
     }
@@ -1512,16 +1565,32 @@ function setupAllDateInputs() {
       const confirmOk = await showConfirmModal(`Khôi phục học viên "${student.name}" trở lại danh sách đang học?`);
       if (!confirmOk) return;
 
-      inactiveStudentsData.splice(inactiveIdx, 1);
-      studentsData.push({
+      const restoredStudent = {
         ...student,
-        assistants: student.assistants || [],
-        sessions: student.sessions || Array(40).fill(""),
-        completedSessions: 0
-      });
+        id: String(student.id || '').trim(),
+        assistants: Array.isArray(student.assistants) ? student.assistants : [],
+        sessions: Array.isArray(student.sessions) ? student.sessions.slice(0, 40).concat(Array(40).fill('')).slice(0, 40) : Array(40).fill(''),
+        completedSessions: 0,
+        feeStatus: String(student.feeStatus || 'Chưa đóng').trim() || 'Chưa đóng'
+      };
 
+      if (!restoredStudent.id) {
+        showToast('Không thể khôi phục vì thiếu mã học viên.', 'error');
+        return;
+      }
+
+      inactiveStudentsData.splice(inactiveIdx, 1);
+      studentsData.push(restoredStudent);
+      saveAllDataToLocalStorage();
       updateAllViews();
       showToast(`Đã khôi phục học viên ${student.name}`);
+
+      try {
+        const result = await apiCall('restoreStudent', { student: restoredStudent });
+        if (result?.status !== 'success') throw new Error(result?.message || 'Khôi phục lên Sheet thất bại');
+      } catch (err) {
+        showToast(`✕ Lỗi đồng bộ khôi phục lên Sheet: ${err.message}`, 'error');
+      }
     }
 
     async function deleteStudent(studentIdx) {
@@ -1556,7 +1625,8 @@ function setupAllDateInputs() {
 
     // Modal Form Học viên
     function openAddStudentModal() {
-      document.getElementById('add_id').value = '';
+      const nextStudentId = generateNextStudentId();
+      document.getElementById('add_id').value = nextStudentId;
       document.getElementById('add_name').value = '';
       document.getElementById('add_dob').value = '';
       const today = new Date();
@@ -1579,7 +1649,7 @@ function setupAllDateInputs() {
       e.preventDefault();
       let customId = document.getElementById('add_id').value.trim();
       if (!customId) {
-        customId = 'HV' + String(studentsData.length + 1).padStart(3, '0');
+        customId = generateNextStudentId();
       }
 
       if (studentsData.some(s => s.id === customId)) {
@@ -2167,6 +2237,7 @@ function setupAllDateInputs() {
     window.onload = async function() {
       setupAllDateInputs();
       loadDataFromLocalStorage();
+      initLoginTeacherList();
       updateAllViews();
       restoreSession();
       await fetchDataFromGoogleSheet();
