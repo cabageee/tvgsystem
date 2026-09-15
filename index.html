@@ -44,6 +44,7 @@
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <input type="file" id="direct-avatar-input" accept="image/png, image/jpeg, image/webp" class="hidden" onchange="handleDirectAvatarUpload(this)">
+
   <!-- SCREEN 1: MÀN HÌNH ĐĂNG NHẬP -->
   <div id="screen-login" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95%] sm:max-w-md overflow-hidden">
@@ -654,7 +655,7 @@
     const SUPABASE_KEY = 'sb_publishable_t-eo6QnqTqvSBv_tX3Y40A_aVsKzsKD';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const BUCKET_NAME = 'student-avatars'; 
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzWM9qzJfgkoY2RBQ66v9yKOSTl3UeVbN_MkKOPxcqVqKizDYcOjP277mLXGGmgh7dI/exec'; 
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyodRPYYskRMq4_wB5QABknd45Q4swdSH_Ne5-1ApbXtjbB8i2YV0H1usuIue6eM0JE/exec'; 
     
     let defaultLevelOptions = ['Little Fox L1', 'Little Fox L2', 'Summer', 'Lớp kèm', 'Advance', 'IELTS', 'Full', 'Combo'];
     let customLevelsList = [];

@@ -9,7 +9,7 @@ app.use(cors({ origin: true, methods: ['GET', 'POST', 'DELETE', 'OPTIONS'] }));
 app.options(/.*/, cors());
 app.use(express.json());
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzWM9qzJfgkoY2RBQ66v9yKOSTl3UeVbN_MkKOPxcqVqKizDYcOjP277mLXGGmgh7dI/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyodRPYYskRMq4_wB5QABknd45Q4swdSH_Ne5-1ApbXtjbB8i2YV0H1usuIue6eM0JE/exec';
 
 app.post('/api/google-script', async (req, res) => {
   try {
