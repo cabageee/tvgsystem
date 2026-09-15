@@ -1180,8 +1180,17 @@ function setupAllDateInputs() {
     function recalculateCompletedSessions() {
       studentsData.forEach(s => {
         if (!Array.isArray(s.sessions)) s.sessions = Array(40).fill("");
+        s.assistants = normalizeAssistants(s.assistants);
         s.completedSessions = s.sessions.filter(x => x && String(x).trim() !== "").length;
       });
+    }
+
+    function normalizeAssistants(value) {
+      if (Array.isArray(value)) return value.map(item => String(item).trim()).filter(Boolean);
+      return String(value || '')
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean);
     }
 
     function updateAllViews() {
@@ -1205,7 +1214,7 @@ function setupAllDateInputs() {
         const select = document.getElementById(id);
         if (!select) return;
         const currentVal = select.value;
-        select.innerHTML = `<option value="">-- Tất cả Trợ giảng --</option>` + assistantTeachers.map(t => `<option value="${t}" ${currentVal === t ? 'selected' : ''}>${t}</option>`).join('');
+        select.innerHTML = `<option value="">-- Tất cả Trợ giảng --</option><option value="__UNASSIGNED__" ${currentVal === '__UNASSIGNED__' ? 'selected' : ''}>-- Chưa phân công --</option>` + assistantTeachers.map(t => `<option value="${t}" ${currentVal === t ? 'selected' : ''}>${t}</option>`).join('');
       });
     }
 
@@ -1519,7 +1528,9 @@ function setupAllDateInputs() {
         const studentId = String(s.id || '').toLowerCase();
         const matchSearch = !searchKey || studentName.includes(searchKey) || studentId.includes(searchKey);
         const matchLevel = !levelFilter || s.level === levelFilter;
-        const matchTeacher = !teacherFilter || (s.assistants && s.assistants.includes(teacherFilter));
+        const assistants = normalizeAssistants(s.assistants);
+        const matchTeacher = !teacherFilter
+          || (teacherFilter === '__UNASSIGNED__' ? assistants.length === 0 : assistants.includes(teacherFilter));
         return matchSearch && matchLevel && matchTeacher;
       });
     }
@@ -1865,7 +1876,9 @@ function setupAllDateInputs() {
       let filtered = studentsData.filter(s => {
         const matchSearch = !searchKey || s.name.toLowerCase().includes(searchKey) || s.id.toLowerCase().includes(searchKey) || (s.parentName && s.parentName.toLowerCase().includes(searchKey));
         const matchLevel = !levelFilter || s.level === levelFilter;
-        const matchTeacher = !teacherFilter || s.assistants?.includes(teacherFilter);
+        const assistants = normalizeAssistants(s.assistants);
+        const matchTeacher = !teacherFilter
+          || (teacherFilter === '__UNASSIGNED__' ? assistants.length === 0 : assistants.includes(teacherFilter));
         
         let matchProgress = true;
         if (progressFilter === 'over30') matchProgress = isStudentOverdue(s);
