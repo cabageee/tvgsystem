@@ -1378,16 +1378,7 @@ function setupAllDateInputs() {
       const thead = document.getElementById('tableHeader');
       if (!tbody || !thead) return;
 
-      const searchKey = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
-      const levelFilter = document.getElementById('master-filter-level')?.value || '';
-      const teacherFilter = document.getElementById('master-filter-teacher')?.value || '';
-
-      let filtered = studentsData.filter(s => {
-              const matchSearch = !searchKey || s.name.toLowerCase().includes(searchKey) || s.id.toLowerCase().includes(searchKey);
-              const matchLevel = !levelFilter || s.level === levelFilter;
-              const matchTeacher = !teacherFilter || (s.assistants && s.assistants.includes(teacherFilter));
-              return matchSearch && matchLevel && matchTeacher;
-            });
+      let filtered = getMasterFilteredStudents();
 
             // --- SẮP XẾP ƯU TIÊN (Đỏ -> Vàng -> Xanh) ---
             filtered.sort((a, b) => {
@@ -1518,11 +1509,27 @@ function setupAllDateInputs() {
       renderMasterPage();
     }
 
+    function getMasterFilteredStudents() {
+      const searchKey = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+      const levelFilter = document.getElementById('master-filter-level')?.value || '';
+      const teacherFilter = document.getElementById('master-filter-teacher')?.value || '';
+
+      return studentsData.filter(s => {
+        const studentName = String(s.name || '').toLowerCase();
+        const studentId = String(s.id || '').toLowerCase();
+        const matchSearch = !searchKey || studentName.includes(searchKey) || studentId.includes(searchKey);
+        const matchLevel = !levelFilter || s.level === levelFilter;
+        const matchTeacher = !teacherFilter || (s.assistants && s.assistants.includes(teacherFilter));
+        return matchSearch && matchLevel && matchTeacher;
+      });
+    }
+
     // Xuất Excel 40 buổi
     function exportAttendanceExcel() {
-      if (!studentsData.length) return alert("⚠️ Chưa có dữ liệu học viên để xuất file Excel!");
+      const filteredStudents = getMasterFilteredStudents();
+      if (!filteredStudents.length) return alert("⚠️ Không có học viên nào phù hợp với bộ lọc để xuất Excel!");
       
-      const exportData = studentsData.map((s, idx) => {
+      const exportData = filteredStudents.map((s, idx) => {
         const row = {
           "STT": idx + 1,
           "Mã Học Viên": s.id,
