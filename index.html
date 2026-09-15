@@ -724,7 +724,9 @@
         return new Promise((resolve, reject) => {
           const callbackName = `tvgApi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
           const script = document.createElement('script');
+          let timeoutId;
           const cleanup = () => {
+            clearTimeout(timeoutId);
             delete window[callbackName];
             script.remove();
           };
@@ -736,9 +738,19 @@
           };
           script.onerror = () => {
             cleanup();
-            reject(new Error('Không kết nối được Google Apps Script từ GitHub Pages.'));
+            reject(new Error('Không tải được Apps Script. Hãy kiểm tra Web app đang để quyền truy cập là "Anyone" và URL /exec đã được triển khai bản mới nhất.'));
           };
-          script.src = `${GOOGLE_APPS_SCRIPT_URL}?callback=${encodeURIComponent(callbackName)}&data=${encodeURIComponent(JSON.stringify(request))}`;
+          script.async = true;
+          const query = new URLSearchParams({
+            callback: callbackName,
+            data: JSON.stringify(request),
+            _: String(Date.now())
+          });
+          script.src = `${GOOGLE_APPS_SCRIPT_URL}?${query.toString()}`;
+          timeoutId = setTimeout(() => {
+            cleanup();
+            reject(new Error('Apps Script không phản hồi sau 15 giây. Hãy kiểm tra quyền triển khai và phiên bản Web app.'));
+          }, 15000);
           document.head.appendChild(script);
         });
       }
