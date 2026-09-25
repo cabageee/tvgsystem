@@ -655,7 +655,7 @@
     const SUPABASE_KEY = 'sb_publishable_t-eo6QnqTqvSBv_tX3Y40A_aVsKzsKD';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const BUCKET_NAME = 'student-avatars'; 
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzM-2b7qRmgDG1iXBQ_TfTEs5Vpune5U8j-wivC9djnf2xGfYh6Q1msmS98xli8YAK3/exec'; 
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyodRPYYskRMq4_wB5QABknd45Q4swdSH_Ne5-1ApbXtjbB8i2YV0H1usuIue6eM0JE/exec'; 
     
     let defaultLevelOptions = ['Little Fox L1', 'Little Fox L2', 'Summer', 'Lớp kèm', 'Advance', 'IELTS', 'Full', 'Combo'];
     let customLevelsList = [];
@@ -738,7 +738,7 @@
           };
           script.onerror = () => {
             cleanup();
-            reject(new Error('Không tải được Apps Script. Hãy kiểm tra Web app đang để quyền truy cập là "Anyone" và URL /exec đã được triển khai bản mới nhất.'));
+            reject(new Error(`Không nhận được phản hồi từ Apps Script cho thao tác "${action}". Có thể Web app bị lỗi khi chạy, deployment chưa cho phép truy cập công khai, hoặc URL /exec chưa phải bản mới nhất.`));
           };
           script.async = true;
           const query = new URLSearchParams({
@@ -749,7 +749,7 @@
           script.src = `${GOOGLE_APPS_SCRIPT_URL}?${query.toString()}`;
           timeoutId = setTimeout(() => {
             cleanup();
-            reject(new Error('Apps Script không phản hồi sau 15 giây. Hãy kiểm tra quyền triển khai và phiên bản Web app.'));
+            reject(new Error(`Apps Script không phản hồi thao tác "${action}" sau 15 giây. Kiểm tra Executed as: Me, Who has access: Anyone và quyền truy cập Google Sheet.`));
           }, 15000);
           document.head.appendChild(script);
         });
@@ -1186,11 +1186,13 @@ function setupAllDateInputs() {
     }
 
     function normalizeAssistants(value) {
-      if (Array.isArray(value)) return value.map(item => String(item).trim()).filter(Boolean);
-      return String(value || '')
-        .split(',')
-        .map(item => item.trim())
-        .filter(Boolean);
+      const values = Array.isArray(value)
+        ? value
+        : String(value || '').split(',');
+
+      return values
+        .map(item => String(item).trim())
+        .filter(item => item && !/^https?:\/\//i.test(item));
     }
 
     function updateAllViews() {
@@ -1598,7 +1600,7 @@ function setupAllDateInputs() {
       const restoredStudent = {
         ...student,
         id: String(student.id || '').trim(),
-        assistants: Array.isArray(student.assistants) ? student.assistants : [],
+        assistants: normalizeAssistants(student.assistants),
         sessions: Array.isArray(student.sessions) ? student.sessions.slice(0, 40).concat(Array(40).fill('')).slice(0, 40) : Array(40).fill(''),
         completedSessions: 0,
         feeStatus: String(student.feeStatus || 'Chưa đóng').trim() || 'Chưa đóng'
