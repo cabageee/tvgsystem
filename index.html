@@ -137,6 +137,21 @@
     </div>
   </div>
 
+  <!-- POP-UP KHUNG CHỨC NĂNG HỌC PHÍ -->
+  <div id="modal-fee-status" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95%] sm:max-w-md overflow-hidden">
+      <div class="bg-emerald-700 text-white p-4 flex justify-between items-center">
+        <h3 class="font-bold text-sm uppercase tracking-wider">Học Phí</h3>
+        <button onclick="closeModal('modal-fee-status')" class="text-white/80 hover:text-white text-2xl leading-none p-1">&times;</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <p class="text-sm text-slate-700">Học viên: <strong id="fee-status-student-name" class="text-slate-900">...</strong></p>
+        <div class="min-h-28 rounded-lg border border-dashed border-slate-300 bg-slate-50"></div>
+        <button onclick="closeModal('modal-fee-status')" class="w-full py-2.5 border rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50">Đóng</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL THẺ BÁO CÁO -->
   <div id="modal-student-card" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[98%] sm:max-w-md overflow-hidden my-auto max-h-[95vh] flex flex-col">
@@ -977,66 +992,60 @@
     }
 
     function formatDateForInput(value) {
-      if (!value) return '';
-
-      const text = String(value).trim();
-
-      // Chuyển dd/mm/yyyy thành yyyy-mm-dd cho input type="date"
-      let match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-      if (match) {
-        const [, day, month, year] = match;
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      }
-
-      // Đã đúng định dạng input date
-      match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-      if (match) {
-        const [, year, month, day] = match;
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      }
-
-      return '';
+      return formatDisplayDate(value);
     }
-function setupDateInput(id) {
-  const input = document.getElementById(id);
-  if (!input) return;
+    function setupDateInput(id) {
+      const input = document.getElementById(id);
+      if (!input) return;
 
-  input.addEventListener('input', () => {
-    let value = input.value.replace(/\D/g, '').slice(0, 8);
+      input.addEventListener('input', () => {
+        let value = input.value.replace(/\D/g, '').slice(0, 8);
 
-    if (value.length > 4) {
-      value = `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4)}`;
-    } else if (value.length > 2) {
-      value = `${value.slice(0, 2)}/${value.slice(2)}`;
+        if (value.length > 4) {
+          value = `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4)}`;
+        } else if (value.length > 2) {
+          value = `${value.slice(0, 2)}/${value.slice(2)}`;
+        }
+
+        input.value = value;
+      });
     }
 
-    input.value = value;
-  });
-}
+    function isValidDateDMY(value) {
+      const match = String(value || '').match(
+        /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/(\d{4})$/
+      );
 
-function isValidDateDMY(value) {
-  const match = String(value || '').match(
-    /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/(\d{4})$/
-  );
+      if (!match) return false;
 
-  if (!match) return false;
+      const day = Number(match[1]);
+      const month = Number(match[2]);
+      const year = Number(match[3]);
+      const date = new Date(year, month - 1, day);
 
-  const day = Number(match[1]);
-  const month = Number(match[2]);
-  const year = Number(match[3]);
-  const date = new Date(year, month - 1, day);
+      return (
+        date.getFullYear() === year &&
+        date.getMonth() === month - 1 &&
+        date.getDate() === day
+      );
+    }
 
-  return (
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day
-  );
-}
+    function areStudentDatesValid(dob, regDate) {
+      if (dob && !isValidDateDMY(dob)) {
+        alert('Ngày sinh không hợp lệ. Vui lòng nhập theo định dạng dd/mm/yyyy.');
+        return false;
+      }
+      if (!isValidDateDMY(regDate)) {
+        alert('Ngày đăng ký không hợp lệ. Vui lòng nhập theo định dạng dd/mm/yyyy.');
+        return false;
+      }
+      return true;
+    }
 
-function setupAllDateInputs() {
-  ['add_dob', 'add_regDate', 'edit_dob', 'edit_regDate']
-    .forEach(setupDateInput);
-}
+    function setupAllDateInputs() {
+      ['add_dob', 'add_regDate', 'edit_dob', 'edit_regDate']
+        .forEach(setupDateInput);
+    }
     function formatShortDate(value) {
       return formatDisplayDate(value);
     }
@@ -1081,6 +1090,14 @@ function setupAllDateInputs() {
       errorMessage.innerText = '';
       confirmButton.onclick = () => processStudentPayment(studentId);
       document.getElementById('modal-payment').classList.remove('hidden');
+    }
+
+    function openFeeStatusPopup(studentId) {
+      const student = studentsData.find(s => s.id === studentId);
+      if (!student) return;
+
+      document.getElementById('fee-status-student-name').innerText = student.name;
+      document.getElementById('modal-fee-status').classList.remove('hidden');
     }
 
     async function processStudentPayment(studentId) {
@@ -1473,12 +1490,7 @@ function setupAllDateInputs() {
               ${s.completedSessions || 0} / 40
             </td>
             <td class="p-2 text-center border-r border-slate-200">
-              <input 
-                type="checkbox" 
-                class="w-5 h-5 accent-emerald-600 rounded cursor-pointer align-middle"
-                onchange="toggleFeeStatus('${s.id}', this.checked)"
-                ${isFeePaid(s) ? 'checked' : ''}
-              />
+              <button type="button" onclick="openFeeStatusPopup('${s.id}')" class="px-2 py-1 rounded-md text-[10px] font-bold ${isFeePaid(s) ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'}">${isFeePaid(s) ? 'Đã đóng' : 'Chưa đóng'}</button>
             </td>
             <td class="p-2 text-center border-r border-slate-200 text-slate-500 font-mono text-[11px]">
               ${s.regDate || '---'}
@@ -1679,6 +1691,10 @@ function setupAllDateInputs() {
 
     async function handleAddStudentSubmit(e) {
       e.preventDefault();
+      const dob = document.getElementById('add_dob').value.trim();
+      const regDate = document.getElementById('add_regDate').value.trim();
+      if (!areStudentDatesValid(dob, regDate)) return;
+
       let customId = document.getElementById('add_id').value.trim();
       if (!customId) {
         customId = generateNextStudentId();
@@ -1691,10 +1707,10 @@ function setupAllDateInputs() {
       const newStudent = {
         id: customId,
         name: document.getElementById('add_name').value.trim(),
-        dob: document.getElementById('add_dob').value,
+        dob: formatShortDate(dob),
         gender: document.getElementById('add_gender').value,
         level: document.getElementById('add_level').value,
-        regDate: formatShortDate(document.getElementById('add_regDate').value),
+        regDate: formatShortDate(regDate),
         parentName: document.getElementById('add_parentName').value.trim(),
         parentPhone: document.getElementById('add_parentPhone').value.trim(),
         address: document.getElementById('add_address').value.trim(),
@@ -1746,14 +1762,17 @@ function setupAllDateInputs() {
       e.preventDefault();
       const id = document.getElementById('edit_id').value;
       const student = studentsData.find(s => s.id === id);
-      document.getElementById('edit_feeStatus').value = (student.feeStatus === 'Đã đóng' || student.feeStatus === true) ? 'Đã đóng' : 'Chưa đóng';
       if (!student) return;
 
+      const dob = document.getElementById('edit_dob').value.trim();
+      const regDate = document.getElementById('edit_regDate').value.trim();
+      if (!areStudentDatesValid(dob, regDate)) return;
+
       student.name = document.getElementById('edit_name').value.trim();
-      student.dob = formatShortDate(document.getElementById('edit_dob').value);
+      student.dob = formatShortDate(dob);
       student.gender = document.getElementById('edit_gender').value;
       student.level = document.getElementById('edit_level').value;
-      student.regDate = formatShortDate(document.getElementById('edit_regDate').value);
+      student.regDate = formatShortDate(regDate);
       student.parentName = document.getElementById('edit_parentName').value.trim();
       student.parentPhone = document.getElementById('edit_parentPhone').value.trim();
       student.feeStatus = document.getElementById('edit_feeStatus').value;
@@ -1820,12 +1839,7 @@ function setupAllDateInputs() {
             <td class="p-3 border-r text-center font-mono font-bold ${warn.bg} ${warn.text}">${student.completedSessions || 0} / 40</td>
             <td class="p-2 border-r">${generateAssistantCheckboxes(student, idx)}</td>
             <td class="p-2 text-center border-r border-slate-200">
-              <input 
-                type="checkbox" 
-                class="w-5 h-5 accent-emerald-600 rounded cursor-pointer align-middle"
-                onchange="toggleFeeStatus('${student.id}', this.checked)"
-                ${isFeePaid(student) ? 'checked' : ''}
-              />
+              <button type="button" onclick="openFeeStatusPopup('${student.id}')" class="px-2 py-1 rounded-md text-[10px] font-bold ${isFeePaid(student) ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'}">${isFeePaid(student) ? 'Đã đóng' : 'Chưa đóng'}</button>
             </td>
                 <td class="p-3 border-r text-center font-mono text-xs text-slate-500">${student.regDate || '---'}</td>
             <td class="p-3 text-center">
@@ -2276,33 +2290,6 @@ function setupAllDateInputs() {
       restoreSession();
       await fetchDataFromGoogleSheet();
     };
-    async function toggleFeeStatus(studentId, isChecked) {
-      const student = studentsData.find(s => s.id === studentId);
-      if (!student) return;
-
-      const feeStatus = isChecked ? 'Đã đóng' : 'Chưa đóng';
-      student.feeStatus = feeStatus;
-
-      saveAllDataToLocalStorage();
-      renderMasterPage();
-      renderDirectorTable();
-
-      try {
-        const res = await apiCall('updateFeeStatus', {
-          studentId,
-          feeStatus
-        });
-
-        if (res?.status !== 'success') {
-          throw new Error(res?.message || 'Cập nhật thất bại');
-        }
-
-        showToast(`Đã cập nhật học phí: ${feeStatus}`);
-      } catch (error) {
-        console.error(error);
-        showToast('✕ Lỗi đồng bộ học phí lên Google Sheet', 'error');
-      }
-    }
   </script>
 </body>
 </html>
