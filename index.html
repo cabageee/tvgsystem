@@ -141,13 +141,34 @@
   <div id="modal-fee-status" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95%] sm:max-w-md overflow-hidden">
       <div class="bg-emerald-700 text-white p-4 flex justify-between items-center">
-        <h3 class="font-bold text-sm uppercase tracking-wider">Học Phí</h3>
+        <h3 class="font-bold text-sm uppercase tracking-wider">Chi Tiết Học Viên</h3>
         <button onclick="closeModal('modal-fee-status')" class="text-white/80 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
       <div class="p-5 space-y-4">
         <p class="text-sm text-slate-700">Học viên: <strong id="fee-status-student-name" class="text-slate-900">...</strong></p>
-        <div class="min-h-28 rounded-lg border border-dashed border-slate-300 bg-slate-50"></div>
+        <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-xs">
+          <dt class="text-slate-500">Trạng thái học phí</dt><dd id="fee-status-value" class="font-semibold text-slate-800">...</dd>
+          <dt class="text-slate-500">Cấp độ</dt><dd id="fee-status-level" class="font-semibold text-slate-800">...</dd>
+          <dt class="text-slate-500">Số buổi đã học</dt><dd id="fee-status-sessions" class="font-semibold text-slate-800">...</dd>
+          <dt class="text-slate-500">Ngày sinh</dt><dd id="fee-status-birthday" class="font-semibold text-slate-800">...</dd>
+          <dt class="text-slate-500">Ngày đăng ký</dt><dd id="fee-status-reg-date" class="font-semibold text-slate-800">...</dd>
+        </dl>
+        <div class="min-h-28 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-xs text-slate-400">Khu vực chức năng sẽ được bổ sung sau.</div>
         <button onclick="closeModal('modal-fee-status')" class="w-full py-2.5 border rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-birthday-notice" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-amber-200 w-[95%] sm:max-w-md overflow-hidden">
+      <div class="bg-amber-500 text-slate-900 p-4 flex justify-between items-center">
+        <h3 class="font-bold text-sm uppercase tracking-wider">Sinh Nhật Học Viên Sắp Tới</h3>
+        <button onclick="closeModal('modal-birthday-notice')" class="text-slate-800/70 hover:text-slate-900 text-2xl leading-none p-1">&times;</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <p class="text-xs text-slate-600">Các học viên có sinh nhật trong 3 ngày tới:</p>
+        <ul id="birthday-notice-list" class="divide-y divide-slate-100"></ul>
+        <button onclick="closeModal('modal-birthday-notice')" class="w-full py-2.5 border rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50">Đóng</button>
       </div>
     </div>
   </div>
@@ -429,7 +450,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full md:w-auto flex-1">
             <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-[#8B1515]">
               <span class="text-slate-400 text-xs">🔍</span>
-              <input type="text" id="search-input" oninput="filterMasterData()" placeholder="Tìm Mã, Tên học viên..." class="w-full text-xs outline-none bg-transparent text-slate-800 font-medium">
+              <input type="text" id="search-input" oninput="filterMasterData()" placeholder="Tìm mã, tên, phụ huynh, SĐT hoặc trợ giảng..." class="w-full text-xs outline-none bg-transparent text-slate-800 font-medium">
             </div>
             <select id="master-filter-level" onchange="filterMasterData()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-[#8B1515] text-slate-700"></select>
             <select id="master-filter-teacher" onchange="filterMasterData()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-[#8B1515] text-slate-700">
@@ -506,7 +527,7 @@
         </div>
         <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2">
           <span class="text-slate-400 text-sm pl-2">🔍</span>
-          <input type="text" id="director-search-input" oninput="renderDirectorTable()" placeholder="Tìm mã, tên, phụ huynh hoặc trợ giảng..." class="w-full text-xs outline-none bg-transparent py-1 text-slate-700 font-medium">
+          <input type="text" id="director-search-input" oninput="renderDirectorTable()" placeholder="Tìm mã, tên, phụ huynh, SĐT hoặc trợ giảng..." class="w-full text-xs outline-none bg-transparent py-1 text-slate-700 font-medium">
         </div>
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden table-responsive">
           <table class="w-full text-left text-sm border-collapse min-w-[800px]">
@@ -517,7 +538,7 @@
                 <th class="p-3 border-r w-36 text-center">Cấp Độ</th>
                 <th class="p-3 border-r w-28 text-center">Số Buổi</th>
                 <th class="p-3 border-r w-60">Trợ Giảng Phụ Trách</th>
-                <th class="p-3 border-r w-24 text-center">Học Phí</th>
+                <th class="p-3 border-r w-24 text-center">Chức Năng</th>
                 <th class="p-3 border-r w-32 text-center">Ngày ĐK</th>
                 <th class="p-3 w-32 text-center">Thao Tác</th>
               </tr>
@@ -687,6 +708,7 @@
     let assistantTeachers = [], accountPasswords = { 'director': '123456' }, currentUserRole = null, currentUserName = '';
     let studentsData = [], inactiveStudentsData = [];
     let currentReportStudent = null;
+    let birthdayNotificationShown = false;
 
     let profileCurrentPage = 1, masterCurrentPage = 1;
     const PAGE_SIZE = 12;
@@ -870,6 +892,7 @@
         }
       } finally {
         if (loading) loading.classList.add('hidden');
+        if (!isManual) showUpcomingBirthdays();
       }
     }
 
@@ -1050,6 +1073,63 @@
       return formatDisplayDate(value);
     }
 
+    function getUpcomingBirthdayDays(value, today = new Date()) {
+      const birthday = formatDisplayDate(value);
+      const match = birthday.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!match || !isValidDateDMY(birthday)) return null;
+
+      const day = Number(match[1]);
+      const month = Number(match[2]);
+      const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+      let birthdayYear = today.getFullYear();
+      let birthdayUtc = Date.UTC(birthdayYear, month - 1, day);
+
+      if (birthdayUtc < todayUtc) {
+        birthdayYear += 1;
+        birthdayUtc = Date.UTC(birthdayYear, month - 1, day);
+      }
+
+      const daysUntil = Math.round((birthdayUtc - todayUtc) / 86400000);
+      return daysUntil <= 3 ? daysUntil : null;
+    }
+
+    function showUpcomingBirthdays() {
+      if (birthdayNotificationShown) return;
+
+      const upcomingBirthdays = studentsData
+        .map(student => ({ student, daysUntil: getUpcomingBirthdayDays(student.dob) }))
+        .filter(item => item.daysUntil !== null)
+        .sort((a, b) => a.daysUntil - b.daysUntil || String(a.student.name || '').localeCompare(String(b.student.name || ''), 'vi'));
+
+      if (!upcomingBirthdays.length) return;
+
+      const list = document.getElementById('birthday-notice-list');
+      list.replaceChildren();
+      upcomingBirthdays.forEach(({ student, daysUntil }) => {
+        const item = document.createElement('li');
+        item.className = 'flex items-center justify-between gap-3 py-3';
+
+        const details = document.createElement('div');
+        details.className = 'min-w-0';
+        const name = document.createElement('p');
+        name.className = 'truncate text-sm font-bold text-slate-800';
+        name.textContent = student.name || student.id || 'Học viên';
+        const birthday = document.createElement('p');
+        birthday.className = 'text-xs text-slate-500';
+        birthday.textContent = `${formatDisplayDate(student.dob)}${student.level ? ` · ${student.level}` : ''}`;
+        details.append(name, birthday);
+
+        const countdown = document.createElement('span');
+        countdown.className = 'shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-900';
+        countdown.textContent = daysUntil === 0 ? 'Hôm nay' : `Còn ${daysUntil} ngày`;
+        item.append(details, countdown);
+        list.append(item);
+      });
+
+      birthdayNotificationShown = true;
+      document.getElementById('modal-birthday-notice').classList.remove('hidden');
+    }
+
     const getFormattedToday = () => {
       const today = new Date();
       return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -1097,6 +1177,11 @@
       if (!student) return;
 
       document.getElementById('fee-status-student-name').innerText = student.name;
+      document.getElementById('fee-status-value').innerText = isFeePaid(student) ? 'Đã đóng' : 'Chưa đóng';
+      document.getElementById('fee-status-level').innerText = student.level || 'Chưa xếp lớp';
+      document.getElementById('fee-status-sessions').innerText = `${student.completedSessions || 0} / 40`;
+      document.getElementById('fee-status-birthday').innerText = formatDisplayDate(student.dob) || 'Chưa cập nhật';
+      document.getElementById('fee-status-reg-date').innerText = formatDisplayDate(student.regDate) || 'Chưa cập nhật';
       document.getElementById('modal-fee-status').classList.remove('hidden');
     }
 
@@ -1448,7 +1533,7 @@
           <th class="p-2.5 border-r border-slate-300 w-48 sticky-col-2">Họ Và Tên Học Viên</th>
           <th class="p-2.5 border-r border-slate-300 w-32 text-center">Cấp Độ Lớp</th>
           <th class="p-2.5 border-r border-slate-300 w-24 text-center">Đã Học</th>
-          <th class="p-2.5 border-r border-slate-300 w-32 text-center">Trạng Thái Học Phí</th>
+          <th class="p-2.5 border-r border-slate-300 w-32 text-center">Chức Năng</th>
           <th class="p-2.5 border-r border-slate-300 w-28 text-center">Ngày ĐK</th>`;
       
       for (let i = 1; i <= 40; i++) {
@@ -1490,7 +1575,7 @@
               ${s.completedSessions || 0} / 40
             </td>
             <td class="p-2 text-center border-r border-slate-200">
-              <button type="button" onclick="openFeeStatusPopup('${s.id}')" class="px-2 py-1 rounded-md text-[10px] font-bold ${isFeePaid(s) ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'}">${isFeePaid(s) ? 'Đã đóng' : 'Chưa đóng'}</button>
+              <button type="button" onclick="openFeeStatusPopup('${s.id}')" class="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Chi tiết</button>
             </td>
             <td class="p-2 text-center border-r border-slate-200 text-slate-500 font-mono text-[11px]">
               ${s.regDate || '---'}
@@ -1538,9 +1623,14 @@
       const teacherFilter = document.getElementById('master-filter-teacher')?.value || '';
 
       return studentsData.filter(s => {
-        const studentName = String(s.name || '').toLowerCase();
-        const studentId = String(s.id || '').toLowerCase();
-        const matchSearch = !searchKey || studentName.includes(searchKey) || studentId.includes(searchKey);
+        const searchableText = [
+          s.id || '',
+          s.name || '',
+          s.parentName || '',
+          s.parentPhone || s.phone || '',
+          normalizeAssistants(s.assistants).join(' ')
+        ].join(' ').toLowerCase();
+        const matchSearch = !searchKey || searchableText.includes(searchKey);
         const matchLevel = !levelFilter || s.level === levelFilter;
         const assistants = normalizeAssistants(s.assistants);
         const matchTeacher = !teacherFilter
@@ -1839,7 +1929,7 @@
             <td class="p-3 border-r text-center font-mono font-bold ${warn.bg} ${warn.text}">${student.completedSessions || 0} / 40</td>
             <td class="p-2 border-r">${generateAssistantCheckboxes(student, idx)}</td>
             <td class="p-2 text-center border-r border-slate-200">
-              <button type="button" onclick="openFeeStatusPopup('${student.id}')" class="px-2 py-1 rounded-md text-[10px] font-bold ${isFeePaid(student) ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'}">${isFeePaid(student) ? 'Đã đóng' : 'Chưa đóng'}</button>
+              <button type="button" onclick="openFeeStatusPopup('${student.id}')" class="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Chi tiết</button>
             </td>
                 <td class="p-3 border-r text-center font-mono text-xs text-slate-500">${student.regDate || '---'}</td>
             <td class="p-3 text-center">
@@ -2287,6 +2377,7 @@
       loadDataFromLocalStorage();
       initLoginTeacherList();
       updateAllViews();
+      showUpcomingBirthdays();
       restoreSession();
       await fetchDataFromGoogleSheet();
     };
