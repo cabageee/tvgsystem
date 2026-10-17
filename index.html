@@ -6,7 +6,6 @@
   <title>Quản Lý Học Sinh - Thiên Vy Global</title>
   <link rel="icon" type="image/png" href="Logo Thien Vy.png">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Thư viện Xuất file Báo cáo, Ảnh & PDF, Excel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -261,11 +260,11 @@
         <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Ghi Chú</label><input type="text" id="add_note" placeholder="Ghi chú thêm..." class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none"></div>
         
         <div class="bg-slate-50 p-3 border rounded-xl space-y-2">
-          <label class="block text-[11px] font-bold text-slate-700 uppercase">Ảnh Avatar Học Viên (Supabase)</label>
+          <label class="block text-[11px] font-bold text-slate-700 uppercase">Ảnh Avatar Học Viên (Google Drive)</label>
           <div class="flex items-center gap-3">
             <img id="avatar-preview" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" class="w-12 h-12 rounded-full object-cover border border-slate-300 shadow-sm shrink-0">
             <div class="flex-1 space-y-1">
-              <input type="file" id="add_avatar_file" accept="image/png, image/jpeg, image/webp" onchange="uploadAvatarToSupabase(this)" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-[#8B1515] file:text-white cursor-pointer">
+              <input type="file" id="add_avatar_file" accept="image/png, image/jpeg, image/webp" onchange="uploadAvatarToDrive(this)" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-[#8B1515] file:text-white cursor-pointer">
               <p id="upload-status" class="text-[10px] sm:text-xs text-slate-500 italic mt-1">Chọn ảnh để upload tự động.</p>
             </div>
           </div>
@@ -316,12 +315,12 @@
         <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Ghi Chú</label><input type="text" id="edit_note" class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none"></div>
 
         <div class="bg-slate-50 p-3 border rounded-xl space-y-2">
-          <label class="block text-[11px] font-bold text-slate-700 uppercase">Ảnh Avatar Học Viên (Supabase)</label>
+          <label class="block text-[11px] font-bold text-slate-700 uppercase">Ảnh Avatar Học Viên (Google Drive)</label>
           <div class="flex items-center gap-3">
             <img id="edit-avatar-preview" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" class="w-12 h-12 rounded-full object-cover border border-slate-300 shadow-sm shrink-0">
             <div class="flex-1 space-y-1">
-              <input type="file" id="edit_avatar_file" accept="image/png, image/jpeg, image/webp" onchange="uploadAvatarToSupabase(this, 'edit')" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-amber-600 file:text-white cursor-pointer">
-              <p id="edit-upload-status" class="text-[10px] sm:text-xs text-slate-500 italic mt-1">Chọn ảnh để thay avatar.</p>
+              <input type="file" id="edit_avatar_file" accept="image/png, image/jpeg, image/webp" onchange="uploadAvatarToDrive(this, 'edit')" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-amber-600 file:text-white cursor-pointer">
+              <p id="edit-upload-status" class="text-[10px] sm:text-xs text-slate-500 italic mt-1">Chọn ảnh tại đây hoặc bấm “Đổi avatar” ngay trên thẻ hồ sơ học viên.</p>
             </div>
           </div>
           <input type="hidden" id="edit_avatar" value="">
@@ -687,10 +686,6 @@
   <!-- SCRIPT XỬ LÝ NGHIỆP VỤ WEB APP -->
   <script>
     // ================= CONFIG & GLOBALS =================
-    const SUPABASE_URL = 'https://houmcinumwxrzufayofz.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_t-eo6QnqTqvSBv_tX3Y40A_aVsKzsKD';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const BUCKET_NAME = 'student-avatars'; 
     const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyodRPYYskRMq4_wB5QABknd45Q4swdSH_Ne5-1ApbXtjbB8i2YV0H1usuIue6eM0JE/exec'; 
     
     let defaultLevelOptions = ['Little Fox L1', 'Little Fox L2', 'Summer', 'Lớp kèm', 'Advance', 'IELTS', 'Full', 'Combo'];
@@ -896,8 +891,75 @@
       }
     }
 
-    // Upload Ảnh đại diện lên Supabase
-    async function uploadAvatarToSupabase(input, target = 'add') {
+    // Upload ảnh qua Google Apps Script để lưu vào Google Drive.
+    async function uploadAvatarFile(file) {
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+        throw new Error('Chỉ chấp nhận ảnh PNG, JPEG hoặc WebP.');
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Ảnh không được vượt quá 5 MB.');
+      }
+
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Không đọc được file ảnh.'));
+        reader.readAsDataURL(file);
+      });
+      const requestId = `avatar_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const frameName = `drive-upload-${requestId}`;
+      const iframe = document.createElement('iframe');
+      iframe.name = frameName;
+      iframe.title = 'Tải avatar lên Google Drive';
+      iframe.hidden = true;
+
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = GOOGLE_APPS_SCRIPT_URL;
+      form.target = frameName;
+      form.hidden = true;
+      const fields = {
+        requestId,
+        fileName: file.name,
+        mimeType: file.type,
+        dataUrl
+      };
+      Object.entries(fields).forEach(([name, value]) => {
+        const field = document.createElement('input');
+        field.type = 'hidden';
+        field.name = name;
+        field.value = value;
+        form.appendChild(field);
+      });
+
+      document.body.append(iframe, form);
+      try {
+        return await new Promise((resolve, reject) => {
+          const timeoutId = setTimeout(() => finish(new Error('Apps Script upload quá thời gian chờ.')), 60000);
+          const finish = (error, url) => {
+            clearTimeout(timeoutId);
+            window.removeEventListener('message', onMessage);
+            iframe.remove();
+            form.remove();
+            if (error) reject(error);
+            else resolve(url);
+          };
+          const onMessage = (event) => {
+            if (event.source !== iframe.contentWindow || event.data?.requestId !== requestId) return;
+            if (event.data.success && event.data.url) finish(null, event.data.url);
+            else finish(new Error(event.data.error || 'Google Drive không lưu được ảnh.'));
+          };
+          window.addEventListener('message', onMessage);
+          form.submit();
+        });
+      } catch (error) {
+        iframe.remove();
+        form.remove();
+        throw error;
+      }
+    }
+
+    async function uploadAvatarToDrive(input, target = 'add') {
       const file = input.files[0];
       if (!file) return;
 
@@ -905,33 +967,57 @@
         ? { status: 'edit-upload-status', value: 'edit_avatar', preview: 'edit-avatar-preview' }
         : { status: 'upload-status', value: 'add_avatar', preview: 'avatar-preview' };
       const statusEl = document.getElementById(targetIds.status);
-      if (statusEl) statusEl.innerText = "⏳ Đang tải ảnh lên Supabase...";
+      if (statusEl) statusEl.innerText = "⏳ Đang tải ảnh lên Google Drive...";
 
-      const cleanFileName = `avatar_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
       try {
-        const { data, error } = await supabaseClient.storage
-          .from(BUCKET_NAME)
-          .upload(cleanFileName, file, { cacheControl: '3600', upsert: true });
-
-        if (error) throw error;
-
-        const { data: publicUrlData } = supabaseClient.storage
-          .from(BUCKET_NAME)
-          .getPublicUrl(cleanFileName);
-
-        const avatarUrl = publicUrlData.publicUrl;
+        const avatarUrl = await uploadAvatarFile(file);
         document.getElementById(targetIds.value).value = avatarUrl;
         document.getElementById(targetIds.preview).src = avatarUrl;
         if (statusEl) statusEl.innerText = "✅ Upload ảnh thành công!";
       } catch (err) {
-        console.error("Supabase Upload Error:", err);
+        console.error("Google Drive Upload Error:", err);
         const errorText = err?.message || err?.error_description || String(err);
         if (statusEl) statusEl.innerText = `❌ Upload thất bại: ${errorText}`;
       }
     }
 
-    function handleDirectAvatarUpload(input) {
-      uploadAvatarToSupabase(input);
+    function openDirectAvatarUpload(studentIdx) {
+      const input = document.getElementById('direct-avatar-input');
+      input.dataset.studentIndex = String(studentIdx);
+      input.value = '';
+      input.click();
+    }
+
+    async function handleDirectAvatarUpload(input) {
+      const student = studentsData[Number(input.dataset.studentIndex)];
+      const file = input.files[0];
+      if (!file) return;
+      if (!student) {
+        showToast("Không tìm thấy học viên cần cập nhật avatar.", "error");
+        input.value = '';
+        return;
+      }
+
+      input.disabled = true;
+      try {
+        student.avatar = await uploadAvatarFile(file);
+        updateAllViews();
+
+        try {
+          await apiCall('updateStudentInfo', { student });
+          showToast(`Đã cập nhật avatar học viên ${student.name}`);
+        } catch (err) {
+          console.error("Lỗi đồng bộ avatar học viên:", err);
+          showToast("Avatar đã tải lên nhưng không đồng bộ được Google Sheet.", "error");
+        }
+      } catch (err) {
+        console.error("Google Drive Upload Error:", err);
+        const errorText = err?.message || err?.error_description || String(err);
+        showToast(`Upload avatar thất bại: ${errorText}`, "error");
+      } finally {
+        input.disabled = false;
+        input.value = '';
+      }
     }
 
     function isComboClass(level) {
@@ -2013,7 +2099,10 @@
           <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3 relative overflow-hidden flex flex-col justify-between">
             <div class="flex items-start justify-between gap-3 border-b pb-3">
               <div class="flex items-center gap-3">
-                <img src="${s.avatar || DEFAULT_AVATAR}" class="w-12 h-12 rounded-full object-cover border-2 border-amber-300 shrink-0">
+                <div class="shrink-0 text-center">
+                  <img src="${s.avatar || DEFAULT_AVATAR}" class="w-12 h-12 rounded-full object-cover border-2 border-amber-300">
+                  <button onclick="openDirectAvatarUpload(${globalIdx})" class="mt-1 text-[10px] font-bold text-[#8B1515] hover:underline" title="Tải ảnh avatar mới lên">📷 Đổi avatar</button>
+                </div>
                 <div>
                   <span class="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded">${s.id}</span>
                   <h3 class="font-bold text-slate-800 text-sm mt-0.5">${s.name}</h3>
