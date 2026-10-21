@@ -26,7 +26,7 @@
 
     /* Freeze / Sticky Columns cho Master View */
     .sticky-col-1 { position: sticky; left: 0; z-index: 25; background-color: #ffffff; }
-    .sticky-col-2 { position: sticky; left: 60px; z-index: 25; background-color: #ffffff; }
+    .sticky-col-2 { position: sticky; left: 64px; z-index: 25; background-color: #ffffff; }
     thead .sticky-col-1, thead .sticky-col-2 { z-index: 35; background-color: #f1f5f9; }
     
     /* Toast Animation */
@@ -451,8 +451,8 @@
               <span class="text-slate-400 text-xs">🔍</span>
               <input type="text" id="search-input" oninput="filterMasterData()" placeholder="Tìm mã, tên, phụ huynh, SĐT hoặc trợ giảng..." class="w-full text-xs outline-none bg-transparent text-slate-800 font-medium">
             </div>
-            <select id="master-filter-level" onchange="filterMasterData()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-[#8B1515] text-slate-700"></select>
-            <select id="master-filter-teacher" onchange="filterMasterData()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-[#8B1515] text-slate-700">
+            <select id="master-filter-level" onchange="filterMasterData()" aria-label="Lọc theo cấp độ" class="min-w-0 flex-1 md:flex-none px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-[#8B1515] text-slate-700"></select>
+            <select id="master-filter-teacher" onchange="filterMasterData()" aria-label="Lọc theo trợ giảng" class="min-w-0 flex-1 md:flex-none px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-[#8B1515] text-slate-700">
               <option value="">-- Tất cả Trợ giảng --</option>
             </select>
           </div>
@@ -466,7 +466,7 @@
 
         <!-- Master View Table -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div class="max-h-[620px] table-responsive relative">
+          <div class="max-h-[min(72vh,760px)] table-responsive relative">
             <table class="w-max min-w-full text-left text-xs border-collapse">
               <thead class="bg-slate-100 sticky top-0 z-30 shadow-sm border-b border-slate-200" id="tableHeader"></thead>
               <tbody id="master-table-body" class="divide-y divide-slate-100 bg-white relative z-10"></tbody>
@@ -524,13 +524,22 @@
             <button onclick="showPage('page-manage-teachers')" class="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-xl text-xs font-semibold shadow active:scale-[0.98]">⚙ Danh Sách Trợ Giảng</button>
           </div>
         </div>
-        <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2">
-          <span class="text-slate-400 text-sm pl-2">🔍</span>
-          <input type="text" id="director-search-input" oninput="renderDirectorTable()" placeholder="Tìm mã, tên, phụ huynh, SĐT hoặc trợ giảng..." class="w-full text-xs outline-none bg-transparent py-1 text-slate-700 font-medium">
+        <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+            <label class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 bg-slate-50 sm:col-span-2 xl:col-span-2">
+              <span class="text-slate-400 text-sm" aria-hidden="true">🔍</span>
+              <input type="search" id="director-search-input" oninput="renderDirectorTable()" placeholder="Tìm mã, tên, phụ huynh, SĐT hoặc trợ giảng..." class="w-full text-xs outline-none bg-transparent py-2 text-slate-700 font-medium">
+            </label>
+            <select id="director-filter-level" onchange="renderDirectorTable()" aria-label="Lọc phân công theo cấp độ" class="min-w-0 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-[#8B1515]"></select>
+            <select id="director-filter-teacher" onchange="renderDirectorTable()" aria-label="Lọc phân công theo trợ giảng" class="min-w-0 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-[#8B1515]">
+              <option value="">-- Tất cả Trợ giảng --</option>
+            </select>
+          </div>
+          <div id="director-assignment-summary" aria-live="polite" class="flex flex-wrap items-center gap-2 text-[11px] text-slate-500"></div>
         </div>
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden table-responsive">
-          <table class="w-full text-left text-sm border-collapse min-w-[800px]">
-            <thead class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] sm:text-xs">
+          <table class="w-full text-left text-sm border-collapse min-w-[900px]">
+            <thead class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] sm:text-xs sticky top-0 z-20 shadow-sm">
               <tr>
                 <th class="p-3 border-r w-16 text-center">Mã</th>
                 <th class="p-3 border-r">Học Viên</th>
@@ -999,21 +1008,28 @@
       }
 
       input.disabled = true;
+      let uploadedAvatar = '';
+      showToast(`Đang tải avatar cho ${student.name} lên Google Drive...`);
       try {
-        student.avatar = await uploadAvatarFile(file);
-        updateAllViews();
-
-        try {
-          await apiCall('updateStudentInfo', { student });
-          showToast(`Đã cập nhật avatar học viên ${student.name}`);
-        } catch (err) {
-          console.error("Lỗi đồng bộ avatar học viên:", err);
-          showToast("Avatar đã tải lên nhưng không đồng bộ được Google Sheet.", "error");
+        uploadedAvatar = await uploadAvatarFile(file);
+        const result = await apiCall('updateStudentInfo', {
+          student: { ...student, avatar: uploadedAvatar }
+        });
+        if (!result || result.status !== 'success') {
+          throw new Error(result?.message || 'Google Sheet không xác nhận cập nhật avatar.');
         }
+        student.avatar = uploadedAvatar;
+        updateAllViews();
+        showToast(`Đã cập nhật avatar học viên ${student.name}`);
       } catch (err) {
         console.error("Google Drive Upload Error:", err);
         const errorText = err?.message || err?.error_description || String(err);
-        showToast(`Upload avatar thất bại: ${errorText}`, "error");
+        showToast(
+          uploadedAvatar
+            ? `Đã tải ảnh lên Drive nhưng chưa lưu được vào Sheet: ${errorText}`
+            : `Upload avatar thất bại: ${errorText}`,
+          "error"
+        );
       } finally {
         input.disabled = false;
         input.value = '';
@@ -1400,7 +1416,7 @@
     }
 
     function populateTeacherFilterSelects() {
-      ['profile-filter-teacher', 'master-filter-teacher'].forEach(id => {
+      ['profile-filter-teacher', 'master-filter-teacher', 'director-filter-teacher'].forEach(id => {
         const select = document.getElementById(id);
         if (!select) return;
         const currentVal = select.value;
@@ -1410,7 +1426,7 @@
 
     function populateAllLevelDropdowns() {
       const levels = getAllLevels();
-      ['add_level', 'edit_level', 'profile-filter-level', 'master-filter-level'].forEach(id => {
+      ['add_level', 'edit_level', 'profile-filter-level', 'master-filter-level', 'director-filter-level'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         const currentVal = el.value;
@@ -1647,7 +1663,10 @@
             <td class="p-2 text-center font-bold text-[#8B1515] font-mono sticky-col-1 border-r border-slate-200">${s.id}</td>
             <td class="p-2 sticky-col-2 border-r border-slate-200">
               <div class="flex items-center gap-2">
-                <img src="${s.avatar || DEFAULT_AVATAR}" class="w-7 h-7 rounded-full object-cover border shrink-0">
+                <div class="relative shrink-0">
+                  <img src="${s.avatar || DEFAULT_AVATAR}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'" alt="Avatar ${s.name}" class="w-9 h-9 rounded-full object-cover border border-slate-200">
+                  <button type="button" onclick="openDirectAvatarUpload(${globalIdx})" aria-label="Đổi avatar ${s.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-5 h-5 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-[10px] hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">📷</button>
+                </div>
                 <div class="truncate">
                   <div class="font-bold text-slate-800 text-xs truncate" title="${s.name}">${s.name}</div>
                   ${warn.badge ? `<div class="mt-0.5">${warn.badge}</div>` : ''}
@@ -1972,25 +1991,41 @@
       if (!tbody) return;
 
       const searchKey = (document.getElementById('director-search-input')?.value || '').toLowerCase().trim();
+      const levelFilter = document.getElementById('director-filter-level')?.value || '';
+      const teacherFilter = document.getElementById('director-filter-teacher')?.value || '';
+      const assignedCount = studentsData.filter(student => normalizeAssistants(student.assistants).length > 0).length;
+      const unassignedCount = studentsData.length - assignedCount;
       const filteredStudents = studentsData
         .map((student, idx) => ({ student, idx }))
         .filter(({ student }) => {
-          if (!searchKey) return true;
+          const assistants = normalizeAssistants(student.assistants);
           const searchableText = [
             student.id || '',
             student.name || '',
             student.parentName || '',
             student.parentPhone || student.phone || '',
-            (student.assistants || []).join(' '),
+            assistants.join(' '),
           ].join(' ').toLowerCase();
-          return searchableText.includes(searchKey);
+          const matchSearch = !searchKey || searchableText.includes(searchKey);
+          const matchLevel = !levelFilter || student.level === levelFilter;
+          const matchTeacher = !teacherFilter
+            || (teacherFilter === '__UNASSIGNED__' ? assistants.length === 0 : assistants.includes(teacherFilter));
+          return matchSearch && matchLevel && matchTeacher;
         });
+      const summary = document.getElementById('director-assignment-summary');
+      if (summary) {
+        summary.innerHTML = `
+          <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold">Tổng ${studentsData.length} học viên</span>
+          <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-semibold">${assignedCount} đã phân công</span>
+          <span class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 font-semibold">${unassignedCount} chưa phân công</span>
+          <span class="sm:ml-auto">Đang hiển thị ${filteredStudents.length} học viên</span>`;
+      }
 
       if (!filteredStudents.length) {
         tbody.innerHTML = `
           <tr>
             <td colspan="8" class="p-6 text-center text-xs text-slate-500">
-              Không tìm thấy học viên nào phù hợp với từ khóa tìm kiếm.
+              Không tìm thấy học viên phù hợp với bộ lọc hiện tại.
             </td>
           </tr>
         `;
@@ -2002,12 +2037,15 @@
         return `
           <tr class="hover:bg-slate-50 border-b">
             <td class="p-3 text-center font-mono font-bold text-[#8B1515] border-r">${student.id}</td>
-            <td class="p-3 border-r">
+            <td class="p-3 border-r min-w-[250px]">
               <div class="flex items-center gap-2.5">
-                <img src="${student.avatar || DEFAULT_AVATAR}" class="w-8 h-8 rounded-full object-cover border shrink-0">
-                <div>
+                <div class="relative shrink-0">
+                  <img src="${student.avatar || DEFAULT_AVATAR}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'" alt="Avatar ${student.name}" class="w-10 h-10 rounded-full object-cover border border-slate-200">
+                  <button type="button" onclick="openDirectAvatarUpload(${idx})" aria-label="Đổi avatar ${student.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-5 h-5 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-[10px] hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">📷</button>
+                </div>
+                <div class="min-w-0">
                   <h4 class="font-bold text-slate-800 text-xs">${student.name}</h4>
-                  <p class="text-[10px] text-slate-400">PH: ${student.parentName} - SĐT: ${student.parentPhone || student.phone}</p>
+                  <p class="text-[10px] text-slate-400 truncate">PH: ${student.parentName || '---'} · SĐT: ${student.parentPhone || student.phone || '---'}</p>
                 </div>
               </div>
             </td>
@@ -2031,29 +2069,41 @@
 
     function generateAssistantCheckboxes(student, index) {
       if (!assistantTeachers.length) return `<span class="text-xs text-slate-400 italic">Chưa có Trợ Giảng</span>`;
-      return `<div class="space-y-1 max-h-24 overflow-y-auto pr-1">` +
+      return `<div class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">` +
         assistantTeachers.map(t => {
           const isChecked = student.assistants?.includes(t) ? 'checked' : '';
-          return `<label class="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer hover:text-red-800"><input type="checkbox" ${isChecked} onchange="toggleAssistant(${index}, '${t}', this.checked)" class="w-3.5 h-3.5 rounded"> ${t}</label>`;
+          const checkedStyle = isChecked ? 'border-red-200 bg-red-50 text-red-800' : 'border-slate-200 bg-white text-slate-600';
+          return `<label class="inline-flex items-center gap-1.5 border ${checkedStyle} px-2 py-1 rounded-lg text-[11px] font-medium cursor-pointer hover:border-red-300"><input type="checkbox" ${isChecked} onchange="toggleAssistant(${index}, '${t}', this.checked)" class="w-3.5 h-3.5 accent-[#8B1515]"> ${t}</label>`;
         }).join('') + `</div>`;
     }
 
     async function toggleAssistant(studentIdx, teacherName, isChecked) {
       const student = studentsData[studentIdx];
       if (!student) return;
-      if (!Array.isArray(student.assistants)) student.assistants = [];
+      const previousAssistants = normalizeAssistants(student.assistants);
+      const nextAssistants = [...previousAssistants];
 
       if (isChecked) {
-        if (!student.assistants.includes(teacherName)) student.assistants.push(teacherName);
+        if (!nextAssistants.includes(teacherName)) nextAssistants.push(teacherName);
       } else {
-        student.assistants = student.assistants.filter(t => t !== teacherName);
+        const teacherIndex = nextAssistants.indexOf(teacherName);
+        if (teacherIndex !== -1) nextAssistants.splice(teacherIndex, 1);
       }
+      student.assistants = nextAssistants;
       updateAllViews();
-      showToast(`Đã phân công ${teacherName} cho ${student.name}`);
 
       try {
-        await apiCall('update_assistants', { studentId: student.id, assistants: student.assistants });
-      } catch (e) { console.warn(e); }
+        const result = await apiCall('update_assistants', { studentId: student.id, assistants: nextAssistants });
+        if (!result || result.status !== 'success') {
+          throw new Error(result?.message || 'Google Sheet không xác nhận lưu phân công.');
+        }
+        showToast(`Đã lưu phân công ${teacherName} cho ${student.name}`);
+      } catch (error) {
+        student.assistants = previousAssistants;
+        updateAllViews();
+        console.error('Lỗi lưu phân công trợ giảng:', error);
+        showToast(`Không lưu được phân công: ${error.message}`, 'error');
+      }
     }
 
     function renderStudentProfileCards() {
