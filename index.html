@@ -900,6 +900,39 @@
       }
     }
 
+    function fetchAvatarUploadStatus(requestId) {
+      return new Promise((resolve, reject) => {
+        const callbackName = `tvgAvatarStatus_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const script = document.createElement('script');
+        const cleanup = () => {
+          clearTimeout(timeoutId);
+          delete window[callbackName];
+          script.remove();
+        };
+        const timeoutId = setTimeout(() => {
+          cleanup();
+          reject(new Error('Không nhận được trạng thái upload từ Apps Script.'));
+        }, 10000);
+
+        window[callbackName] = result => {
+          cleanup();
+          resolve(result);
+        };
+        script.onerror = () => {
+          cleanup();
+          reject(new Error('Không truy vấn được trạng thái upload avatar.'));
+        };
+        const query = new URLSearchParams({
+          callback: callbackName,
+          avatarRequestId: requestId,
+          _: String(Date.now())
+        });
+        script.async = true;
+        script.src = `${GOOGLE_APPS_SCRIPT_URL}?${query.toString()}`;
+        document.head.appendChild(script);
+      });
+    }
+
     // Upload ảnh qua Google Apps Script để lưu vào Google Drive.
     async function uploadAvatarFile(file) {
       if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
@@ -944,9 +977,15 @@
       document.body.append(iframe, form);
       try {
         return await new Promise((resolve, reject) => {
-          const timeoutId = setTimeout(() => finish(new Error('Apps Script upload quá thời gian chờ.')), 60000);
+          let pollTimer;
+          let timeoutId;
+          let lastPollError = '';
+          let finished = false;
           const finish = (error, url) => {
+            if (finished) return;
+            finished = true;
             clearTimeout(timeoutId);
+            clearTimeout(pollTimer);
             window.removeEventListener('message', onMessage);
             iframe.remove();
             form.remove();
@@ -958,8 +997,32 @@
             if (event.data.success && event.data.url) finish(null, event.data.url);
             else finish(new Error(event.data.error || 'Google Drive không lưu được ảnh.'));
           };
+          const pollStatus = async () => {
+            try {
+              const result = await fetchAvatarUploadStatus(requestId);
+              if (result?.requestId === requestId && result.pending !== true) {
+                if (result.success && result.url) finish(null, result.url);
+                else finish(new Error(result.error || 'Google Drive không lưu được ảnh.'));
+                return;
+              }
+            } catch (error) {
+              lastPollError = error?.message || String(error);
+              console.warn('Chưa truy vấn được trạng thái upload avatar:', error);
+            }
+            if (!finished) pollTimer = setTimeout(pollStatus, 1000);
+          };
+
+          timeoutId = setTimeout(() => {
+            const detail = lastPollError ? ` ${lastPollError}` : '';
+            finish(new Error(`Apps Script không hoàn tất upload avatar sau 60 giây.${detail}`));
+          }, 60000);
           window.addEventListener('message', onMessage);
-          form.submit();
+          try {
+            form.submit();
+            pollTimer = setTimeout(pollStatus, 750);
+          } catch (error) {
+            finish(error);
+          }
         });
       } catch (error) {
         iframe.remove();
