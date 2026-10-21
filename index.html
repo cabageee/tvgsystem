@@ -538,7 +538,7 @@
           <div id="director-assignment-summary" aria-live="polite" class="flex flex-wrap items-center gap-2 text-[11px] text-slate-500"></div>
         </div>
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden table-responsive">
-          <table class="w-full text-left text-sm border-collapse min-w-[900px]">
+          <table class="w-full text-left text-sm border-collapse min-w-[850px]">
             <thead class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px] sm:text-xs sticky top-0 z-20 shadow-sm">
               <tr>
                 <th class="p-3 border-r w-16 text-center">Mã</th>
@@ -546,7 +546,6 @@
                 <th class="p-3 border-r w-36 text-center">Cấp Độ</th>
                 <th class="p-3 border-r w-28 text-center">Số Buổi</th>
                 <th class="p-3 border-r w-60">Trợ Giảng Phụ Trách</th>
-                <th class="p-3 border-r w-24 text-center">Chức Năng</th>
                 <th class="p-3 border-r w-32 text-center">Ngày ĐK</th>
                 <th class="p-3 w-32 text-center">Thao Tác</th>
               </tr>
@@ -1726,10 +1725,9 @@
       let headerHtml = `
         <tr class="text-slate-700 font-bold uppercase text-[10px] sm:text-xs tracking-wider border-b">
           <th class="p-2.5 border-r border-slate-300 w-16 text-center sticky-col-1">Mã</th>
-          <th class="p-2.5 border-r border-slate-300 w-48 sticky-col-2">Họ Và Tên Học Viên</th>
+          <th class="p-2.5 border-r border-slate-300 w-80 sticky-col-2">Họ Và Tên Học Viên</th>
           <th class="p-2.5 border-r border-slate-300 w-32 text-center">Cấp Độ Lớp</th>
           <th class="p-2.5 border-r border-slate-300 w-24 text-center">Đã Học</th>
-          <th class="p-2.5 border-r border-slate-300 w-32 text-center">Chức Năng</th>
           <th class="p-2.5 border-r border-slate-300 w-28 text-center">Ngày ĐK</th>`;
       
       for (let i = 1; i <= 40; i++) {
@@ -1744,7 +1742,7 @@
       const pagedList = filtered.slice(startIdx, startIdx + MASTER_PAGE_SIZE);
 
       if (!pagedList.length) {
-        tbody.innerHTML = `<tr><td colspan="46" class="p-8 text-center text-slate-400 italic font-medium">Không tìm thấy học viên nào phù hợp.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-slate-400 italic font-medium">Không tìm thấy học viên nào phù hợp.</td></tr>`;
         return;
       }
 
@@ -1758,8 +1756,8 @@
             <td class="p-2 sticky-col-2 border-r border-slate-200">
               <div class="flex items-center gap-2">
                 <div class="relative shrink-0">
-                  <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${s.name}" class="w-9 h-9 rounded-full object-cover border border-slate-200">
-                  <button type="button" onclick="openDirectAvatarUpload(${globalIdx})" aria-label="Đổi avatar ${s.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-5 h-5 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-[10px] hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">📷</button>
+                  <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${s.name}" class="w-24 h-24 rounded-full object-cover border-2 border-amber-300 shadow-sm">
+                  <button type="button" onclick="openDirectAvatarUpload(${globalIdx})" aria-label="Đổi avatar ${s.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-7 h-7 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-xs hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">📷</button>
                 </div>
                 <div class="truncate">
                   <div class="font-bold text-slate-800 text-xs truncate" title="${s.name}">${s.name}</div>
@@ -1772,9 +1770,6 @@
             </td>
             <td class="p-2 text-center border-r border-slate-200 font-bold ${warn.bg} ${warn.text} font-mono">
               ${s.completedSessions || 0} / 40
-            </td>
-            <td class="p-2 text-center border-r border-slate-200">
-              <button type="button" onclick="openFeeStatusPopup('${s.id}')" class="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Chi tiết</button>
             </td>
             <td class="p-2 text-center border-r border-slate-200 text-slate-500 font-mono text-[11px]">
               ${s.regDate || '---'}
@@ -2118,7 +2113,7 @@
       if (!filteredStudents.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="8" class="p-6 text-center text-xs text-slate-500">
+            <td colspan="7" class="p-6 text-center text-xs text-slate-500">
               Không tìm thấy học viên phù hợp với bộ lọc hiện tại.
             </td>
           </tr>
@@ -2131,11 +2126,11 @@
         return `
           <tr class="hover:bg-slate-50 border-b">
             <td class="p-3 text-center font-mono font-bold text-[#8B1515] border-r">${student.id}</td>
-            <td class="p-3 border-r min-w-[250px]">
+            <td class="p-3 border-r min-w-[380px]">
               <div class="flex items-center gap-2.5">
                 <div class="relative shrink-0">
-                  <img src="${getAvatarDisplayUrl(student.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${student.name}" class="w-10 h-10 rounded-full object-cover border border-slate-200">
-                  <button type="button" onclick="openDirectAvatarUpload(${idx})" aria-label="Đổi avatar ${student.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-5 h-5 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-[10px] hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">📷</button>
+                  <img src="${getAvatarDisplayUrl(student.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${student.name}" class="w-24 h-24 rounded-full object-cover border-2 border-amber-300 shadow-sm">
+                  <button type="button" onclick="openDirectAvatarUpload(${idx})" aria-label="Đổi avatar ${student.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-7 h-7 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-xs hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">📷</button>
                 </div>
                 <div class="min-w-0">
                   <h4 class="font-bold text-slate-800 text-xs">${student.name}</h4>
@@ -2146,10 +2141,7 @@
             <td class="p-2 border-r text-center">${renderLevelSelectHtml(student.level, `updateStudentLevel(${idx}, this.value)`)}</td>
             <td class="p-3 border-r text-center font-mono font-bold ${warn.bg} ${warn.text}">${student.completedSessions || 0} / 40</td>
             <td class="p-2 border-r">${generateAssistantCheckboxes(student, idx)}</td>
-            <td class="p-2 text-center border-r border-slate-200">
-              <button type="button" onclick="openFeeStatusPopup('${student.id}')" class="px-2 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Chi tiết</button>
-            </td>
-                <td class="p-3 border-r text-center font-mono text-xs text-slate-500">${student.regDate || '---'}</td>
+            <td class="p-3 border-r text-center font-mono text-xs text-slate-500">${student.regDate || '---'}</td>
             <td class="p-3 text-center">
               <div class="flex justify-center gap-1.5">
                 <button onclick="openEditStudentModal(${idx})" class="p-1.5 bg-amber-500 text-white rounded-lg text-xs font-bold shadow">✏️ Sửa</button>
