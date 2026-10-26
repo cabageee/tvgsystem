@@ -504,7 +504,7 @@
       const text = String(value).trim();
 
       // yyyy-mm-dd hoặc yyyy/mm/dd
-      let match = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+      let match = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:$|[T\s].*)/);
       if (match) {
         const [, year, month, day] = match;
         return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
@@ -530,14 +530,14 @@
     function formatDateForInput(value) {
       return formatDisplayDate(value);
     }
-    function setupDateInput(id) {
+    function setupDateInput(id, includeYear = true) {
       const input = document.getElementById(id);
       if (!input) return;
 
       input.addEventListener('input', () => {
-        let value = input.value.replace(/\D/g, '').slice(0, 8);
+        let value = input.value.replace(/\D/g, '').slice(0, includeYear ? 8 : 4);
 
-        if (value.length > 4) {
+        if (includeYear && value.length > 4) {
           value = `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4)}`;
         } else if (value.length > 2) {
           value = `${value.slice(0, 2)}/${value.slice(2)}`;
@@ -579,8 +579,8 @@
     }
 
     function setupAllDateInputs() {
-      ['add_dob', 'add_regDate', 'edit_dob', 'edit_regDate']
-        .forEach(setupDateInput);
+      ['add_dob', 'add_regDate', 'edit_dob', 'edit_regDate', 'director-attendance-date']
+        .forEach(id => setupDateInput(id, id !== 'director-attendance-date'));
     }
     function formatShortDate(value) {
       return formatDisplayDate(value);
@@ -645,16 +645,32 @@
     }
 
     function getLocalDateInputValue(date = new Date()) {
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function normalizeAttendanceDate(value) {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return `${String(value.getDate()).padStart(2, '0')}/${String(value.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      const text = String(value || '').trim();
+      let match = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+      if (match) {
+        const [, year, month, day] = match;
+        const date = `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+        return isValidDateDMY(date) ? date.slice(0, 5) : '';
+      }
+
+      match = text.match(/^(\d{1,2})[-/](\d{1,2})(?:[-/](\d{4}))?(?:$|[T\s].*)/);
+      if (!match) return '';
+
+      const [, day, month, year = '2000'] = match;
+      const date = `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+      return isValidDateDMY(date) ? date.slice(0, 5) : '';
     }
 
     function formatAttendanceDate(inputValue) {
-      const match = String(inputValue || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (!match) return '';
-      const [, year, month, day] = match;
-      const date = new Date(Number(year), Number(month) - 1, Number(day));
-      if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 || date.getDate() !== Number(day)) return '';
-      return `${day}/${month}/${year}`;
+      return normalizeAttendanceDate(inputValue);
     }
 
     const getFormattedToday = () => {
@@ -664,15 +680,9 @@
 
     function hasAttendanceDate(sessions, dateValue) {
       if (!Array.isArray(sessions)) return false;
-      const target = formatDisplayDate(dateValue);
+      const target = normalizeAttendanceDate(dateValue);
       if (!target) return false;
-      return sessions.some(value => {
-        const normalizedValue = formatDisplayDate(value);
-        if (normalizedValue === target) return true;
-        const targetHasYear = /^\d{2}\/\d{2}\/\d{4}$/.test(target);
-        const valueHasYear = /^\d{2}\/\d{2}\/\d{4}$/.test(normalizedValue);
-        return (!targetHasYear || !valueHasYear) && normalizedValue.slice(0, 5) === target.slice(0, 5);
-      });
+      return sessions.some(value => normalizeAttendanceDate(value) === target);
     }
 
     let confirmResolver = null;
@@ -853,6 +863,7 @@
     function recalculateCompletedSessions() {
       studentsData.forEach(s => {
         if (!Array.isArray(s.sessions)) s.sessions = Array(40).fill("");
+        s.sessions = s.sessions.map(value => normalizeAttendanceDate(value) || value);
         s.assistants = normalizeAssistants(s.assistants);
         s.completedSessions = s.sessions.filter(x => x && String(x).trim() !== "").length;
       });
@@ -933,7 +944,7 @@
       if (!student) return;
       if (!Array.isArray(student.sessions)) student.sessions = Array(40).fill("");
       
-      const cleanVal = value.trim();
+      const cleanVal = normalizeAttendanceDate(value) || value.trim();
       const previousValue = student.sessions[sessionIdx] || '';
       student.sessions[sessionIdx] = cleanVal;
       recalculateCompletedSessions();
@@ -1042,7 +1053,7 @@
 
       attendanceSheet
         .getRange(attendanceRow, targetColumn)
-        .setValue(value || '');
+        .setValue(normalizeAttendanceDate(value) || value || '');
 
       return {
         status: 'success',
@@ -1059,7 +1070,7 @@
         return;
       }
       const currentVal = student.sessions[sessionIdx] || '';
-      const newVal = currentVal === today ? '' : today;
+      const newVal = hasAttendanceDate([currentVal], today) ? '' : today;
       await updateMasterSession(studentIdx, sessionIdx, newVal);
       if (currentUserRole !== 'director') renderTeacherCards();
     }
@@ -1243,7 +1254,7 @@
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "DiemDanh_40Buoi");
-      XLSX.writeFile(workbook, `ThienVyGlobal_DiemDanh_${getFormattedToday().replace('/', '-')}.xlsx`);
+      XLSX.writeFile(workbook, `ThienVyGlobal_DiemDanh_${getFormattedToday().replace(/\//g, '-')}.xlsx`);
     }
 
     // Quản lý HV nghỉ học
@@ -1285,6 +1296,7 @@
         completedSessions: 0,
         feeStatus: String(student.feeStatus || 'Chưa đóng').trim() || 'Chưa đóng'
       };
+      restoredStudent.sessions = restoredStudent.sessions.map(value => normalizeAttendanceDate(value) || value);
 
       if (!restoredStudent.id) {
         showToast('Không thể khôi phục vì thiếu mã học viên.', 'error');
