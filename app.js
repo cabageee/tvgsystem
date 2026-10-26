@@ -235,7 +235,7 @@
         return false;
       } finally {
         if (loading) loading.classList.add('hidden');
-        if (!isManual) showUpcomingBirthdays();
+        if (!isManual && currentUserRole) showUpcomingBirthdays();
       }
     }
 
@@ -607,7 +607,7 @@
     }
 
     function showUpcomingBirthdays() {
-      if (birthdayNotificationShown) return;
+      if (!currentUserRole || birthdayNotificationShown || sessionStorage.getItem('TV_GLOBAL_BIRTHDAY_NOTICE_SHOWN') === 'true') return;
 
       const upcomingBirthdays = studentsData
         .map(student => ({ student, daysUntil: getUpcomingBirthdayDays(student.dob) }))
@@ -640,6 +640,7 @@
       });
 
       birthdayNotificationShown = true;
+      sessionStorage.setItem('TV_GLOBAL_BIRTHDAY_NOTICE_SHOWN', 'true');
       document.getElementById('modal-birthday-notice').classList.remove('hidden');
     }
 
@@ -2073,6 +2074,7 @@
       currentUserName = name;
       sessionStorage.setItem('TV_GLOBAL_ROLE', role);
       sessionStorage.setItem('TV_GLOBAL_USER', name);
+      showUpcomingBirthdays();
 
       document.getElementById('screen-login').classList.add('hidden');
       document.getElementById('app-container').classList.remove('hidden');
@@ -2116,7 +2118,6 @@
       loadDataFromLocalStorage();
       initLoginTeacherList();
       updateAllViews();
-      showUpcomingBirthdays();
       restoreSession();
       await fetchDataFromGoogleSheet();
     };
