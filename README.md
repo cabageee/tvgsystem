@@ -1,5 +1,22 @@
 # tvgsystem
 
+## Giao diện theo từng trang
+
+Mỗi mục điều hướng có một URL HTML riêng và chỉ tải nội dung của trang đó. Các trang dùng chung `app.js` và `app.css`:
+
+- `index.html` — Tổng quan
+- `profiles.html` — Hồ sơ học viên
+- `assignments.html` — Phân công trợ giảng
+- `attendance.html` — Điểm danh của giám đốc
+- `daily-summary.html` — Tổng kết điểm danh hôm nay
+- `inactive-students.html` — Học viên đã nghỉ
+- `teachers.html` — Quản lý trợ giảng
+- `levels.html` — Quản lý cấp độ lớp
+- `teacher-attendance.html` — Điểm danh lớp của trợ giảng
+- `change-password.html` — Đổi mật khẩu
+
+Giữ các file HTML, `app.js` và `app.css` trong cùng thư mục khi triển khai hoặc di chuyển ứng dụng. Trạng thái đăng nhập được giữ trong `sessionStorage` khi chuyển trang.
+
 ## Avatar học viên trên Google Drive
 
 Avatar được lưu vào Google Drive bằng chính Apps Script đang đồng bộ Google Sheet. Phần mã Apps Script đã được thêm vào file `code.gs.txt` bạn gửi.
