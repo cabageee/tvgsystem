@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Quản Lý Học Sinh - Thiên Vy Global</title>
+  <meta name="theme-color" content="#681b25">
+  <meta name="description" content="Hệ thống quản lý học viên, điểm danh và theo dõi học phí của Thiên Vy Global.">
   <link rel="icon" type="image/png" href="Logo Thien Vy.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Thư viện Xuất file Báo cáo, Ảnh & PDF, Excel -->
@@ -35,6 +37,246 @@
       to { transform: translateX(0); opacity: 1; }
     }
     .toast-anim { animation: slideInRight 0.3s ease-out forwards; }
+
+    /* Shared product styling */
+    :root {
+      color-scheme: light;
+      --brand: #761e2b;
+      --brand-dark: #54131d;
+      --brand-soft: #f8ecee;
+      --ink: #202b3c;
+      --muted: #697586;
+      --line: #e5e9ef;
+      --surface: #ffffff;
+      --canvas: #f5f6f8;
+      --shadow-card: 0 2px 8px rgba(27, 39, 54, .045), 0 12px 28px rgba(27, 39, 54, .035);
+    }
+
+    html { scroll-behavior: smooth; }
+    body { background: var(--canvas); color: var(--ink); }
+    button, input, select, textarea { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 3px solid rgba(118, 30, 43, .24);
+      outline-offset: 2px;
+    }
+
+    #screen-login {
+      background:
+        radial-gradient(ellipse at 15% 15%, rgba(229, 169, 60, .2), transparent 38%),
+        radial-gradient(ellipse at 90% 85%, rgba(118, 30, 43, .34), transparent 42%),
+        #202633;
+    }
+    #screen-login > div {
+      border-radius: 24px;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, .3);
+    }
+    #screen-login > div > div:first-child {
+      background: linear-gradient(135deg, #681b25, #8b2937) !important;
+      padding-top: 30px;
+      padding-bottom: 28px;
+    }
+    #screen-login > div > div:first-child img {
+      width: 76px;
+      height: 76px;
+      padding: 3px;
+    }
+    #screen-login h1 { letter-spacing: .11em; }
+    #screen-login > div > div:last-child { padding: 26px; }
+    #screen-login label { color: #536071; }
+    #screen-login input, #screen-login select {
+      min-height: 44px;
+      border-color: #dce2e9;
+      border-radius: 11px;
+      background: #fbfcfd;
+    }
+    #screen-login input:focus, #screen-login select:focus {
+      border-color: var(--brand);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(118, 30, 43, .1);
+    }
+    #screen-login button {
+      min-width: 58px;
+      border-radius: 11px;
+    }
+
+    #app-container header {
+      background: linear-gradient(112deg, #5e1722 0%, #79212e 58%, #852d37 100%);
+      box-shadow: 0 4px 20px rgba(51, 19, 25, .17);
+      border-bottom: 1px solid rgba(255, 255, 255, .12);
+    }
+    #app-container header > div {
+      max-width: 1440px;
+      min-height: 74px;
+      gap: 18px;
+    }
+    #app-container header img { border-color: rgba(241, 201, 123, .9); }
+    #app-container header h1 { letter-spacing: .075em; }
+    #user-info-text { color: #f4d9b3; }
+    #admin-nav-buttons { gap: 5px; }
+    #admin-nav-buttons button,
+    #app-container header button {
+      border: 1px solid rgba(255, 255, 255, .13);
+      border-radius: 9px;
+      transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    #admin-nav-buttons button:hover,
+    #app-container header button:hover { transform: translateY(-1px); }
+    #admin-nav-buttons button[aria-current="page"] {
+      background: #f3d28e !important;
+      border-color: #f3d28e;
+      color: #46232a !important;
+      box-shadow: 0 2px 8px rgba(20, 10, 10, .12);
+    }
+    #app-container main {
+      max-width: 1440px;
+      padding-top: 28px;
+      padding-bottom: 42px;
+    }
+    #app-container main > section { scroll-margin-top: 96px; }
+    #page-admin-master { gap: 18px; }
+    .dashboard-toolbar { align-items: center; }
+    .page-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 2px 1px 1px;
+    }
+    .page-heading h2 {
+      margin: 0;
+      color: #202b3c;
+      font-size: clamp(1.25rem, 2vw, 1.65rem);
+      line-height: 1.25;
+      font-weight: 750;
+      letter-spacing: -.035em;
+    }
+    .page-heading p { margin: 6px 0 0; color: var(--muted); font-size: .875rem; }
+    .page-heading .eyebrow {
+      margin: 0 0 5px;
+      color: var(--brand);
+      font-size: .68rem;
+      font-weight: 750;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    #app-container .bg-white.rounded-2xl.shadow-sm.border,
+    #app-container .bg-white.rounded-xl.shadow-sm.border {
+      border-color: var(--line) !important;
+      border-radius: 15px;
+      box-shadow: var(--shadow-card);
+    }
+    #app-container .grid > .bg-white.rounded-2xl.shadow-sm.border {
+      min-height: 112px;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    #app-container .grid > .bg-white.rounded-2xl.shadow-sm.border:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 22px rgba(27, 39, 54, .08);
+    }
+    #app-container input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    #app-container select,
+    #app-container textarea {
+      min-height: 40px;
+      border-color: #dce2e9;
+      border-radius: 9px;
+      color: var(--ink);
+      transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+    }
+    #app-container input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+    #app-container select:focus,
+    #app-container textarea:focus {
+      border-color: #a55660;
+      background-color: #fff;
+      box-shadow: 0 0 0 3px rgba(118, 30, 43, .09);
+    }
+    #app-container button {
+      min-height: 36px;
+      transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+    }
+    #app-container button:active { transform: translateY(1px); }
+    #app-container main .table-responsive {
+      border-radius: 14px;
+      scrollbar-color: #aeb7c3 #f1f3f6;
+    }
+    #app-container table { color: #344054; }
+    #app-container table thead { background: #f2f4f7; }
+    #app-container table thead th {
+      color: #485467;
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: .045em;
+      text-transform: uppercase;
+      border-bottom: 1px solid #e1e6ed;
+      white-space: nowrap;
+    }
+    #app-container table tbody tr { transition: background-color .14s ease; }
+    #app-container table tbody tr:hover { background-color: #faf7f7; }
+    #app-container table td, #app-container table th { padding-top: 10px; padding-bottom: 10px; }
+
+    #app-container [id$="pagination-controls"] {
+      border-color: var(--line);
+      border-radius: 12px;
+      color: #526071;
+    }
+    #app-container [id^="modal-"] > div {
+      border-radius: 18px;
+      box-shadow: 0 24px 70px rgba(16, 24, 40, .24);
+    }
+    #app-container [id^="modal-"] > div > div:first-child {
+      min-height: 54px;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+    #toast-container > div {
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(16, 24, 40, .18);
+    }
+    #loading-state {
+      border-radius: 16px;
+      box-shadow: var(--shadow-card);
+    }
+
+    @media (max-width: 639px) {
+      #app-container header > div { gap: 5px; padding-top: 10px; padding-bottom: 8px; }
+      #app-container header h1 { font-size: 12px; letter-spacing: .055em; }
+      #admin-nav-buttons { padding-bottom: 5px; }
+      #admin-nav-buttons button { min-height: 38px; padding-left: 12px; padding-right: 12px; }
+      #app-container main { padding: 18px 12px 30px; }
+      #page-admin-master { gap: 14px; }
+      .page-heading { align-items: flex-start; }
+      .page-heading p { font-size: .78rem; line-height: 1.5; }
+      #app-container .grid > .bg-white.rounded-2xl.shadow-sm.border { min-height: 98px; }
+      #app-container [id^="modal-"] > div > div:first-child { padding-left: 16px; padding-right: 16px; }
+    }
+    @media (min-width: 640px) and (max-width: 1100px) {
+      #app-container header > div {
+        align-items: stretch;
+        flex-direction: column;
+        height: auto !important;
+        min-height: 0;
+        gap: 4px;
+        padding-top: 10px;
+        padding-bottom: 8px;
+      }
+      #app-container header > div > div:first-child,
+      #app-container header > div > div:last-child { width: 100%; }
+      #app-container header > div > div:last-child {
+        justify-content: space-between;
+        overflow: visible;
+      }
+      #admin-nav-buttons { flex: 1; min-width: 0; }
+      .dashboard-toolbar { align-items: stretch !important; }
+      .dashboard-toolbar > div:first-child {
+        width: 100%;
+        grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(130px, 1fr));
+      }
+      .dashboard-toolbar > div:last-child { width: 100%; justify-content: flex-start; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans selection:bg-red-100 selection:text-red-900">
@@ -384,6 +626,7 @@
             <button onclick="showPage('page-admin-master')" class="shrink-0 bg-amber-400 hover:bg-amber-500 text-slate-900 text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">📊 Master View</button>
             <button onclick="showPage('page-director-list')" class="shrink-0 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-semibold px-3 py-2 sm:py-1.5 rounded-lg transition">📋 Phân Công</button>
             <button onclick="showPage('page-student-profiles')" class="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">📁 Hồ Sơ HV</button>
+            <button onclick="showPage('page-director-attendance')" class="shrink-0 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-semibold px-3 py-2 sm:py-1.5 rounded-lg transition">✅ Điểm Danh</button>
             <button onclick="showPage('page-daily-summary')" class="shrink-0 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-semibold px-3 py-2 sm:py-1.5 rounded-lg transition">📅 Điểm Danh Hôm Nay</button>
             <button onclick="showPage('page-inactive-students')" class="shrink-0 bg-red-800 hover:bg-red-700 text-white text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">🚪 HV Nghỉ</button>
           </div>
@@ -412,6 +655,13 @@
 
       <!-- PAGE 1: ADMIN MASTER VIEW -->
       <section id="page-admin-master" class="hidden space-y-4">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Trung tâm vận hành</p>
+            <h2>Tổng quan học viên</h2>
+            <p>Theo dõi sĩ số, phân công trợ giảng và tình trạng học phí.</p>
+          </div>
+        </div>
         <!-- Dashboard Summary Stats -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
@@ -445,7 +695,7 @@
         </div>
 
         <!-- Filter Bar & Quick Tools -->
-        <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-3">
+        <div class="dashboard-toolbar bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-3">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full md:w-auto flex-1">
             <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-[#8B1515]">
               <span class="text-slate-400 text-xs">🔍</span>
@@ -574,6 +824,33 @@
           <input type="text" id="summary-search-input" oninput="renderDailySummaryCards()" placeholder="Nhập tên hoặc mã để tìm nhanh..." class="w-full text-xs outline-none bg-transparent py-1 text-slate-700 font-medium">
         </div>
         <div id="summary-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"></div>
+      </section>
+
+      <!-- PAGE 10: ĐIỂM DANH RIÊNG CHO GIÁM ĐỐC -->
+      <section id="page-director-attendance" class="hidden space-y-4">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Quản lý lớp học</p>
+            <h2>Điểm danh học viên</h2>
+            <p>Chọn ngày học, tìm học viên và ghi nhận buổi học trực tiếp.</p>
+          </div>
+        </div>
+        <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-[minmax(190px,240px)_1fr_auto] gap-3 items-end">
+          <div>
+            <label for="director-attendance-date" class="block text-xs font-bold text-slate-700 mb-1.5">Ngày điểm danh</label>
+            <input id="director-attendance-date" type="date" onchange="renderDirectorAttendance()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+          </div>
+          <div>
+            <label for="director-attendance-search" class="block text-xs font-bold text-slate-700 mb-1.5">Tìm học viên</label>
+            <input id="director-attendance-search" type="search" oninput="renderDirectorAttendance()" placeholder="Nhập tên hoặc mã học viên..." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+          </div>
+          <button type="button" onclick="setDirectorAttendanceToday()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm">Hôm nay</button>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+          <p id="director-attendance-selected-date" class="text-sm font-semibold text-slate-700" aria-live="polite"></p>
+          <p id="director-attendance-count" class="text-xs font-semibold text-slate-500" aria-live="polite"></p>
+        </div>
+        <div id="director-attendance-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4"></div>
       </section>
 
       <!-- PAGE 5: HỌC VIÊN ĐÃ NGHỈ HỌC -->
@@ -743,6 +1020,7 @@
     let studentsData = [], inactiveStudentsData = [];
     let currentReportStudent = null;
     let birthdayNotificationShown = false;
+    const attendanceSavingStudentIds = new Set();
 
     let profileCurrentPage = 1, masterCurrentPage = 1;
     const PAGE_SIZE = 12;
@@ -779,7 +1057,12 @@
           google.script.run
             .withSuccessHandler((result) => {
               try {
-                resolve(typeof result === 'string' ? JSON.parse(result) : result);
+                const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+                if (parsed?.status === 'error') {
+                  reject(new Error(parsed.message || 'Google Apps Script bị lỗi.'));
+                  return;
+                }
+                resolve(parsed);
               } catch (error) {
                 reject(new Error('Phản hồi từ Apps Script không hợp lệ.'));
               }
@@ -858,15 +1141,11 @@
             ? res.data
             : [];
 
-        if (students.length) {
-          studentsData = students;
-        } else if (!studentsData.length) {
-          studentsData = [];
-        }
+        studentsData = students;
 
         inactiveStudentsData = Array.isArray(res.inactive)
           ? res.inactive
-          : inactiveStudentsData;
+          : [];
 
         const fetchedTeachers = Array.isArray(res.teachers)
           ? res.teachers
@@ -877,7 +1156,7 @@
             .filter(Boolean)
           : [];
 
-        if (fetchedTeachers.length) {
+        if (Array.isArray(res.teachers)) {
           assistantTeachers = fetchedTeachers;
         }
 
@@ -918,16 +1197,26 @@
         if (isManual) {
           showToast(`Đã tải ${studentsData.length} học viên từ Google Sheet`);
         }
+        return true;
       } catch (err) {
         console.error('Lỗi tải dữ liệu từ Google Sheet:', err);
 
         if (isManual) {
           showToast(`Không tải được dữ liệu: ${err.message}`, 'error');
         }
+        return false;
       } finally {
         if (loading) loading.classList.add('hidden');
         if (!isManual) showUpcomingBirthdays();
       }
+    }
+
+    async function refreshDataAfterMutation() {
+      const refreshed = await fetchDataFromGoogleSheet();
+      if (!refreshed) {
+        showToast('Đã lưu thao tác nhưng chưa tải được dữ liệu mới nhất. Vui lòng thử tải lại Sheet.', 'error');
+      }
+      return refreshed;
     }
 
     function fetchAvatarUploadStatus(requestId) {
@@ -1113,6 +1402,7 @@
         }
         student.avatar = uploadedAvatar;
         updateAllViews();
+        await refreshDataAfterMutation();
         showToast(`Đã cập nhật avatar học viên ${student.name}`);
       } catch (err) {
         console.error("Google Drive Upload Error:", err);
@@ -1325,10 +1615,36 @@
       document.getElementById('modal-birthday-notice').classList.remove('hidden');
     }
 
+    function getLocalDateInputValue(date = new Date()) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    function formatAttendanceDate(inputValue) {
+      const match = String(inputValue || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return '';
+      const [, year, month, day] = match;
+      const date = new Date(Number(year), Number(month) - 1, Number(day));
+      if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 || date.getDate() !== Number(day)) return '';
+      return `${day}/${month}/${year}`;
+    }
+
     const getFormattedToday = () => {
       const today = new Date();
       return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}`;
     };
+
+    function hasAttendanceDate(sessions, dateValue) {
+      if (!Array.isArray(sessions)) return false;
+      const target = formatDisplayDate(dateValue);
+      if (!target) return false;
+      return sessions.some(value => {
+        const normalizedValue = formatDisplayDate(value);
+        if (normalizedValue === target) return true;
+        const targetHasYear = /^\d{2}\/\d{2}\/\d{4}$/.test(target);
+        const valueHasYear = /^\d{2}\/\d{2}\/\d{4}$/.test(normalizedValue);
+        return (!targetHasYear || !valueHasYear) && normalizedValue.slice(0, 5) === target.slice(0, 5);
+      });
+    }
 
     let confirmResolver = null;
     function showConfirmModal(message) {
@@ -1402,7 +1718,7 @@
         recalculateCompletedSessions();
         saveAllDataToLocalStorage();
         closeModal('modal-payment');
-        updateAllViews();
+        await refreshDataAfterMutation();
         showToast(`Đã thanh toán cho ${student.name}`);
       } catch (error) {
         confirmButton.disabled = false;
@@ -1414,11 +1730,21 @@
     }
 
     function showPage(pageId) {
-      const pages = ['page-change-password', 'page-student-profiles', 'page-director-list', 'page-daily-summary', 'page-admin-master', 'page-inactive-students', 'page-manage-teachers', 'page-manage-levels', 'page-teacher-attendance'];
+      if (pageId === 'page-director-attendance' && currentUserRole !== 'director') {
+        showToast('Chức năng điểm danh riêng chỉ dành cho giám đốc.', 'error');
+        pageId = 'page-teacher-attendance';
+      }
+      const pages = ['page-change-password', 'page-student-profiles', 'page-director-list', 'page-director-attendance', 'page-daily-summary', 'page-admin-master', 'page-inactive-students', 'page-manage-teachers', 'page-manage-levels', 'page-teacher-attendance'];
       pages.forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
       const target = document.getElementById(pageId);
       if (target) target.classList.remove('hidden');
+      document.querySelectorAll('#admin-nav-buttons button[onclick]').forEach(button => {
+        const isCurrentPage = button.getAttribute('onclick') === `showPage('${pageId}')`;
+        if (isCurrentPage) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+      });
       sessionStorage.setItem('TV_GLOBAL_PAGE', pageId);
+      if (pageId === 'page-director-attendance') renderDirectorAttendance();
     }
 
     function getAllLevels() {
@@ -1500,6 +1826,7 @@
       renderDirectorTable();
       renderTeacherCards();
       renderDailySummaryCards();
+      renderDirectorAttendance();
       renderStudentProfileCards();
       renderMasterPage();
       renderInactiveStudentsTable();
@@ -1544,6 +1871,7 @@
 
       try {
         await apiCall('update_level', { studentId: student.id, level: newLevel });
+        await refreshDataAfterMutation();
       } catch (e) {
         showToast("✕ Lỗi đồng bộ Google Sheet", "error");
       }
@@ -1556,21 +1884,28 @@
       if (!Array.isArray(student.sessions)) student.sessions = Array(40).fill("");
       
       const cleanVal = value.trim();
+      const previousValue = student.sessions[sessionIdx] || '';
       student.sessions[sessionIdx] = cleanVal;
       recalculateCompletedSessions();
       saveAllDataToLocalStorage();
       
-      renderMasterPage();
-      showToast(`Đã lưu Buổi ${sessionIdx + 1} cho ${student.name}`);
+      updateAllViews();
 
       try {
-        await apiCall('updateAttendance', {
+        const result = await apiCall('updateAttendance', {
           studentId: student.id,
           sessionIndex: sessionIdx + 1,
           value: cleanVal
         });
-      } catch (e) {
-        showToast("✕ Lỗi đồng bộ Google Sheet!", "error");
+        if (result?.status !== 'success') throw new Error(result?.message || 'Google Sheet không xác nhận lưu điểm danh.');
+        const refreshed = await refreshDataAfterMutation();
+        if (refreshed) showToast(`Đã lưu Buổi ${sessionIdx + 1} cho ${student.name}`);
+      } catch (error) {
+        student.sessions[sessionIdx] = previousValue;
+        recalculateCompletedSessions();
+        saveAllDataToLocalStorage();
+        updateAllViews();
+        showToast(`Không lưu được điểm danh: ${error.message}`, 'error');
       }
     }
 
@@ -1669,13 +2004,12 @@
       const student = studentsData[studentIdx];
       if (!student) return;
       const today = getFormattedToday();
-      if (currentUserRole !== 'director' && student.sessions?.includes(today)) {
+      if (currentUserRole !== 'director' && hasAttendanceDate(student.sessions, today)) {
         showToast(`${student.name} đã được điểm danh hôm nay`, 'error');
         return;
       }
       const currentVal = student.sessions[sessionIdx] || '';
-      
-      const newVal = (currentVal === today) ? '' : today;
+      const newVal = currentVal === today ? '' : today;
       await updateMasterSession(studentIdx, sessionIdx, newVal);
       if (currentUserRole !== 'director') renderTeacherCards();
     }
@@ -1916,6 +2250,7 @@
       try {
         const result = await apiCall('restoreStudent', { student: restoredStudent });
         if (result?.status !== 'success') throw new Error(result?.message || 'Khôi phục lên Sheet thất bại');
+        await refreshDataAfterMutation();
       } catch (err) {
         showToast(`✕ Lỗi đồng bộ khôi phục lên Sheet: ${err.message}`, 'error');
       }
@@ -1946,6 +2281,7 @@
           studentId: student.id,
           reason: student.note || 'Đã dừng học'
         });
+        await refreshDataAfterMutation();
       } catch (e) {
         showToast("Lỗi đồng bộ xóa lên Sheet!", "error");
       }
@@ -2013,6 +2349,7 @@
 
       try {
         await apiCall('addStudent', { student: newStudent });
+        await refreshDataAfterMutation();
       } catch (err) {
         showToast("✕ Lỗi đồng bộ lên Sheet!", "error");
       }
@@ -2070,6 +2407,7 @@
 
       try {
         await apiCall('updateStudentInfo', { student });
+        await refreshDataAfterMutation();
       } catch (err) {
         showToast("✕ Lỗi đồng bộ Google Sheet", "error");
       }
@@ -2183,6 +2521,7 @@
         if (!result || result.status !== 'success') {
           throw new Error(result?.message || 'Google Sheet không xác nhận lưu phân công.');
         }
+        await refreshDataAfterMutation();
         showToast(`Đã lưu phân công ${teacherName} cho ${student.name}`);
       } catch (error) {
         student.assistants = previousAssistants;
@@ -2295,7 +2634,7 @@
       container.innerHTML = myStudents.map(s => {
         const globalIdx = studentsData.findIndex(st => st.id === s.id);
         const warn = getWarningConfig(s.completedSessions, s.level);
-        const attendedToday = s.sessions?.includes(getFormattedToday());
+        const attendedToday = hasAttendanceDate(s.sessions, getFormattedToday());
         return `
           <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex items-center justify-between border-b pb-3">
@@ -2325,6 +2664,118 @@
       }).join('');
     }
 
+    function setDirectorAttendanceToday() {
+      const dateInput = document.getElementById('director-attendance-date');
+      if (dateInput) dateInput.value = getLocalDateInputValue();
+      renderDirectorAttendance();
+    }
+
+    function renderDirectorAttendance() {
+      const container = document.getElementById('director-attendance-cards');
+      const dateInput = document.getElementById('director-attendance-date');
+      if (!container || !dateInput) return;
+
+      if (!dateInput.value) dateInput.value = getLocalDateInputValue();
+      const selectedDate = formatAttendanceDate(dateInput.value);
+      const dateLabel = document.getElementById('director-attendance-selected-date');
+      const countLabel = document.getElementById('director-attendance-count');
+      if (!selectedDate) {
+        if (dateLabel) dateLabel.textContent = 'Vui lòng chọn ngày hợp lệ.';
+        if (countLabel) countLabel.textContent = '';
+        container.innerHTML = '';
+        return;
+      }
+
+      const searchKey = (document.getElementById('director-attendance-search')?.value || '').trim().toLocaleLowerCase('vi');
+      const filteredStudents = studentsData
+        .map((student, index) => ({ student, index }))
+        .filter(({ student }) => {
+          const searchableText = `${student.name || ''} ${student.id || ''}`.toLocaleLowerCase('vi');
+          return !searchKey || searchableText.includes(searchKey);
+        });
+      const attendedCount = filteredStudents.filter(({ student }) => hasAttendanceDate(student.sessions, selectedDate)).length;
+      if (dateLabel) dateLabel.textContent = `Ngày điểm danh: ${selectedDate}`;
+      if (countLabel) countLabel.textContent = `${attendedCount} / ${filteredStudents.length} học viên đã điểm danh`;
+
+      if (!filteredStudents.length) {
+        container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-500 bg-white rounded-2xl border border-slate-200">${studentsData.length ? 'Không tìm thấy học viên phù hợp.' : 'Chưa có dữ liệu học viên. Hãy đồng bộ Google Sheet để tải danh sách mới nhất.'}</div>`;
+        return;
+      }
+
+      container.innerHTML = filteredStudents.map(({ student, index }) => {
+        const sessions = Array.isArray(student.sessions) ? student.sessions : [];
+        const isAttended = hasAttendanceDate(sessions, selectedDate);
+        const nextSessionIndex = sessions.findIndex(value => !String(value || '').trim());
+        const isSaving = attendanceSavingStudentIds.has(String(student.id));
+        const isFull = nextSessionIndex === -1;
+        const statusClass = isAttended
+          ? 'bg-emerald-50 border-emerald-200'
+          : isFull ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200';
+        const statusText = isAttended
+          ? 'Đã ghi nhận ngày này'
+          : isFull ? 'Đã đủ 40 buổi' : `Buổi tiếp theo: ${nextSessionIndex + 1}`;
+        const buttonText = isSaving ? 'Đang lưu điểm danh...' : isAttended ? '✓ Đã điểm danh' : '✓ Ghi nhận điểm danh';
+        return `
+          <article class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <img src="${getAvatarDisplayUrl(student.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${student.name || 'học viên'}" class="w-12 h-12 rounded-full object-cover border border-slate-200 shrink-0">
+              <div class="min-w-0 flex-1">
+                <h3 class="font-bold text-slate-800 truncate">${student.name || 'Chưa có tên'}</h3>
+                <p class="text-xs text-slate-500">${student.id || 'Chưa có mã'} · ${student.level || 'Chưa xếp lớp'}</p>
+              </div>
+              <span class="shrink-0 px-2.5 py-1 rounded-full text-xs font-bold ${isAttended ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">${student.completedSessions || 0}/40 buổi</span>
+            </div>
+            <div class="flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${statusClass}">
+              <span>${statusText}</span>
+              ${student.assistants?.length ? `<span class="text-slate-500 text-right">${student.assistants.join(', ')}</span>` : ''}
+            </div>
+            <button type="button" onclick="markDirectorAttendance(${index})" ${isAttended || isSaving || isFull ? 'disabled' : ''} class="w-full px-3 py-2.5 rounded-xl text-sm font-bold shadow-sm ${isAttended || isFull || isSaving ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-emerald-700 hover:bg-emerald-800 text-white'}">
+              ${isFull && !isAttended && !isSaving ? 'Đã đủ số buổi' : buttonText}
+            </button>
+          </article>`;
+      }).join('');
+    }
+
+    async function markDirectorAttendance(studentIndex) {
+      if (currentUserRole !== 'director') {
+        showToast('Chức năng này chỉ dành cho giám đốc.', 'error');
+        return;
+      }
+      const student = studentsData[studentIndex];
+      const dateInput = document.getElementById('director-attendance-date');
+      const selectedDate = formatAttendanceDate(dateInput?.value);
+      if (!student || !selectedDate) {
+        showToast('Vui lòng chọn học viên và ngày điểm danh hợp lệ.', 'error');
+        return;
+      }
+      const studentId = String(student.id);
+      if (attendanceSavingStudentIds.has(studentId)) return;
+      if (hasAttendanceDate(student.sessions, selectedDate)) {
+        showToast(`${student.name} đã được điểm danh ngày ${selectedDate}.`, 'error');
+        renderDirectorAttendance();
+        return;
+      }
+
+      const sessionIndex = (Array.isArray(student.sessions) ? student.sessions : [])
+        .findIndex(value => !String(value || '').trim());
+      if (sessionIndex < 0) {
+        showToast(`${student.name} đã đủ 40 buổi học.`, 'error');
+        return;
+      }
+
+      attendanceSavingStudentIds.add(studentId);
+      renderDirectorAttendance();
+      try {
+        const attendanceValue = selectedDate === formatAttendanceDate(getLocalDateInputValue())
+          ? getFormattedToday()
+          : selectedDate;
+        await updateMasterSession(studentIndex, sessionIndex, attendanceValue);
+      } finally {
+        attendanceSavingStudentIds.delete(studentId);
+        renderDirectorAttendance();
+      }
+    }
+
     function renderDailySummaryCards() {
       const container = document.getElementById('summary-cards-container');
       const dateDisplay = document.getElementById('summary-date-display');
@@ -2335,7 +2786,7 @@
 
       const searchKey = (document.getElementById('summary-search-input')?.value || '').toLowerCase().trim();
       const attended = studentsData.filter(s => {
-        const hasToday = s.sessions && s.sessions.includes(today);
+        const hasToday = hasAttendanceDate(s.sessions, today);
         const matchSearch = !searchKey || s.name.toLowerCase().includes(searchKey) || s.id.toLowerCase().includes(searchKey);
         return hasToday && matchSearch;
       });
@@ -2443,6 +2894,7 @@
         saveAllDataToLocalStorage();
         input.value = '';
         updateAllViews();
+        await refreshDataAfterMutation();
         showToast(`Đã thêm loại lớp "${val}"`);
       } catch (err) {
         showToast(`✕ Không thể lưu cấp độ lên Sheet: ${err.message}`, 'error');
@@ -2459,6 +2911,7 @@
         customLevelsList = customLevelsList.filter(l => l !== lvlName);
         saveAllDataToLocalStorage();
         updateAllViews();
+        await refreshDataAfterMutation();
         showToast(`Đã xóa loại lớp "${lvlName}"`);
       } catch (err) {
         showToast(`✕ Không thể xóa cấp độ trên Sheet: ${err.message}`, 'error');
@@ -2485,7 +2938,12 @@
       updateAllViews();
       showToast(`Đã thêm trợ giảng ${name}`);
 
-      try { await apiCall('addTeacher', { teacherName: name, password: pwd }); } catch (err) {}
+      try {
+        await apiCall('addTeacher', { teacherName: name, password: pwd });
+        await refreshDataAfterMutation();
+      } catch (err) {
+        showToast(`Không thể lưu trợ giảng: ${err.message}`, 'error');
+      }
     }
 
     async function removeTeacher(teacherName) {
@@ -2496,7 +2954,12 @@
       studentsData.forEach(s => { if (Array.isArray(s.assistants)) s.assistants = s.assistants.filter(t => t !== teacherName); });
       saveAllDataToLocalStorage();
       updateAllViews();
-      try { await apiCall('deleteTeacher', { teacherName }); } catch (err) {}
+      try {
+        await apiCall('deleteTeacher', { teacherName });
+        await refreshDataAfterMutation();
+      } catch (err) {
+        showToast(`Không thể xóa trợ giảng: ${err.message}`, 'error');
+      }
     }
 
     // Đổi mật khẩu tài khoản
@@ -2520,6 +2983,7 @@
         await apiCall('changePassword', { username: accountName, oldPassword: oldPwd, newPassword: newPwd });
         accountPasswords[accountName] = newPwd;
         saveAllDataToLocalStorage();
+        await refreshDataAfterMutation();
         showToast("Đã đổi mật khẩu và cập nhật lên Sheet thành công!");
 
         document.getElementById('pwd_old').value = '';
