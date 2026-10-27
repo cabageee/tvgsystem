@@ -2732,6 +2732,14 @@
       }
     }
 
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').catch(error => {
+          console.error('Không đăng ký được service worker:', error);
+        });
+      });
+    }
+
     // Khởi chạy khi nạp xong trang
     window.onload = async function() {
       initializeAccessibility();

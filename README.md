@@ -15,6 +15,12 @@ Mỗi mục điều hướng có một URL HTML riêng và chỉ tải nội dun
 - `teacher-attendance.html` — Điểm danh lớp của trợ giảng
 - `change-password.html` — Đổi mật khẩu
 
+## Mở như ứng dụng web
+
+Ứng dụng có thể mở trực tiếp bằng đường dẫn website trong trình duyệt; không cần tải ứng dụng từ cửa hàng hay cài đặt để sử dụng. Trên trình duyệt hỗ trợ PWA, người dùng có thể tùy chọn thêm ứng dụng vào màn hình chính để mở ở chế độ toàn màn hình.
+
+Sau lần truy cập đầu tiên khi có mạng, trình duyệt lưu bộ khung giao diện và các trang để mở lại khi ngoại tuyến. Các thao tác đồng bộ Google Sheets và những chức năng cần dịch vụ bên ngoài vẫn cần kết nối mạng. PWA và service worker yêu cầu website chạy trên HTTPS hoặc localhost.
+
 Giữ các file HTML, `app.js` và `app.css` trong cùng thư mục khi triển khai hoặc di chuyển ứng dụng. Trạng thái đăng nhập được giữ trong `sessionStorage` khi chuyển trang.
 
 ## CSS và thư viện xuất file
