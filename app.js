@@ -318,6 +318,9 @@
     let activeSessionEditor = null;
     let uiEmojisUpgraded = false;
     let birthdayNotificationShown = false;
+    const NOTIFICATION_HISTORY_KEY = 'TV_GLOBAL_NOTIFICATION_HISTORY';
+    const NOTIFICATION_HISTORY_READ_KEY = 'TV_GLOBAL_NOTIFICATION_HISTORY_READ';
+    const NOTIFICATION_HISTORY_LIMIT = 30;
     const attendanceSavingStudentIds = new Set();
 
     let profileCurrentPage = 1, masterCurrentPage = 1;
@@ -335,9 +338,161 @@
     });
 
     // Toast thông báo Auto-sync
+    function getNotificationHistory() {
+      try {
+        const history = JSON.parse(localStorage.getItem(NOTIFICATION_HISTORY_KEY) || '[]');
+        return Array.isArray(history) ? history : [];
+      } catch (error) {
+        console.error('Không đọc được lịch sử thông báo:', error);
+        return [];
+      }
+    }
+
+    function updateNotificationButton() {
+      const button = document.getElementById('notification-center-button');
+      const badge = document.getElementById('notification-center-count');
+      if (!button || !badge) return;
+
+      try {
+        const readAt = Number(localStorage.getItem(NOTIFICATION_HISTORY_READ_KEY) || 0);
+        const unreadCount = getNotificationHistory().filter(item => item.createdAt > readAt).length;
+        badge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+        badge.hidden = unreadCount === 0;
+        badge.style.display = unreadCount === 0 ? 'none' : 'inline-flex';
+        button.setAttribute('aria-label', unreadCount
+          ? `Thông báo, ${unreadCount} mục chưa xem`
+          : 'Thông báo');
+      } catch (error) {
+        console.error('Không cập nhật được huy hiệu thông báo:', error);
+      }
+    }
+
+    function recordAppNotification(title, message, type = 'success') {
+      const cleanMessage = String(message || '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 500);
+      if (!cleanMessage) return;
+
+      try {
+        const history = getNotificationHistory().filter(item => (
+          item && Number.isFinite(item.createdAt)
+        ));
+        history.unshift({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          title: String(title || 'Thông báo').slice(0, 80),
+          message: cleanMessage,
+          type,
+          createdAt: Date.now()
+        });
+        localStorage.setItem(
+          NOTIFICATION_HISTORY_KEY,
+          JSON.stringify(history.slice(0, NOTIFICATION_HISTORY_LIMIT))
+        );
+        updateNotificationButton();
+      } catch (error) {
+        console.error('Không lưu được lịch sử thông báo:', error);
+      }
+    }
+
+    function renderNotificationHistory() {
+      const list = document.getElementById('notification-center-list');
+      if (!list) return;
+      list.replaceChildren();
+
+      const history = getNotificationHistory();
+      if (!history.length) {
+        const emptyState = document.createElement('li');
+        emptyState.className = 'notification-center-empty';
+        emptyState.textContent = 'Chưa có thông báo nào.';
+        list.append(emptyState);
+        return;
+      }
+
+      history.forEach(item => {
+        const entry = document.createElement('li');
+        entry.className = 'notification-center-item';
+
+        const heading = document.createElement('div');
+        heading.className = 'notification-center-item-heading';
+        const title = document.createElement('strong');
+        title.textContent = item.title || 'Thông báo';
+        const timestamp = document.createElement('time');
+        const date = new Date(item.createdAt);
+        timestamp.dateTime = date.toISOString();
+        timestamp.textContent = date.toLocaleString('vi-VN', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        heading.append(title, timestamp);
+
+        const message = document.createElement('p');
+        message.textContent = item.message || '';
+        entry.append(heading, message);
+        list.append(entry);
+      });
+    }
+
+    function initializeNotificationCenter() {
+      const headerContent = document.querySelector('#app-container header > div > div:first-child');
+      if (!headerContent || document.getElementById('notification-center-button')) return;
+
+      const button = document.createElement('button');
+      button.id = 'notification-center-button';
+      button.type = 'button';
+      button.className = 'notification-center-button';
+      button.setAttribute('aria-haspopup', 'dialog');
+      button.setAttribute('aria-expanded', 'false');
+      button.innerHTML = `${renderUiIcon('announcement')}<span>Thông báo</span><span id="notification-center-count" class="notification-center-count" hidden></span>`;
+
+      const dialog = document.createElement('dialog');
+      dialog.id = 'notification-center-dialog';
+      dialog.className = 'notification-center-dialog';
+      dialog.setAttribute('aria-labelledby', 'notification-center-title');
+      dialog.innerHTML = `
+        <div class="notification-center-header">
+          <div>
+            <p class="notification-center-eyebrow">LỊCH SỬ</p>
+            <h2 id="notification-center-title">Thông báo đã hiện</h2>
+          </div>
+          <button type="button" class="notification-center-close" aria-label="Đóng">&times;</button>
+        </div>
+        <ul id="notification-center-list" class="notification-center-list"></ul>
+      `;
+
+      const closeButton = dialog.querySelector('.notification-center-close');
+      closeButton.addEventListener('click', () => dialog.close());
+      dialog.addEventListener('click', event => {
+        if (event.target === dialog) dialog.close();
+      });
+      dialog.addEventListener('close', () => button.setAttribute('aria-expanded', 'false'));
+      button.addEventListener('click', () => {
+        renderNotificationHistory();
+        try {
+          localStorage.setItem(NOTIFICATION_HISTORY_READ_KEY, String(Date.now()));
+        } catch (error) {
+          console.error('Không cập nhật được trạng thái đã xem thông báo:', error);
+        }
+        updateNotificationButton();
+        button.setAttribute('aria-expanded', 'true');
+        dialog.showModal();
+      });
+
+      const mobileActions = headerContent.querySelector('.sm\\:hidden');
+      headerContent.insertBefore(button, mobileActions || null);
+      document.body.append(dialog);
+      updateNotificationButton();
+    }
+
     function showToast(message, type = 'success') {
       const container = document.getElementById('toast-container');
       if (!container) return;
+
+      recordAppNotification(type === 'success' ? 'Thông báo' : 'Có lỗi xảy ra', message, type);
       
       const toast = document.createElement('div');
       const bgClass = type === 'success' ? 'bg-slate-900 border-emerald-500 text-white' : 'bg-red-900 border-red-500 text-white';
@@ -916,6 +1071,14 @@
         .sort((a, b) => a.daysUntil - b.daysUntil || String(a.student.name || '').localeCompare(String(b.student.name || ''), 'vi'));
 
       if (!upcomingBirthdays.length) return;
+
+      recordAppNotification(
+        'Sinh nhật học viên',
+        upcomingBirthdays.map(({ student, daysUntil }) => (
+          `${student.name || student.id || 'Học viên'}: ${daysUntil === 0 ? 'hôm nay' : `còn ${daysUntil} ngày`}`
+        )).join(' · '),
+        'birthday'
+      );
 
       const list = document.getElementById('birthday-notice-list');
       list.replaceChildren();
@@ -2702,6 +2865,7 @@
       document.getElementById('app-container').classList.remove('hidden');
       const userInfo = document.getElementById('user-info-text');
       if (userInfo) userInfo.innerText = name;
+      initializeNotificationCenter();
       const passwordUsername = document.getElementById('pwd-change-username-display');
       if (passwordUsername) passwordUsername.innerText = name;
 

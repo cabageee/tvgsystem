@@ -27,6 +27,8 @@ Giữ các file HTML, `app.js` và `app.css` trong cùng thư mục khi triển 
 
 Khi đăng nhập vào website, ứng dụng hiển thị danh sách sinh nhật trong 3 ngày tới. Thông báo chỉ hiện một lần mỗi ngày trên trình duyệt đó; đồng bộ dữ liệu học viên cũng cập nhật danh sách khi website đang mở. Đây là thông báo trong ứng dụng, không phải Web Push, nên không yêu cầu cấp quyền thông báo hay máy chủ Node riêng.
 
+Nút **Thông báo** trên thanh đầu trang mở lịch sử tối đa 30 thông báo gần nhất, gồm thông báo nhanh và nhắc sinh nhật, được lưu riêng trên trình duyệt đang dùng. Số huy hiệu cho biết có bao nhiêu mục chưa xem.
+
 Thông báo nhanh (toast) được đặt cao hơn vùng cạnh dưới trên điện thoại để tránh bị che bởi thanh điều hướng hoặc vùng an toàn của thiết bị.
 
 ## CSS và thư viện xuất file

@@ -114,6 +114,136 @@
     #app-container header img { border-color: rgba(241, 201, 123, .9); }
     #app-container header h1 { letter-spacing: .075em; }
     #user-info-text { color: #f4d9b3; }
+    .notification-center-button {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex: 0 0 auto;
+      min-height: 36px;
+      margin-left: 10px;
+      padding: 7px 10px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .1);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .notification-center-button:hover { background: rgba(255, 255, 255, .2); }
+    .notification-center-count {
+      position: absolute;
+      top: -7px;
+      right: -7px;
+      display: inline-flex;
+      min-width: 18px;
+      height: 18px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+      border: 2px solid #6f1e2b;
+      border-radius: 999px;
+      background: #f3d28e;
+      color: #46232a;
+      font-size: 9px;
+      line-height: 1;
+    }
+    .notification-center-dialog {
+      width: min(460px, calc(100vw - 24px));
+      max-width: 460px;
+      max-height: min(70vh, 620px);
+      max-height: min(70svh, 620px);
+      margin: auto;
+      padding: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: 0 24px 70px rgba(16, 24, 40, .28);
+    }
+    .notification-center-dialog::backdrop {
+      background: rgba(15, 23, 42, .55);
+      backdrop-filter: blur(3px);
+    }
+    .notification-center-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: #fffaf0;
+    }
+    .notification-center-eyebrow {
+      margin: 0 0 4px;
+      color: var(--brand);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .12em;
+    }
+    .notification-center-header h2 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 750;
+    }
+    .notification-center-close {
+      display: inline-flex;
+      width: 38px;
+      height: 38px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 25px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .notification-center-list {
+      max-height: calc(min(70vh, 620px) - 78px);
+      max-height: calc(min(70svh, 620px) - 78px);
+      margin: 0;
+      padding: 4px 20px;
+      overflow-y: auto;
+      list-style: none;
+    }
+    .notification-center-item {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .notification-center-item:last-child { border-bottom: 0; }
+    .notification-center-item-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .notification-center-item-heading strong {
+      color: var(--ink);
+      font-size: 13px;
+    }
+    .notification-center-item-heading time {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .notification-center-item p {
+      margin: 5px 0 0;
+      color: #526071;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+    .notification-center-empty {
+      padding: 30px 8px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
     #admin-nav-buttons { gap: 5px; }
     #admin-nav-buttons button,
     #app-container header button {
@@ -651,6 +781,25 @@
 
     @media (max-width: 639px) {
       html { scroll-padding-top: 112px; }
+      .notification-center-button {
+        min-height: 38px;
+        margin-left: 6px;
+        padding: 7px 8px;
+      }
+      .notification-center-button > span:not(.notification-center-count) { display: none; }
+      .notification-center-dialog {
+        width: calc(100vw - 20px);
+        max-height: min(76vh, 680px);
+        max-height: min(76svh, 680px);
+        border-radius: 17px;
+      }
+      .notification-center-list {
+        max-height: calc(min(76vh, 680px) - 78px);
+        max-height: calc(min(76svh, 680px) - 78px);
+        padding-right: 16px;
+        padding-left: 16px;
+      }
+      .notification-center-header { padding: 15px 16px; }
       #toast-container {
         bottom: max(88px, calc(76px + env(safe-area-inset-bottom)));
       }
