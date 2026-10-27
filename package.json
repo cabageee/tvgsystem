@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:css": "tailwindcss -c tailwind.config.js -i tailwind.input.css -o tailwind.css --minify",
+    "test": "node --check app.js && node verify_syntax.js"
   },
   "keywords": [],
   "author": "",
@@ -14,5 +15,8 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "multer": "^2.2.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
   }
 }

@@ -17,6 +17,21 @@ Mỗi mục điều hướng có một URL HTML riêng và chỉ tải nội dun
 
 Giữ các file HTML, `app.js` và `app.css` trong cùng thư mục khi triển khai hoặc di chuyển ứng dụng. Trạng thái đăng nhập được giữ trong `sessionStorage` khi chuyển trang.
 
+## CSS và thư viện xuất file
+
+Tailwind được biên dịch thành `tailwind.css` để các trang không phải tải Tailwind CDN lúc mở trang. Khi thêm hoặc đổi utility class trong HTML/`app.js`, chạy:
+
+```sh
+npm install
+npm run build:css
+```
+
+Giữ `tailwind.css` cùng thư mục với các trang HTML khi triển khai. Thư viện Excel, PNG và PDF chỉ được tải khi người dùng chọn chức năng xuất tương ứng.
+
+## Kiểm tra cú pháp
+
+Chạy `npm test` để kiểm tra `app.js` và các script nội tuyến trên tất cả trang HTML.
+
 ## Avatar học viên trên Google Drive
 
 Avatar được lưu vào Google Drive bằng chính Apps Script đang đồng bộ Google Sheet. Phần mã Apps Script đã được thêm vào file `code.gs.txt` bạn gửi.

@@ -1,5 +1,14 @@
 // ================= CONFIG & GLOBALS =================
     const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzM-2b7qRmgDG1iXBQ_TfTEs5Vpune5U8j-wivC9djnf2xGfYh6Q1msmS98xli8YAK3/exec'; 
+    const OPTIONAL_LIBRARY_URLS = {
+      html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+      jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+      xlsx: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+    };
+    const optionalLibraryPromises = new Map();
+    const modalReturnFocus = new WeakMap();
+    let openModalStack = [];
+    let modalObserver = null;
     
     let defaultLevelOptions = ['Little Fox L1', 'Little Fox L2', 'Summer', 'Lớp kèm', 'Advance', 'IELTS', 'Full', 'Combo'];
     let customLevelsList = [];
@@ -12,6 +21,265 @@
       LEVELS: 'TV_GLOBAL_CUSTOM_LEVELS'
     };
     const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23f1f5f9'/%3E%3Ccircle cx='32' cy='24' r='12' fill='%2394a3b8'/%3E%3Cpath d='M10 58c2-12 10-18 22-18s20 6 22 18' fill='%2394a3b8'/%3E%3C/svg%3E";
+
+    const UI_ICON_PATHS = {
+      alert: '<path d="m10.3 3.9-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3.1l-8-14a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 4h.01"/>',
+      announcement: '<path d="m3 11 18-5v12L3 13v-2Z"/><path d="M11.6 15.5 13 21l-4-1-2-7m14-5v10"/>',
+      payment: '<rect x="2" y="5" width="20" height="15" rx="2"/><path d="M2 10h20M6 15h4"/>',
+      clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 10h6m-6 4h6m-6 4h3"/>',
+      report: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4V2m8 2V2M3 9h18m-13 4h3m-3 3h7"/>',
+      image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+      file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6m-12 5h8m-8 4h8"/>',
+      add: '<path d="M12 5v14m-7-7h14"/>',
+      edit: '<path d="m16 4 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16l-1 4Z"/>',
+      key: '<circle cx="8" cy="15" r="5"/><path d="m11.5 11.5 8-8L22 6l-2 2 2 2-3 3-2-2-2 2"/>',
+      chart: '<path d="M3 3v18h18"/><path d="m8 14 4-4 4 3 5-7"/>',
+      folder: '<path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 9h18"/>',
+      check: '<path d="m5 12 4 4L19 6"/>',
+      calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18m-13 4h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',
+      door: '<path d="M4 21h16M6 21V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M14 12h.01"/>',
+      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+      siren: '<path d="M3 18h18l-2-3V9a7 7 0 0 0-14 0v6l-2 3Z"/><path d="M10 22h4M12 2V1M4.2 4.2 3 3m17 1.2L21 3M2 11H1m22 0h-1"/>',
+      search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+      refresh: '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9A7 7 0 0 1 18 6l2 2M4 16l2 2a7 7 0 0 0 12.5-3"/>',
+      note: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>',
+      camera: '<path d="M14 5h-4L8 7H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
+      user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+      book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
+      warning: '<path d="m10.3 3.9-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3.1l-8-14a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 4h.01"/>',
+      spinner: '<path d="M12 2v4m0 12v4m10-10h-4M6 12H2m17.1 7.1-2.8-2.8M7.7 7.7 4.9 4.9m14.2 0-2.8 2.8M7.7 16.3l-2.8 2.8"/>',
+      error: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6m0-6 6 6"/>',
+      lightning: '<path d="m13 2-3 8h7l-6 12 2-9H6z"/>',
+      gear: '<circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4 1.4-1.1a8 8 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1a8 8 0 0 1 0 2Z"/>',
+      trash: '<path d="M3 6h18m-2 0-.9 14H5.9L5 6m4 0V4h6v2m-5 4v6m4-6v6"/>',
+      restore: '<path d="M3 11a9 9 0 1 1 2.6 6.4"/><path d="M3 4v7h7m2-4v5l3 2"/>'
+    };
+    const UI_EMOJI_ICONS = {
+      '⚠️': 'alert', '📢': 'announcement', '💰': 'payment', '📋': 'clipboard',
+      '🎴': 'report', '🖼️': 'image', '📄': 'file', '➕': 'add', '✏️': 'edit',
+      '🔑': 'key', '📊': 'chart', '📁': 'folder', '✅': 'check', '📅': 'calendar',
+      '🚪': 'door', '👥': 'users', '🚨': 'siren', '🔍': 'search', '🔄': 'refresh',
+      '📝': 'note', '📷': 'camera', '👤': 'user', '📚': 'book', '⚙': 'gear',
+      '⚡': 'lightning', '⏳': 'spinner', '❌': 'error', '🟢': 'check', '🔴': 'alert'
+    };
+
+    function renderUiIcon(name, extraClass = '') {
+      const path = UI_ICON_PATHS[name];
+      if (!path) return '';
+      return `<svg class="ui-icon ${extraClass}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${path}</svg>`;
+    }
+
+    function loadOptionalLibrary(name) {
+      const url = OPTIONAL_LIBRARY_URLS[name];
+      if (!url) return Promise.reject(new Error(`Thư viện không được hỗ trợ: ${name}`));
+
+      const isLoaded = name === 'html2canvas'
+        ? typeof window.html2canvas === 'function'
+        : name === 'jspdf'
+          ? typeof window.jspdf?.jsPDF === 'function'
+          : typeof window.XLSX?.utils?.json_to_sheet === 'function';
+      if (isLoaded) return Promise.resolve();
+
+      if (!optionalLibraryPromises.has(name)) {
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = url;
+          script.async = true;
+          script.onload = () => resolve();
+          script.onerror = () => {
+            script.remove();
+            optionalLibraryPromises.delete(name);
+            reject(new Error(`Không tải được thư viện ${name}. Kiểm tra kết nối mạng rồi thử lại.`));
+          };
+          document.head.appendChild(script);
+        });
+        optionalLibraryPromises.set(name, promise);
+      }
+
+      return optionalLibraryPromises.get(name);
+    }
+
+    function labelFormControls(root = document) {
+      const controls = [];
+      if (root.matches?.('input, select, textarea')) controls.push(root);
+      controls.push(...root.querySelectorAll('input, select, textarea'));
+
+      controls.forEach(control => {
+        if (control.type === 'hidden' || control.labels?.length || control.hasAttribute('aria-label') || control.hasAttribute('aria-labelledby')) return;
+
+        let label = control.closest('label');
+        if (!label) {
+          let ancestor = control.parentElement;
+          for (let depth = 0; ancestor && depth < 4; depth++, ancestor = ancestor.parentElement) {
+            const labels = ancestor.querySelectorAll('label');
+            if (labels.length === 1 && labels[0].control !== control) {
+              label = labels[0];
+              break;
+            }
+          }
+        }
+
+        if (label) {
+          if (!control.id) control.id = `accessible-control-${Math.random().toString(36).slice(2, 10)}`;
+          if (!label.id) label.id = `${control.id}-label`;
+          label.htmlFor = control.id;
+          return;
+        }
+
+        const descriptiveText = control.getAttribute('placeholder')
+          || control.getAttribute('title')
+          || control.getAttribute('name')
+          || control.id.replace(/[_-]+/g, ' ').trim();
+        if (descriptiveText) control.setAttribute('aria-label', descriptiveText);
+      });
+    }
+
+    function configureAccessibleDialog(dialog) {
+      if (!dialog.id.startsWith('modal-')) return;
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+      dialog.setAttribute('aria-hidden', dialog.classList.contains('hidden') ? 'true' : 'false');
+
+      const title = dialog.querySelector('h1, h2, h3, h4, [data-dialog-title]');
+      if (title) {
+        if (!title.id) title.id = `${dialog.id}-dialog-heading`;
+        dialog.setAttribute('aria-labelledby', title.id);
+      } else if (!dialog.hasAttribute('aria-label')) {
+        dialog.setAttribute('aria-label', 'Hộp thoại');
+      }
+
+      const panel = dialog.firstElementChild;
+      if (panel && !panel.hasAttribute('tabindex')) panel.tabIndex = -1;
+    }
+
+    function getDialogFocusableElements(dialog) {
+      return [...dialog.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )].filter(element => element.getAttribute('aria-hidden') !== 'true' && element.getClientRects().length > 0);
+    }
+
+    function syncAccessibleDialogStack() {
+      openModalStack = openModalStack.filter(dialog => dialog.isConnected && !dialog.classList.contains('hidden'));
+      const topDialog = openModalStack[openModalStack.length - 1];
+      document.querySelectorAll('div[id^="modal-"]').forEach(dialog => {
+        dialog.setAttribute('aria-hidden', dialog === topDialog ? 'false' : 'true');
+      });
+    }
+
+    function handleDialogVisibility(dialog) {
+      configureAccessibleDialog(dialog);
+      if (dialog.classList.contains('hidden')) {
+        const wasOpen = openModalStack.includes(dialog);
+        openModalStack = openModalStack.filter(item => item !== dialog);
+        syncAccessibleDialogStack();
+        if (!wasOpen) return;
+
+        const topDialog = openModalStack[openModalStack.length - 1];
+        const returnTarget = modalReturnFocus.get(dialog);
+        const target = topDialog && returnTarget?.isConnected && topDialog.contains(returnTarget)
+          ? returnTarget
+          : topDialog
+            ? getDialogFocusableElements(topDialog)[0] || topDialog.firstElementChild
+            : returnTarget;
+        if (target && !target.closest('[aria-hidden="true"]')) target.focus({ preventScroll: true });
+        return;
+      }
+
+      if (openModalStack.includes(dialog)) return;
+      modalReturnFocus.set(dialog, document.activeElement instanceof HTMLElement ? document.activeElement : null);
+      openModalStack.push(dialog);
+      syncAccessibleDialogStack();
+      const firstFocusable = getDialogFocusableElements(dialog)[0] || dialog.firstElementChild;
+      firstFocusable?.focus({ preventScroll: true });
+    }
+
+    function handleAccessibleDialogKeydown(event) {
+      const dialog = openModalStack[openModalStack.length - 1];
+      if (!dialog) return;
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeModal(dialog.id);
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      const focusable = getDialogFocusableElements(dialog);
+      if (!focusable.length) {
+        event.preventDefault();
+        dialog.firstElementChild?.focus({ preventScroll: true });
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    function initializeAccessibility() {
+      document.querySelectorAll('div[id^="modal-"]').forEach(configureAccessibleDialog);
+      labelFormControls();
+      document.addEventListener('keydown', handleAccessibleDialogKeydown);
+
+      modalObserver = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+          if (mutation.type === 'attributes') {
+            handleDialogVisibility(mutation.target);
+            return;
+          }
+          mutation.addedNodes.forEach(node => {
+            if (!(node instanceof Element)) return;
+            if (node.matches('div[id^="modal-"]')) configureAccessibleDialog(node);
+            node.querySelectorAll?.('div[id^="modal-"]').forEach(configureAccessibleDialog);
+            labelFormControls(node);
+          });
+        });
+      });
+      modalObserver.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class'],
+        childList: true,
+        subtree: true
+      });
+    }
+
+    function upgradeUiEmojis(root = document) {
+      if (!root?.querySelectorAll) return;
+      const emojiKeys = Object.keys(UI_EMOJI_ICONS).sort((a, b) => b.length - a.length);
+      const targets = [];
+      if (root.matches?.('button, h1, h2, h3, h4, h5, h6, label, #login-error-msg')) targets.push(root);
+      targets.push(...root.querySelectorAll('button, h1, h2, h3, h4, h5, h6, label, #login-error-msg'));
+
+      targets.forEach(target => {
+        [...target.childNodes].forEach(node => {
+          if (node.nodeType !== Node.TEXT_NODE) return;
+          const leadingWhitespace = node.nodeValue.match(/^\s*/)[0];
+          const remainingText = node.nodeValue.slice(leadingWhitespace.length);
+          const emoji = emojiKeys.find(key => remainingText.startsWith(key)
+            && (remainingText.length === key.length || /\s/.test(remainingText[key.length])));
+          if (!emoji) return;
+          const icon = document.createElement('span');
+          icon.className = 'ui-icon-wrap';
+          icon.innerHTML = renderUiIcon(UI_EMOJI_ICONS[emoji]);
+          target.insertBefore(icon, node);
+          node.nodeValue = `${leadingWhitespace}${remainingText.slice(emoji.length).trimStart()}`;
+        });
+      });
+
+      [...(root.matches?.('body *') ? [root] : []), ...root.querySelectorAll('body *')].forEach(element => {
+        if (element.children.length || element.childNodes.length !== 1 || element.firstChild.nodeType !== Node.TEXT_NODE) return;
+        const emoji = emojiKeys.find(key => element.textContent.trim() === key);
+        if (!emoji) return;
+        element.replaceChildren();
+        element.insertAdjacentHTML('afterbegin', renderUiIcon(UI_EMOJI_ICONS[emoji], 'ui-icon--large'));
+      });
+    }
 
     function getAvatarDisplayUrl(value) {
       const avatarUrl = String(value || '').trim();
@@ -48,12 +316,23 @@
     let studentsData = [], inactiveStudentsData = [];
     let currentReportStudent = null;
     let activeSessionEditor = null;
+    let uiEmojisUpgraded = false;
     let birthdayNotificationShown = false;
     const attendanceSavingStudentIds = new Set();
 
     let profileCurrentPage = 1, masterCurrentPage = 1;
     const PAGE_SIZE = 12;
     const MASTER_PAGE_SIZE = 50;
+    const MASTER_MOBILE_PAGE_SIZE = 10;
+    let masterMobileLayout = window.matchMedia('(max-width: 767px)').matches;
+
+    window.addEventListener('resize', () => {
+      const nextMobileLayout = window.matchMedia('(max-width: 767px)').matches;
+      if (nextMobileLayout === masterMobileLayout) return;
+      masterMobileLayout = nextMobileLayout;
+      masterCurrentPage = 1;
+      renderMasterPage();
+    });
 
     // Toast thông báo Auto-sync
     function showToast(message, type = 'success') {
@@ -62,10 +341,10 @@
       
       const toast = document.createElement('div');
       const bgClass = type === 'success' ? 'bg-slate-900 border-emerald-500 text-white' : 'bg-red-900 border-red-500 text-white';
-      const icon = type === 'success' ? '⚡' : '⚠️';
+      const icon = type === 'success' ? renderUiIcon('lightning') : renderUiIcon('alert');
       
       toast.className = `toast-anim flex items-center gap-2 px-4 py-2.5 rounded-xl border-l-4 shadow-xl text-xs font-semibold ${bgClass}`;
-      toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+      toast.innerHTML = `<span class="ui-icon-wrap">${icon}</span> <span>${message}</span>`;
       
       container.appendChild(toast);
       setTimeout(() => {
@@ -479,14 +758,14 @@
       const isFull = levelName.includes('full');
 
       if (isCombo) {
-        if (count >= 30) return { bg: 'bg-red-100', text: 'text-red-900', badge: `<span class="text-[9px] font-bold px-1.5 py-0.5 bg-red-600 text-white rounded">Combo ≥30b (Đỏ)</span>`, tBadge: `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-600 text-white">⚠️ ${count}b (Đỏ)</span>`, tBg: 'bg-red-50 border-red-500' };
+        if (count >= 30) return { bg: 'bg-red-100', text: 'text-red-900', badge: `<span class="text-[9px] font-bold px-1.5 py-0.5 bg-red-600 text-white rounded">Combo ≥30b (Đỏ)</span>`, tBadge: `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-600 text-white">${renderUiIcon('alert')} ${count}b (Đỏ)</span>`, tBg: 'bg-red-50 border-red-500' };
         if (count >= 24) return { bg: 'bg-amber-100', text: 'text-amber-900', badge: `<span class="text-[9px] font-bold px-1.5 py-0.5 bg-amber-500 text-white rounded">Combo ≥24b (Vàng)</span>`, tBadge: `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500 text-white">${count}b (Vàng)</span>`, tBg: 'bg-amber-50 border-amber-400' };
         if (count >= 12) return { bg: 'bg-emerald-100', text: 'text-emerald-900', badge: `<span class="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-600 text-white rounded">Combo ≥12b (Xanh)</span>`, tBadge: `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white">${count}b (Xanh)</span>`, tBg: 'bg-emerald-50 border-emerald-400' };
       } else if (isFull) {
-        if (count >= 22) return { bg: 'bg-red-100', text: 'text-red-900', badge: `<span class="text-[9px] font-bold px-1.5 py-0.5 bg-red-600 text-white rounded">Full ≥22b (Đỏ)</span>`, tBadge: `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-600 text-white">⚠️ ${count}b (Đỏ)</span>`, tBg: 'bg-red-50 border-red-500' };
+        if (count >= 22) return { bg: 'bg-red-100', text: 'text-red-900', badge: `<span class="text-[9px] font-bold px-1.5 py-0.5 bg-red-600 text-white rounded">Full ≥22b (Đỏ)</span>`, tBadge: `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-600 text-white">${renderUiIcon('alert')} ${count}b (Đỏ)</span>`, tBg: 'bg-red-50 border-red-500' };
         if (count >= 12) return { bg: 'bg-amber-100', text: 'text-amber-900', badge: `<span class="text-[9px] font-bold px-1.5 py-0.5 bg-amber-500 text-white rounded">Full ≥12b (Vàng)</span>`, tBadge: `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500 text-white">${count}b (Vàng)</span>`, tBg: 'bg-amber-50 border-amber-400' };
       } else {
-        if (count >= 10) return { bg: 'bg-red-100', text: 'text-red-900', badge: `<span class="text-[9px] font-bold px-1.5 py-0.5 bg-red-600 text-white rounded">Thường ≥10b (Đỏ)</span>`, tBadge: `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-600 text-white">⚠️ ${count}b (Đỏ)</span>`, tBg: 'bg-red-50 border-red-500' };
+        if (count >= 10) return { bg: 'bg-red-100', text: 'text-red-900', badge: `<span class="text-[9px] font-bold px-1.5 py-0.5 bg-red-600 text-white rounded">Thường ≥10b (Đỏ)</span>`, tBadge: `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-600 text-white">${renderUiIcon('alert')} ${count}b (Đỏ)</span>`, tBg: 'bg-red-50 border-red-500' };
         if (count >= 6) return { bg: 'bg-amber-100', text: 'text-amber-900', badge: `<span class="text-[9px] font-bold px-1.5 py-0.5 bg-amber-500 text-white rounded">Thường ≥6b (Vàng)</span>`, tBadge: `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500 text-white">${count}b (Vàng)</span>`, tBg: 'bg-amber-50 border-amber-400' };
       }
       return { bg: 'bg-white', text: 'text-slate-800', badge: '', tBadge: '', tBg: 'bg-white border-slate-200' };
@@ -748,12 +1027,15 @@
     let confirmResolver = null;
     function showConfirmModal(message) {
       return new Promise((resolve) => {
+        if (confirmResolver) closeModal('modal-confirm');
         confirmResolver = resolve;
         document.getElementById('confirm-modal-text').innerText = message;
         document.getElementById('modal-confirm').classList.remove('hidden');
         document.getElementById('confirm-modal-action-btn').onclick = () => {
+          const resolveConfirm = confirmResolver;
+          confirmResolver = null;
           closeModal('modal-confirm');
-          if (confirmResolver) confirmResolver(true);
+          if (resolveConfirm) resolveConfirm(true);
         };
       });
     }
@@ -761,6 +1043,11 @@
     function closeModal(modalId) {
       const modal = document.getElementById(modalId);
       if (modal) modal.classList.add('hidden');
+      if (modalId === 'modal-confirm' && confirmResolver) {
+        const resolveConfirm = confirmResolver;
+        confirmResolver = null;
+        resolveConfirm(false);
+      }
       if (modalId === 'modal-session-editor') activeSessionEditor = null;
     }
 
@@ -989,6 +1276,8 @@
       renderTeacherManagementPage();
       renderLevelManagementPage();
       initLoginTeacherList();
+      upgradeUiEmojis(uiEmojisUpgraded ? document.getElementById('app-container') : document.body);
+      uiEmojisUpgraded = true;
     }
 
     function populateTeacherFilterSelects() {
@@ -1250,7 +1539,8 @@
     function renderMasterPage() {
       const tbody = document.getElementById('master-table-body');
       const thead = document.getElementById('tableHeader');
-      if (!tbody || !thead) return;
+      const mobileCards = document.getElementById('master-mobile-cards');
+      if (!tbody || !thead || !mobileCards) return;
 
       let filtered = getMasterFilteredStudents();
 
@@ -1302,17 +1592,24 @@
       headerHtml += `</tr>`;
       thead.innerHTML = headerHtml;
 
-      const totalPages = Math.ceil(filtered.length / MASTER_PAGE_SIZE) || 1;
+      const pageSize = masterMobileLayout ? MASTER_MOBILE_PAGE_SIZE : MASTER_PAGE_SIZE;
+      const totalPages = Math.ceil(filtered.length / pageSize) || 1;
       if (masterCurrentPage > totalPages) masterCurrentPage = totalPages;
-      const startIdx = (masterCurrentPage - 1) * MASTER_PAGE_SIZE;
-      const pagedList = filtered.slice(startIdx, startIdx + MASTER_PAGE_SIZE);
+      const startIdx = (masterCurrentPage - 1) * pageSize;
+      const pagedList = filtered.slice(startIdx, startIdx + pageSize);
 
       if (!pagedList.length) {
         tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-slate-400 italic font-medium">Không tìm thấy học viên nào phù hợp.</td></tr>`;
+        mobileCards.innerHTML = `<div class="master-mobile-empty">Không tìm thấy học viên nào phù hợp.</div>`;
+        const controls = document.getElementById('master-pagination-controls');
+        if (controls) controls.innerHTML = `<span class="text-slate-500 font-medium">Không có học viên phù hợp.</span>`;
         return;
       }
 
-      tbody.innerHTML = pagedList.map(s => {
+      mobileCards.innerHTML = masterMobileLayout
+        ? pagedList.map(student => renderMasterMobileStudentCard(student)).join('')
+        : '';
+      tbody.innerHTML = masterMobileLayout ? '' : pagedList.map(s => {
         const globalIdx = studentsData.findIndex(st => st.id === s.id);
         const warn = getWarningConfig(s.completedSessions, s.level);
 
@@ -1323,7 +1620,7 @@
               <div class="flex items-center gap-2">
                 <div class="relative shrink-0">
                   <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${s.name}" class="w-24 h-24 rounded-full object-cover border-2 border-amber-300 shadow-sm">
-                  <button type="button" onclick="openDirectAvatarUpload(${globalIdx})" aria-label="Đổi avatar ${s.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-7 h-7 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-xs hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">📷</button>
+                  <button type="button" onclick="openDirectAvatarUpload(${globalIdx})" aria-label="Đổi avatar ${s.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-7 h-7 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-xs hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">${renderUiIcon('camera')}</button>
                 </div>
                 <div class="truncate">
                   <div class="font-bold text-slate-800 text-xs truncate" title="${s.name}">${s.name}</div>
@@ -1354,7 +1651,7 @@
                 title="Chỉnh sửa Buổi ${b + 1}${entry.note ? ' · Có ghi chú' : ''}"
                 aria-label="Chỉnh sửa Buổi ${b + 1}"
                 class="w-full min-h-7 text-center text-[11px] font-mono py-1 rounded border outline-none transition ${cellBg}">
-                ${displayDate ? escapeHtml(displayDate) : '--'}${entry.note ? ' 📝' : ''}
+                ${displayDate ? escapeHtml(displayDate) : '--'}${entry.note ? ` ${renderUiIcon('note')}` : ''}
               </button>
             </td>`;
         }
@@ -1366,13 +1663,64 @@
       const controls = document.getElementById('master-pagination-controls');
       if (controls) {
         controls.innerHTML = `
-          <span class="text-slate-500 font-medium">Hiển thị ${startIdx + 1} - ${Math.min(startIdx + MASTER_PAGE_SIZE, filtered.length)} / <strong>${filtered.length}</strong> học viên</span>
+          <span class="text-slate-500 font-medium">Hiển thị ${startIdx + 1} - ${Math.min(startIdx + pageSize, filtered.length)} / <strong>${filtered.length}</strong> học viên</span>
           <div class="flex gap-1.5">
             <button onclick="masterCurrentPage--; renderMasterPage();" ${masterCurrentPage === 1 ? 'disabled' : ''} class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 rounded-lg font-bold text-slate-700">Trang trước</button>
             <span class="px-3 py-1.5 bg-slate-200 rounded-lg font-mono font-bold text-slate-800">${masterCurrentPage} / ${totalPages}</span>
             <button onclick="masterCurrentPage++; renderMasterPage();" ${masterCurrentPage === totalPages ? 'disabled' : ''} class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 rounded-lg font-bold text-slate-700">Trang sau</button>
           </div>`;
       }
+    }
+
+    function renderMasterMobileStudentCard(student) {
+      const globalIdx = studentsData.findIndex(item => item.id === student.id);
+      const warning = getWarningConfig(student.completedSessions, student.level);
+      const sessions = Array.from({ length: 40 }, (_, sessionIdx) => {
+        const value = student.sessions?.[sessionIdx] || '';
+        const entry = parseSessionEntry(value);
+        const date = getSessionDisplayDate(value);
+        const attended = hasRecordedAttendance(value);
+        return `
+          <button type="button"
+            class="master-mobile-session${attended ? ' is-attended' : ''}${entry.note ? ' has-note' : ''}"
+            onclick="openSessionEditor(${globalIdx}, ${sessionIdx})"
+            aria-label="Chỉnh sửa Buổi ${sessionIdx + 1}${date ? `, ngày ${escapeHtml(date)}` : ', chưa điểm danh'}${entry.note ? ', có ghi chú' : ''}"
+            title="Bấm để chỉnh sửa Buổi ${sessionIdx + 1}${entry.note ? ' · Có ghi chú' : ''}">
+            <span class="master-mobile-session-number">B${sessionIdx + 1}</span>
+            <span class="master-mobile-session-date">${date ? escapeHtml(date) : '—'}</span>
+            ${entry.note ? `<span class="master-mobile-session-note" aria-hidden="true">${renderUiIcon('note')}</span>` : ''}
+          </button>`;
+      }).join('');
+
+      return `
+        <article class="master-mobile-student">
+          <div class="master-mobile-student-heading">
+            <div class="master-mobile-avatar">
+              <img src="${getAvatarDisplayUrl(student.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${escapeHtml(student.name)}">
+              <button type="button" onclick="openDirectAvatarUpload(${globalIdx})" aria-label="Đổi avatar ${escapeHtml(student.name)}" title="Đổi avatar">
+                ${renderUiIcon('camera')}
+              </button>
+            </div>
+            <div class="master-mobile-student-identity">
+              <div class="master-mobile-student-name">${escapeHtml(student.name || 'Chưa có tên')}</div>
+              <div class="master-mobile-student-id">Mã ${escapeHtml(student.id)}</div>
+              ${warning.badge ? `<div class="master-mobile-warning">${warning.badge}</div>` : ''}
+            </div>
+            <div class="master-mobile-progress ${warning.bg} ${warning.text}">${student.completedSessions || 0}<span>/40</span></div>
+          </div>
+          <div class="master-mobile-student-meta">
+            <label>
+              <span>Lớp</span>
+              ${renderLevelSelectHtml(student.level, `updateStudentLevel(${globalIdx}, this.value)`)}
+            </label>
+            <div><span>Ngày đăng ký</span><strong>${escapeHtml(student.regDate || '---')}</strong></div>
+          </div>
+          <div class="master-mobile-session-heading">
+            <strong>Tiến độ 40 buổi</strong>
+            <span>Chạm vào buổi để sửa ngày hoặc ghi chú</span>
+          </div>
+          <div class="master-mobile-session-grid">${sessions}</div>
+        </article>`;
     }
 
     function filterMasterData() {
@@ -1403,32 +1751,36 @@
     }
 
     // Xuất Excel 40 buổi
-    function exportAttendanceExcel() {
+    async function exportAttendanceExcel() {
       const filteredStudents = getMasterFilteredStudents();
       if (!filteredStudents.length) return alert("⚠️ Không có học viên nào phù hợp với bộ lọc để xuất Excel!");
-      
-      const exportData = filteredStudents.map((s, idx) => {
-        const row = {
-          "STT": idx + 1,
-          "Mã Học Viên": s.id,
-          "Họ Và Tên": s.name,
-          "Cấp Độ / Loại Lớp": s.level || '',
-          "Ngày Đăng Ký": s.regDate || '',
-          "Tổng Buổi Đã Học": s.completedSessions || 0,
-          "Phụ Huynh": s.parentName || '',
-          "Số Điện Thoại": s.parentPhone || s.phone || '',
-          "Trợ Giảng Phụ Trách": (s.assistants || []).join(', ')
-        };
-        for (let b = 1; b <= 40; b++) {
-          row[`Buổi ${b}`] = s.sessions ? (s.sessions[b - 1] || '') : '';
-        }
-        return row;
-      });
+      try {
+        await loadOptionalLibrary('xlsx');
+        const exportData = filteredStudents.map((s, idx) => {
+          const row = {
+            "STT": idx + 1,
+            "Mã Học Viên": s.id,
+            "Họ Và Tên": s.name,
+            "Cấp Độ / Loại Lớp": s.level || '',
+            "Ngày Đăng Ký": s.regDate || '',
+            "Tổng Buổi Đã Học": s.completedSessions || 0,
+            "Phụ Huynh": s.parentName || '',
+            "Số Điện Thoại": s.parentPhone || s.phone || '',
+            "Trợ Giảng Phụ Trách": (s.assistants || []).join(', ')
+          };
+          for (let b = 1; b <= 40; b++) {
+            row[`Buổi ${b}`] = s.sessions ? (s.sessions[b - 1] || '') : '';
+          }
+          return row;
+        });
 
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "DiemDanh_40Buoi");
-      XLSX.writeFile(workbook, `ThienVyGlobal_DiemDanh_${getFormattedToday().replace(/\//g, '-')}.xlsx`);
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "DiemDanh_40Buoi");
+        XLSX.writeFile(workbook, `ThienVyGlobal_DiemDanh_${getFormattedToday().replace(/\//g, '-')}.xlsx`);
+      } catch (error) {
+        showToast(`Không thể xuất Excel: ${error.message}`, 'error');
+      }
     }
 
     // Quản lý HV nghỉ học
@@ -1450,8 +1802,8 @@
           <td class="p-3 text-slate-600 font-mono">${s.phone || s.parentPhone || '---'}</td>
           <td class="p-3 text-center text-slate-500 font-mono">${s.regDate || '---'}</td>
           <td class="p-3 text-slate-600 italic">${s.note || 'Không có lý do'}</td>
-          <td class="p-3 text-center">
-            <button onclick="restoreInactiveStudent(${idx})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded-lg text-xs shadow">Khôi phục</button>
+          <td class="p-3 text-center action-cell">
+            <button onclick="restoreInactiveStudent(${idx})" class="action-button action-button--success">${renderUiIcon('restore')} Khôi phục</button>
           </td>
         </tr>`).join('');
     }
@@ -1707,7 +2059,7 @@
               <div class="flex items-center gap-2.5">
                 <div class="relative shrink-0">
                   <img src="${getAvatarDisplayUrl(student.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${student.name}" class="w-24 h-24 rounded-full object-cover border-2 border-amber-300 shadow-sm">
-                  <button type="button" onclick="openDirectAvatarUpload(${idx})" aria-label="Đổi avatar ${student.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-7 h-7 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-xs hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">📷</button>
+                  <button type="button" onclick="openDirectAvatarUpload(${idx})" aria-label="Đổi avatar ${student.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-7 h-7 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-xs hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">${renderUiIcon('camera')}</button>
                 </div>
                 <div class="min-w-0">
                   <h4 class="font-bold text-slate-800 text-xs">${student.name}</h4>
@@ -1719,11 +2071,11 @@
             <td class="p-3 border-r text-center font-mono font-bold ${warn.bg} ${warn.text}">${student.completedSessions || 0} / 40</td>
             <td class="p-2 border-r">${generateAssistantCheckboxes(student, idx)}</td>
             <td class="p-3 border-r text-center font-mono text-xs text-slate-500">${student.regDate || '---'}</td>
-            <td class="p-3 text-center">
-              <div class="flex justify-center gap-1.5">
-                <button onclick="openEditStudentModal(${idx})" class="p-1.5 bg-amber-500 text-white rounded-lg text-xs font-bold shadow">✏️ Sửa</button>
-                <button onclick="openPaymentPopup('${student.id}')" class="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow">💰 Thanh toán</button>
-                <button onclick="deleteStudent(${idx})" class="p-1.5 bg-red-600 text-white rounded-lg text-xs font-bold shadow">🚪 Dừng</button>
+            <td class="p-3 text-center action-cell">
+              <div class="action-buttons">
+                <button onclick="openEditStudentModal(${idx})" class="action-button action-button--neutral">${renderUiIcon('edit')} Sửa</button>
+                <button onclick="openPaymentPopup('${student.id}')" class="action-button action-button--success">${renderUiIcon('payment')} Thanh toán</button>
+                <button onclick="deleteStudent(${idx})" class="action-button action-button--danger">${renderUiIcon('trash')} Dừng</button>
               </div>
             </td>
           </tr>`;
@@ -1815,7 +2167,7 @@
               <div class="flex items-center gap-3">
                 <div class="shrink-0 text-center">
                   <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${s.name}" class="w-12 h-12 rounded-full object-cover border-2 border-amber-300">
-                  <button onclick="openDirectAvatarUpload(${globalIdx})" class="mt-1 text-[10px] font-bold text-[#8B1515] hover:underline" title="Tải ảnh avatar mới lên">📷 Đổi avatar</button>
+                  <button onclick="openDirectAvatarUpload(${globalIdx})" class="mt-1 text-[10px] font-bold text-[#8B1515] hover:underline" title="Tải ảnh avatar mới lên">${renderUiIcon('camera')} Đổi avatar</button>
                 </div>
                 <div>
                   <span class="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded">${s.id}</span>
@@ -1832,9 +2184,9 @@
               <div class="flex justify-between items-center pt-1 border-t"><span>Đã học:</span><span class="font-bold font-mono px-2 py-0.5 rounded ${warn.bg} ${warn.text}">${s.completedSessions || 0} / 40 buổi</span></div>
             </div>
 
-            <div class="flex gap-2 pt-1">
-              <button onclick="openStudentReportCard('${s.id}')" class="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-xl text-xs shadow">🎴 Thẻ Báo Cáo</button>
-              <button onclick="openEditStudentModal(${globalIdx})" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">✏️ Sửa</button>
+            <div class="action-buttons action-buttons--card pt-1">
+              <button onclick="openStudentReportCard('${s.id}')" class="action-button action-button--primary">${renderUiIcon('report')} Thẻ báo cáo</button>
+              <button onclick="openEditStudentModal(${globalIdx})" class="action-button action-button--neutral">${renderUiIcon('edit')} Sửa</button>
             </div>
           </div>`;
       }).join('');
@@ -1920,13 +2272,14 @@
                 <span class="text-slate-500">Điểm danh hôm nay</span>
                 <strong class="${attendedToday ? 'text-emerald-700' : 'text-slate-500'}">${attendedToday ? '✓ Đã điểm danh' : 'Chưa điểm danh'}</strong>
               </div>
-              <div class="flex gap-2">
-                <button onclick="openTeacherStudentDetails('${s.id}')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs shadow">📋 Chi tiết</button>
-                <button onclick="openPaymentPopup('${s.id}')" class="px-3 py-1.5 ${isFeePaid(s) ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-amber-500 hover:bg-amber-600 text-slate-900'} font-bold rounded-xl text-xs shadow">💰 ${isFeePaid(s) ? 'Gia hạn' : 'Đóng học phí'}</button>
+              <div class="action-buttons action-buttons--card">
+                <button onclick="openTeacherStudentDetails('${s.id}')" class="action-button action-button--neutral">${renderUiIcon('clipboard')} Chi tiết</button>
+                <button onclick="openPaymentPopup('${s.id}')" class="action-button ${isFeePaid(s) ? 'action-button--neutral' : 'action-button--primary'}">${renderUiIcon('payment')} ${isFeePaid(s) ? 'Gia hạn' : 'Đóng học phí'}</button>
               </div>
             </div>
           </div>`;
       }).join('');
+      upgradeUiEmojis(container);
     }
 
     function openTeacherStudentDetails(studentId) {
@@ -1966,7 +2319,8 @@
         if (entry.note) {
           const note = document.createElement('p');
           note.className = 'mt-1 truncate text-[10px] text-amber-800';
-          note.textContent = `📝 ${entry.note}`;
+          note.textContent = entry.note;
+          note.insertAdjacentHTML('afterbegin', `${renderUiIcon('note')} `);
           note.title = entry.note;
           sessionCard.appendChild(note);
         }
@@ -2149,6 +2503,10 @@
       if (!el) return;
 
       try {
+        await Promise.all([
+          loadOptionalLibrary('html2canvas'),
+          ...(format === 'pdf' ? [loadOptionalLibrary('jspdf')] : [])
+        ]);
         const canvas = await html2canvas(el, { scale: 2, useCORS: true });
         if (format === 'image') {
           const link = document.createElement('a');
@@ -2162,7 +2520,7 @@
           pdf.addImage(imgData, 'PNG', 10, 10, 128, 0);
           pdf.save(`BaoCao_${currentReportStudent?.name || 'HocVien'}.pdf`);
         }
-      } catch (err) { alert("Lỗi khi xuất thẻ báo cáo!"); }
+      } catch (err) { showToast(`Không thể xuất thẻ báo cáo: ${err.message}`, 'error'); }
     }
 
     function renderTeacherManagementPage() {
@@ -2172,10 +2530,10 @@
         ? assistantTeachers.map(t => `
           <div class="flex justify-between items-center p-3 bg-slate-50 border rounded-xl">
             <div>
-              <span class="text-xs font-bold text-slate-800">👤 ${t}</span>
+              <span class="text-xs font-bold text-slate-800">${renderUiIcon('user')} ${escapeHtml(t)}</span>
               <span class="text-[10px] text-slate-400 font-mono ml-2">(MK: ${accountPasswords[t] || '123456'})</span>
             </div>
-            <button onclick="removeTeacher('${t}')" class="text-xs font-bold text-red-600 hover:underline">Xóa</button>
+            <button onclick="removeTeacher('${t}')" class="action-button action-button--danger">${renderUiIcon('trash')} Xóa</button>
           </div>`).join('')
         : `<p class="text-xs text-slate-400">Chưa có trợ giảng nào.</p>`;
     }
@@ -2187,8 +2545,8 @@
       container.innerHTML = allLevels.length 
         ? allLevels.map(lvl => `
           <div class="flex justify-between items-center p-3 bg-slate-50 border rounded-xl">
-            <span class="text-xs font-bold text-slate-700">📚 ${lvl}</span>
-            <button onclick="removeCustomLevel('${lvl}')" class="text-xs font-bold text-red-600 hover:underline">Xóa</button>
+            <span class="text-xs font-bold text-slate-700">${renderUiIcon('book')} ${escapeHtml(lvl)}</span>
+            <button onclick="removeCustomLevel('${lvl}')" class="action-button action-button--danger">${renderUiIcon('trash')} Xóa</button>
           </div>`).join('')
         : `<p class="text-xs text-slate-400">Chưa có cấp độ nào.</p>`;
     }
@@ -2376,6 +2734,7 @@
 
     // Khởi chạy khi nạp xong trang
     window.onload = async function() {
+      initializeAccessibility();
       setupAllDateInputs();
       loadDataFromLocalStorage();
       initLoginTeacherList();
