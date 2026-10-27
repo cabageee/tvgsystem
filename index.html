@@ -94,6 +94,7 @@
         <div class="text-sm text-slate-700 space-y-1">
           <p>Học viên: <strong id="payment-student-name" class="text-slate-900">...</strong></p>
           <p>Cấp độ: <strong id="payment-class-type" class="text-[#8B1515]">...</strong></p>
+          <p>Hình thức hiện tại: <strong id="payment-current-package" class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">...</strong></p>
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Gói học thanh toán</label>
@@ -132,6 +133,32 @@
         <div class="min-h-28 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-xs text-slate-400">Khu vực chức năng sẽ được bổ sung sau.</div>
         <button onclick="closeModal('modal-fee-status')" class="w-full py-2.5 border rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50">Đóng</button>
       </div>
+    </div>
+  </div>
+
+  <div id="modal-session-editor" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95%] sm:max-w-md overflow-hidden">
+      <div class="bg-emerald-800 text-white p-4 flex justify-between items-center">
+        <h3 class="font-bold text-sm uppercase tracking-wider">Chỉnh Sửa Buổi Học</h3>
+        <button type="button" onclick="closeModal('modal-session-editor')" aria-label="Đóng chỉnh sửa buổi học" class="text-white/80 hover:text-white text-2xl leading-none p-1">&times;</button>
+      </div>
+      <form onsubmit="saveSessionEditor(event)" class="p-5 space-y-4">
+        <p id="session-editor-student" class="text-sm font-bold text-slate-800">...</p>
+        <p id="session-editor-session" class="text-xs text-slate-500">...</p>
+        <div>
+          <label for="session-editor-date" class="block text-xs font-bold text-slate-700 uppercase mb-1">Ngày điểm danh</label>
+          <input id="session-editor-date" type="text" inputmode="numeric" placeholder="dd/mm hoặc dd/mm/yyyy" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label for="session-editor-note" class="block text-xs font-bold text-slate-700 uppercase mb-1">Ghi chú</label>
+          <textarea id="session-editor-note" rows="3" maxlength="1000" placeholder="Nhập ghi chú cho buổi học..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 resize-y"></textarea>
+        </div>
+        <p id="session-editor-error" class="hidden text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-lg p-2"></p>
+        <div class="flex gap-3 pt-1">
+          <button type="button" onclick="closeModal('modal-session-editor')" class="flex-1 py-2.5 border rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50">Hủy</button>
+          <button id="session-editor-save" type="submit" class="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-sm shadow">Lưu thay đổi</button>
+        </div>
+      </form>
     </div>
   </div>
 

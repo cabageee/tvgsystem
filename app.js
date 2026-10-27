@@ -47,6 +47,7 @@
     let assistantTeachers = [], accountPasswords = { 'director': '123456' }, currentUserRole = null, currentUserName = '';
     let studentsData = [], inactiveStudentsData = [];
     let currentReportStudent = null;
+    let activeSessionEditor = null;
     let birthdayNotificationShown = false;
     const attendanceSavingStudentIds = new Set();
 
@@ -170,6 +171,7 @@
             : [];
 
         studentsData = students;
+        recalculateCompletedSessions();
 
         inactiveStudentsData = Array.isArray(res.inactive)
           ? res.inactive
@@ -669,6 +671,46 @@
       return isValidDateDMY(date) ? date.slice(0, 5) : '';
     }
 
+    const SESSION_NOTE_SEPARATOR = '\n[GHI CHÚ]\n';
+
+    function parseSessionEntry(value) {
+      if (value instanceof Date) {
+        return { date: normalizeAttendanceDate(value), note: '' };
+      }
+
+      const text = String(value || '');
+      const noteIndex = text.indexOf(SESSION_NOTE_SEPARATOR);
+      const date = (noteIndex === -1 ? text : text.slice(0, noteIndex)).trim();
+      const note = noteIndex === -1 ? '' : text.slice(noteIndex + SESSION_NOTE_SEPARATOR.length).trim();
+      return { date, note };
+    }
+
+    function serializeSessionEntry(date, note) {
+      const cleanDate = String(date || '').trim();
+      const cleanNote = String(note || '').trim();
+      if (!cleanNote) return cleanDate;
+      return `${cleanDate}${SESSION_NOTE_SEPARATOR}${cleanNote}`;
+    }
+
+    function hasRecordedAttendance(value) {
+      return Boolean(parseSessionEntry(value).date);
+    }
+
+    function getSessionDisplayDate(value) {
+      const { date } = parseSessionEntry(value);
+      return normalizeAttendanceDate(date) || date;
+    }
+
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[character]);
+    }
+
     function formatAttendanceDate(inputValue) {
       return normalizeAttendanceDate(inputValue);
     }
@@ -682,7 +724,7 @@
       if (!Array.isArray(sessions)) return false;
       const target = normalizeAttendanceDate(dateValue);
       if (!target) return false;
-      return sessions.some(value => normalizeAttendanceDate(value) === target);
+      return sessions.some(value => normalizeAttendanceDate(parseSessionEntry(value).date) === target);
     }
 
     let confirmResolver = null;
@@ -701,6 +743,7 @@
     function closeModal(modalId) {
       const modal = document.getElementById(modalId);
       if (modal) modal.classList.add('hidden');
+      if (modalId === 'modal-session-editor') activeSessionEditor = null;
     }
 
     function openPaymentPopup(studentId) {
@@ -710,6 +753,14 @@
       document.getElementById('payment-student-name').innerText = student.name;
       document.getElementById('payment-class-type').innerText = student.level || 'Chưa xếp lớp';
       const levelName = String(student.level || '').toLowerCase();
+      const currentPackage = !levelName
+        ? 'Chưa xếp lớp'
+        : isComboClass(student.level)
+          ? 'Combo'
+          : levelName.includes('full')
+            ? 'Full'
+            : 'Lớp thường';
+      document.getElementById('payment-current-package').innerText = currentPackage;
       document.getElementById('payment-package').value = levelName.includes('combo') ? '36' : levelName.includes('full') ? '24' : '12';
 
       const confirmButton = document.getElementById('btn-confirm-payment');
@@ -863,9 +914,12 @@
     function recalculateCompletedSessions() {
       studentsData.forEach(s => {
         if (!Array.isArray(s.sessions)) s.sessions = Array(40).fill("");
-        s.sessions = s.sessions.map(value => normalizeAttendanceDate(value) || value);
+        s.sessions = s.sessions.map(value => {
+          const entry = parseSessionEntry(value);
+          return serializeSessionEntry(normalizeAttendanceDate(entry.date) || entry.date, entry.note);
+        });
         s.assistants = normalizeAssistants(s.assistants);
-        s.completedSessions = s.sessions.filter(x => x && String(x).trim() !== "").length;
+        s.completedSessions = s.sessions.filter(hasRecordedAttendance).length;
       });
     }
 
@@ -938,35 +992,106 @@
       }
     }
 
-    // Auto-sync điểm danh từng buổi trực tiếp từ Master View
-    async function updateMasterSession(studentIdx, sessionIdx, value) {
+    async function persistStudentSessionValue(studentIdx, sessionIdx, value) {
       const student = studentsData[studentIdx];
-      if (!student) return;
+      if (!student) return false;
       if (!Array.isArray(student.sessions)) student.sessions = Array(40).fill("");
-      
-      const cleanVal = normalizeAttendanceDate(value) || value.trim();
       const previousValue = student.sessions[sessionIdx] || '';
-      student.sessions[sessionIdx] = cleanVal;
+      student.sessions[sessionIdx] = value;
       recalculateCompletedSessions();
       saveAllDataToLocalStorage();
-      
       updateAllViews();
 
       try {
         const result = await apiCall('updateAttendance', {
           studentId: student.id,
           sessionIndex: sessionIdx + 1,
-          value: cleanVal
+          value
         });
         if (result?.status !== 'success') throw new Error(result?.message || 'Google Sheet không xác nhận lưu điểm danh.');
         const refreshed = await refreshDataAfterMutation();
         if (refreshed) showToast(`Đã lưu Buổi ${sessionIdx + 1} cho ${student.name}`);
+        return true;
       } catch (error) {
         student.sessions[sessionIdx] = previousValue;
         recalculateCompletedSessions();
         saveAllDataToLocalStorage();
         updateAllViews();
         showToast(`Không lưu được điểm danh: ${error.message}`, 'error');
+        return false;
+      }
+    }
+
+    // Master View hiển thị giá trị buổi; thao tác sửa được thực hiện trong hộp chỉnh sửa.
+    async function updateMasterSession(studentIdx, sessionIdx, value) {
+      const student = studentsData[studentIdx];
+      if (!student) return;
+      const existing = parseSessionEntry(student.sessions?.[sessionIdx]);
+      const nextDate = normalizeAttendanceDate(value) || String(value || '').trim();
+      await persistStudentSessionValue(studentIdx, sessionIdx, serializeSessionEntry(nextDate, existing.note));
+    }
+
+    function openSessionEditor(studentIdx, sessionIdx) {
+      const student = studentsData[studentIdx];
+      if (!student || !Number.isInteger(sessionIdx) || sessionIdx < 0 || sessionIdx >= 40) return;
+
+      const entry = parseSessionEntry(student.sessions?.[sessionIdx]);
+      activeSessionEditor = { studentIdx, sessionIdx };
+      document.getElementById('session-editor-student').textContent = student.name || student.id || 'Học viên';
+      document.getElementById('session-editor-session').textContent = `Buổi ${sessionIdx + 1} · ${student.level || 'Chưa xếp lớp'}`;
+      document.getElementById('session-editor-date').value = normalizeAttendanceDate(entry.date) || entry.date;
+      document.getElementById('session-editor-note').value = entry.note;
+      const errorMessage = document.getElementById('session-editor-error');
+      errorMessage.textContent = '';
+      errorMessage.classList.add('hidden');
+      document.getElementById('modal-session-editor').classList.remove('hidden');
+    }
+
+    async function saveSessionEditor(event) {
+      event.preventDefault();
+      if (!activeSessionEditor) return;
+
+      const dateInput = document.getElementById('session-editor-date');
+      const dateValue = dateInput.value.trim();
+      const normalizedDate = normalizeAttendanceDate(dateValue);
+      const errorMessage = document.getElementById('session-editor-error');
+      if (dateValue && !normalizedDate) {
+        errorMessage.textContent = 'Ngày không hợp lệ. Nhập theo định dạng dd/mm hoặc dd/mm/yyyy.';
+        errorMessage.classList.remove('hidden');
+        dateInput.focus();
+        return;
+      }
+
+      const { studentIdx, sessionIdx } = activeSessionEditor;
+      const student = studentsData[studentIdx];
+      if (!student) return;
+      const note = document.getElementById('session-editor-note').value.trim();
+      const saveButton = document.getElementById('session-editor-save');
+      saveButton.disabled = true;
+      saveButton.textContent = 'Đang lưu...';
+      errorMessage.textContent = '';
+      errorMessage.classList.add('hidden');
+
+      try {
+        const saved = await persistStudentSessionValue(
+          studentIdx,
+          sessionIdx,
+          serializeSessionEntry(normalizedDate, note)
+        );
+        if (!saved) {
+          errorMessage.textContent = 'Không lưu được thay đổi. Vui lòng kiểm tra kết nối và thử lại.';
+          errorMessage.classList.remove('hidden');
+          return;
+        }
+
+        closeModal('modal-session-editor');
+        activeSessionEditor = null;
+        if (document.getElementById('modal-teacher-student-details')?.classList.contains('hidden') === false) {
+          openTeacherStudentDetails(student.id);
+        }
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Lưu thay đổi';
       }
     }
 
@@ -1051,9 +1176,14 @@
       // Cột D là buổi 1 nên cột cần cập nhật = sessionNumber + 3.
       const targetColumn = sessionNumber + 3;
 
+      const sessionEntry = parseSessionEntry(value);
+      const attendanceValue = serializeSessionEntry(
+        normalizeAttendanceDate(sessionEntry.date) || sessionEntry.date,
+        sessionEntry.note
+      );
       attendanceSheet
         .getRange(attendanceRow, targetColumn)
-        .setValue(normalizeAttendanceDate(value) || value || '');
+        .setValue(attendanceValue);
 
       return {
         status: 'success',
@@ -1086,7 +1216,7 @@
             // --- SẮP XẾP ƯU TIÊN (Đỏ -> Vàng -> Xanh) ---
             filtered.sort((a, b) => {
               const getScore = (s) => {
-                const count = s.sessions ? s.sessions.filter(sess => sess !== "").length : (s.completedSessions || 0);
+                const count = s.sessions ? s.sessions.filter(hasRecordedAttendance).length : (s.completedSessions || 0);
                 const levelName = s.level ? s.level.toLowerCase() : "";
                 
                 if (levelName.includes("combo")) {
@@ -1172,16 +1302,19 @@
 
         for (let b = 0; b < 40; b++) {
           const val = (s.sessions && s.sessions[b]) ? s.sessions[b] : '';
-          const hasValue = val.trim() !== '';
-          const cellBg = hasValue ? 'bg-emerald-50 text-emerald-800 font-bold border-emerald-300' : 'bg-white text-slate-400 hover:bg-slate-100';
+          const entry = parseSessionEntry(val);
+          const displayDate = getSessionDisplayDate(val);
+          const hasAttendance = hasRecordedAttendance(val);
+          const cellBg = hasAttendance ? 'bg-emerald-50 text-emerald-800 font-bold border-emerald-300' : 'bg-white text-slate-400 hover:bg-slate-100';
 
           rowHtml += `
-            <td class="p-1 border-r border-slate-200 text-center relative group/cell">
-              <input type="text" value="${val}" placeholder="--" 
-                onchange="updateMasterSession(${globalIdx}, ${b}, this.value)"
-                class="w-full text-center text-[11px] font-mono py-1 rounded outline-none transition ${cellBg}">
-              <button onclick="quickMasterAttendanceToday(${globalIdx}, ${b})" title="Điểm danh hôm nay (${getFormattedToday()})"
-                class="absolute right-0.5 top-0.5 hidden group-hover/cell:flex items-center justify-center w-4 h-4 bg-emerald-600 text-white rounded text-[9px]">✓</button>
+            <td class="p-1 border-r border-slate-200 text-center">
+              <button type="button" onclick="openSessionEditor(${globalIdx}, ${b})"
+                title="Chỉnh sửa Buổi ${b + 1}${entry.note ? ' · Có ghi chú' : ''}"
+                aria-label="Chỉnh sửa Buổi ${b + 1}"
+                class="w-full min-h-7 text-center text-[11px] font-mono py-1 rounded border outline-none transition ${cellBg}">
+                ${displayDate ? escapeHtml(displayDate) : '--'}${entry.note ? ' 📝' : ''}
+              </button>
             </td>`;
         }
 
@@ -1296,7 +1429,10 @@
         completedSessions: 0,
         feeStatus: String(student.feeStatus || 'Chưa đóng').trim() || 'Chưa đóng'
       };
-      restoredStudent.sessions = restoredStudent.sessions.map(value => normalizeAttendanceDate(value) || value);
+      restoredStudent.sessions = restoredStudent.sessions.map(value => {
+        const entry = parseSessionEntry(value);
+        return serializeSessionEntry(normalizeAttendanceDate(entry.date) || entry.date, entry.note);
+      });
 
       if (!restoredStudent.id) {
         showToast('Không thể khôi phục vì thiếu mã học viên.', 'error');
@@ -1715,15 +1851,64 @@
                 <span class="text-slate-500">Buổi kế tiếp: <strong class="text-slate-800">Buổi ${(s.completedSessions || 0) + 1}</strong></span>
                 <span class="font-bold ${isFeePaid(s) ? 'text-emerald-600' : 'text-red-600'}">${isFeePaid(s) ? 'Đã đóng học phí' : 'Chưa đóng học phí'}</span>
               </div>
+              <div class="flex items-center justify-between rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-xs">
+                <span class="text-slate-500">Điểm danh hôm nay</span>
+                <strong class="${attendedToday ? 'text-emerald-700' : 'text-slate-500'}">${attendedToday ? '✓ Đã điểm danh' : 'Chưa điểm danh'}</strong>
+              </div>
               <div class="flex gap-2">
-                <button onclick="quickMasterAttendanceToday(${globalIdx}, ${s.completedSessions || 0})" ${attendedToday ? 'disabled' : ''} class="flex-1 px-3 py-1.5 ${attendedToday ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white'} font-bold rounded-xl text-xs shadow disabled:shadow-none">
-                  ${attendedToday ? '✓ Đã điểm danh hôm nay' : '✓ Điểm Danh Hôm Nay'}
-                </button>
+                <button onclick="openTeacherStudentDetails('${s.id}')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs shadow">📋 Chi tiết</button>
                 <button onclick="openPaymentPopup('${s.id}')" class="px-3 py-1.5 ${isFeePaid(s) ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-amber-500 hover:bg-amber-600 text-slate-900'} font-bold rounded-xl text-xs shadow">💰 ${isFeePaid(s) ? 'Gia hạn' : 'Đóng học phí'}</button>
               </div>
             </div>
           </div>`;
       }).join('');
+    }
+
+    function openTeacherStudentDetails(studentId) {
+      const student = studentsData.find(s => s.id === studentId);
+      if (!student) return;
+
+      const sessions = Array.isArray(student.sessions) ? student.sessions.slice(0, 40) : [];
+      while (sessions.length < 40) sessions.push('');
+      const completedCount = sessions.filter(hasRecordedAttendance).length;
+
+      document.getElementById('teacher-detail-student-name').textContent = student.name || 'Học viên';
+      document.getElementById('teacher-detail-student-level').textContent = `Mã: ${student.id || '---'} · Lớp: ${student.level || 'Chưa xếp lớp'}`;
+      document.getElementById('teacher-detail-registration-date').textContent = formatDisplayDate(student.regDate) || 'Chưa cập nhật';
+      document.getElementById('teacher-detail-session-count').textContent = `${completedCount} / 40 buổi`;
+
+      const sessionContainer = document.getElementById('teacher-detail-sessions');
+      sessionContainer.replaceChildren();
+      sessions.forEach((value, index) => {
+        const entry = parseSessionEntry(value);
+        const attendedDate = getSessionDisplayDate(value);
+        const sessionCard = document.createElement('button');
+        sessionCard.type = 'button';
+        sessionCard.onclick = () => openSessionEditor(studentsData.findIndex(item => item.id === student.id), index);
+        sessionCard.className = `text-left ${hasRecordedAttendance(value)
+          ? 'rounded-lg border border-emerald-200 bg-emerald-50 p-2'
+          : 'rounded-lg border border-slate-200 bg-white p-2'} hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500`;
+
+        const sessionNumber = document.createElement('p');
+        sessionNumber.className = 'text-[10px] font-bold text-slate-500';
+        sessionNumber.textContent = `Buổi ${index + 1}`;
+
+        const sessionDate = document.createElement('p');
+        sessionDate.className = `mt-1 text-xs font-semibold ${hasRecordedAttendance(value) ? 'text-emerald-800' : 'text-slate-400'}`;
+        sessionDate.textContent = attendedDate ? (normalizeAttendanceDate(attendedDate) || attendedDate) : 'Chưa học';
+
+        sessionCard.append(sessionNumber, sessionDate);
+        if (entry.note) {
+          const note = document.createElement('p');
+          note.className = 'mt-1 truncate text-[10px] text-amber-800';
+          note.textContent = `📝 ${entry.note}`;
+          note.title = entry.note;
+          sessionCard.appendChild(note);
+        }
+        sessionContainer.appendChild(sessionCard);
+      });
+
+      document.getElementById('modal-teacher-student-details').classList.remove('hidden');
     }
 
     function setDirectorAttendanceToday() {
@@ -1767,7 +1952,7 @@
       container.innerHTML = filteredStudents.map(({ student, index }) => {
         const sessions = Array.isArray(student.sessions) ? student.sessions : [];
         const isAttended = hasAttendanceDate(sessions, selectedDate);
-        const nextSessionIndex = sessions.findIndex(value => !String(value || '').trim());
+        const nextSessionIndex = sessions.findIndex(value => !hasRecordedAttendance(value));
         const isSaving = attendanceSavingStudentIds.has(String(student.id));
         const isFull = nextSessionIndex === -1;
         const statusClass = isAttended
@@ -1819,7 +2004,7 @@
       }
 
       const sessionIndex = (Array.isArray(student.sessions) ? student.sessions : [])
-        .findIndex(value => !String(value || '').trim());
+        .findIndex(value => !hasRecordedAttendance(value));
       if (sessionIndex < 0) {
         showToast(`${student.name} đã đủ 40 buổi học.`, 'error');
         return;
@@ -1888,8 +2073,8 @@
       const pct = Math.min(100, Math.round(((student.completedSessions || 0) / 40) * 100));
       document.getElementById('card-progress-bar').style.width = `${pct}%`;
 
-      const lastSess = (student.sessions || []).filter(x => x && x.trim() !== '').pop();
-      document.getElementById('card-student-lastdate').innerText = lastSess ? lastSess : 'Chưa có vết';
+      const lastSess = (student.sessions || []).filter(hasRecordedAttendance).pop();
+      document.getElementById('card-student-lastdate').innerText = lastSess ? getSessionDisplayDate(lastSess) : 'Chưa có vết';
 
       document.getElementById('modal-student-card').classList.remove('hidden');
     }
