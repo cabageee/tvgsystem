@@ -752,14 +752,27 @@
 
       const studentName = document.getElementById('payment-student-name');
       const classType = document.getElementById('payment-class-type');
-      const currentPackageLabel = document.getElementById('payment-current-package');
       const packageSelect = document.getElementById('payment-package');
       const confirmButton = document.getElementById('btn-confirm-payment');
       const errorMessage = document.getElementById('payment-error-message');
       const paymentModal = document.getElementById('modal-payment');
-      if (!studentName || !classType || !currentPackageLabel || !packageSelect || !confirmButton || !errorMessage || !paymentModal) {
+      if (!studentName || !classType || !packageSelect || !confirmButton || !errorMessage || !paymentModal) {
         showToast('Không thể mở hộp thanh toán: giao diện chưa tải đầy đủ.', 'error');
         return;
+      }
+
+      let currentPackageLabel = document.getElementById('payment-current-package');
+      if (!currentPackageLabel) {
+        const packageRow = document.createElement('p');
+        packageRow.className = 'text-sm text-slate-700';
+        packageRow.append('Hình thức hiện tại: ');
+        currentPackageLabel = document.createElement('strong');
+        currentPackageLabel.id = 'payment-current-package';
+        currentPackageLabel.className = 'inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800';
+        packageRow.appendChild(currentPackageLabel);
+        const classTypeRow = classType.closest('p');
+        if (classTypeRow) classTypeRow.insertAdjacentElement('afterend', packageRow);
+        else packageSelect.parentElement.insertAdjacentElement('beforebegin', packageRow);
       }
 
       studentName.innerText = student.name;
