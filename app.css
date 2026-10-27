@@ -643,7 +643,7 @@
     }
     #toast-container {
       right: max(12px, env(safe-area-inset-right));
-      bottom: max(12px, env(safe-area-inset-bottom));
+      bottom: max(24px, calc(24px + env(safe-area-inset-bottom)));
       left: max(12px, env(safe-area-inset-left));
       align-items: flex-end;
     }
@@ -651,6 +651,9 @@
 
     @media (max-width: 639px) {
       html { scroll-padding-top: 112px; }
+      #toast-container {
+        bottom: max(88px, calc(76px + env(safe-area-inset-bottom)));
+      }
       #app-container header {
         padding-top: env(safe-area-inset-top);
       }

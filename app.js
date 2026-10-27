@@ -906,7 +906,9 @@
     }
 
     function showUpcomingBirthdays() {
-      if (!currentUserRole || birthdayNotificationShown || sessionStorage.getItem('TV_GLOBAL_BIRTHDAY_NOTICE_SHOWN') === 'true') return;
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      if (!currentUserRole || birthdayNotificationShown || localStorage.getItem('TV_GLOBAL_BIRTHDAY_NOTICE_DATE') === todayKey) return;
 
       const upcomingBirthdays = studentsData
         .map(student => ({ student, daysUntil: getUpcomingBirthdayDays(student.dob) }))
@@ -939,7 +941,7 @@
       });
 
       birthdayNotificationShown = true;
-      sessionStorage.setItem('TV_GLOBAL_BIRTHDAY_NOTICE_SHOWN', 'true');
+      localStorage.setItem('TV_GLOBAL_BIRTHDAY_NOTICE_DATE', todayKey);
       document.getElementById('modal-birthday-notice').classList.remove('hidden');
     }
 

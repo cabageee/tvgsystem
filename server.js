@@ -7,7 +7,7 @@ const fs = require('fs');
 const app = express();
 app.use(cors({ origin: true, methods: ['GET', 'POST', 'DELETE', 'OPTIONS'] }));
 app.options(/.*/, cors());
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 
 const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzM-2b7qRmgDG1iXBQ_TfTEs5Vpune5U8j-wivC9djnf2xGfYh6Q1msmS98xli8YAK3/exec';
 

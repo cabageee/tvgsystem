@@ -23,6 +23,12 @@ Sau lần truy cập đầu tiên khi có mạng, trình duyệt lưu bộ khung
 
 Giữ các file HTML, `app.js` và `app.css` trong cùng thư mục khi triển khai hoặc di chuyển ứng dụng. Trạng thái đăng nhập được giữ trong `sessionStorage` khi chuyển trang.
 
+## Thông báo sinh nhật
+
+Khi đăng nhập vào website, ứng dụng hiển thị danh sách sinh nhật trong 3 ngày tới. Thông báo chỉ hiện một lần mỗi ngày trên trình duyệt đó; đồng bộ dữ liệu học viên cũng cập nhật danh sách khi website đang mở. Đây là thông báo trong ứng dụng, không phải Web Push, nên không yêu cầu cấp quyền thông báo hay máy chủ Node riêng.
+
+Thông báo nhanh (toast) được đặt cao hơn vùng cạnh dưới trên điện thoại để tránh bị che bởi thanh điều hướng hoặc vùng an toàn của thiết bị.
+
 ## CSS và thư viện xuất file
 
 Tailwind được biên dịch thành `tailwind.css` để các trang không phải tải Tailwind CDN lúc mở trang. Khi thêm hoặc đổi utility class trong HTML/`app.js`, chạy:
