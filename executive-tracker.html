@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#761e2b">
-  <meta name="description" content="Bảng theo dõi phân công, tiến độ và Gantt 12 tuần.">
+  <meta name="description" content="Bảng theo dõi công việc theo quyền Giám đốc, Manager hoặc trợ giảng Thiên Vy Global.">
   <link rel="manifest" href="manifest.webmanifest">
-  <title>Tracker Điều Hành | Thiên Vy Global</title>
+  <title>Gantt Tracker | Thiên Vy Global</title>
   <style>
     :root {
       color-scheme: light;
@@ -22,132 +22,149 @@
       --red: #c23a46;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
-
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--canvas); color: var(--ink); }
     button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
+    [hidden] { display: none !important; }
     .topbar { background: linear-gradient(110deg, var(--wine-dark), var(--wine)); color: white; }
-    .topbar-inner, main { width: min(1440px, 100%); margin: 0 auto; padding: 16px 22px; }
-    .topbar-inner { display: flex; justify-content: space-between; align-items: center; gap: 18px; }
-    .brand { display: inline-flex; align-items: center; gap: 12px; min-width: 0; padding: 5px 12px 5px 5px; border: 1px solid transparent; border-radius: 15px; color: inherit; text-decoration: none; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+    .topbar-inner, main { width: min(1500px, 100%); margin: 0 auto; padding: 14px 22px; }
+    .topbar-inner { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .brand { display: inline-flex; align-items: center; gap: 11px; min-width: 0; padding: 5px 12px 5px 5px; border: 1px solid transparent; border-radius: 15px; color: inherit; text-decoration: none; }
     .brand:hover, .brand:focus-visible { border-color: #ffffff30; background: #ffffff12; }
-    .brand:active { transform: scale(.985); }
     .brand:focus-visible { outline: 3px solid #f5cf7a; outline-offset: 3px; }
-    .brand-mark { width: 46px; height: 46px; display: grid; place-items: center; overflow: hidden; border: 2px solid #e8c66f; border-radius: 50%; background: white; box-shadow: 0 2px 8px #0003; flex: 0 0 auto; }
+    .brand-mark { width: 44px; height: 44px; overflow: hidden; border: 2px solid #e8c66f; border-radius: 50%; background: white; flex: 0 0 auto; }
     .brand-mark img { width: 100%; height: 100%; object-fit: cover; }
-    h1 { margin: 0; font-size: 18px; letter-spacing: .04em; }
-    .subtitle { margin: 4px 0 0; color: #f5d6d8; font-size: 12px; }
-    .top-actions { display: flex; align-items: center; gap: 9px; }
-    .top-link, .button { border: 0; border-radius: 10px; padding: 10px 13px; font-size: 12px; font-weight: 750; text-decoration: none; }
+    h1 { margin: 0; font-size: 16px; letter-spacing: .06em; }
+    .subtitle { margin: 4px 0 0; color: #f5d6d8; font-size: 11px; }
+    .top-actions, .manager-box { display: flex; align-items: center; gap: 8px; }
+    .manager-box { padding: 5px 10px 5px 6px; border: 1px solid #ffffff25; border-radius: 12px; background: #ffffff12; }
+    .manager-avatar { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: var(--wine-dark); background: #f5d894; font-size: 12px; font-weight: 900; }
+    .manager-label { color: #f5d6d8; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+    .manager-name { margin-top: 2px; font-size: 11px; font-weight: 800; }
+    .button, .top-link { border: 0; border-radius: 9px; padding: 9px 12px; font-size: 11px; font-weight: 800; text-decoration: none; }
     .top-link { color: white; background: #ffffff16; }
     .top-link:hover { background: #ffffff28; }
-    .button-primary { color: white; background: var(--wine); box-shadow: 0 4px 10px #761e2b24; }
+    .button-primary { color: white; background: var(--wine); }
     .button-primary:hover { background: var(--wine-dark); }
+    .button-green { color: white; background: #087451; }
+    .button-green:hover { background: #065d41; }
     .button-light { color: #334052; background: #eef1f5; }
     .button-light:hover { background: #e1e6ed; }
     .button-danger { color: #a52835; background: #fff0f1; }
-    main { padding-top: 22px; padding-bottom: 48px; }
-    .backend-note { padding: 13px 15px; border: 1px solid #f0d39a; border-radius: 13px; color: #62420d; background: #fff8e9; font-size: 12px; line-height: 1.55; }
-    .backend-note strong { color: #4a3109; }
-    .backend-note details { margin-top: 7px; }
-    .backend-note summary { width: fit-content; font-weight: 800; cursor: pointer; }
-    .backend-note ol { padding-left: 20px; margin: 9px 0 2px; }
-    .backend-note code { padding: 1px 5px; border-radius: 5px; background: #f7eccc; }
-    .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin: 22px 0 13px; }
-    .section-heading h2 { margin: 0; font-size: 20px; }
-    .section-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
-    .view-switch { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: white; }
-    .view-switch button { padding: 8px 12px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 800; }
-    .view-switch button[aria-pressed="true"] { color: var(--wine); background: #fae9eb; }
-    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-    .kpi { padding: 16px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); box-shadow: 0 3px 12px #17203308; }
-    .kpi-label { color: var(--muted); font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; }
-    .kpi-value { margin-top: 8px; font-size: 25px; font-weight: 850; }
-    .kpi-hint { margin-top: 4px; color: var(--muted); font-size: 11px; }
-    .toolbar { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; margin: 16px 0; padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: white; }
-    .filters { display: grid; grid-template-columns: repeat(4, minmax(135px, 1fr)); gap: 9px; flex: 1; }
+    main { padding-top: 18px; padding-bottom: 48px; }
+    .login-screen { min-height: calc(100vh - 74px); display: grid; place-items: center; padding: 24px; }
+    .login-card { width: min(420px, 100%); padding: 25px; border: 1px solid var(--line); border-radius: 20px; background: white; box-shadow: 0 18px 55px #18223516; }
+    .login-card h2 { margin: 0; font-size: 21px; }
+    .login-card p { color: var(--muted); font-size: 12px; line-height: 1.55; }
     .field { display: grid; gap: 5px; }
-    .field label { color: #5a6678; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .055em; }
-    .field input, .field select, .field textarea { width: 100%; min-width: 0; border: 1px solid #dce2e9; border-radius: 9px; padding: 9px 10px; outline: none; color: var(--ink); background: white; font-size: 12px; }
+    .field label { color: #5a6678; font-size: 10px; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; }
+    .field input, .field select, .field textarea { width: 100%; min-width: 0; border: 1px solid #dce2e9; border-radius: 9px; padding: 10px; outline: none; color: var(--ink); background: white; font-size: 12px; }
+    .field textarea { min-height: 75px; resize: vertical; }
     .field input:focus, .field select:focus, .field textarea:focus { border-color: #b8616b; box-shadow: 0 0 0 3px #761e2b12; }
-    .quarter-field { max-width: 160px; }
-    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 15px; background: white; box-shadow: 0 3px 12px #17203308; }
-    table { width: 100%; min-width: 1080px; border-collapse: separate; border-spacing: 0; text-align: left; }
-    th { position: sticky; top: 0; z-index: 1; padding: 11px 10px; color: #697488; background: #f7f8fa; border-bottom: 1px solid var(--line); font-size: 10px; font-weight: 850; text-transform: uppercase; letter-spacing: .045em; }
-    td { padding: 12px 10px; border-bottom: 1px solid #edf0f4; vertical-align: middle; font-size: 12px; }
+    .login-form { display: grid; gap: 12px; margin-top: 17px; }
+    .form-error { color: #a42b37; font-size: 12px; line-height: 1.4; }
+    .page-heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 14px; }
+    .page-heading h2 { margin: 0; font-size: 20px; }
+    .page-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+    .role-pill { display: inline-flex; padding: 5px 9px; border-radius: 99px; color: var(--wine); background: #fae9eb; font-size: 10px; font-weight: 900; }
+    .manager-config { display: flex; align-items: end; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: white; }
+    .manager-config .field { flex: 1; max-width: 340px; }
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+    .kpi { padding: 13px 15px; border: 1px solid var(--line); border-radius: 13px; background: white; }
+    .kpi-label { color: var(--muted); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+    .kpi-value { margin-top: 6px; font-size: 23px; font-weight: 900; }
+    .toolbar { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 11px; margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: white; }
+    .filters { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: 8px; flex: 1; }
+    .toolbar-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .week-control { display: flex; align-items: center; gap: 6px; }
+    .week-control input { width: 145px; }
+    .week-control .button { padding: 9px 10px; }
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 3px 12px #17203308; }
+    table { width: 100%; min-width: 1260px; border-collapse: separate; border-spacing: 0; text-align: left; }
+    th { position: sticky; top: 0; z-index: 1; padding: 10px 9px; color: #697488; background: #f7f8fa; border-bottom: 1px solid var(--line); font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
+    td { padding: 10px 9px; border-bottom: 1px solid #edf0f4; vertical-align: middle; font-size: 11px; }
     tbody tr:last-child td { border-bottom: 0; }
-    .delegate { font-weight: 800; white-space: nowrap; }
-    .task-name { max-width: 240px; font-weight: 800; line-height: 1.4; }
-    .task-meta { margin-top: 5px; color: var(--muted); font-size: 10px; }
-    .priority, .status-pill { display: inline-flex; border-radius: 999px; padding: 4px 8px; font-size: 10px; font-weight: 850; white-space: nowrap; }
-    .priority-high { color: #a42b37; background: #ffeaec; }
-    .priority-medium { color: #8a5708; background: #fff2d6; }
-    .priority-low { color: #32644d; background: #e7f5ed; }
-    .status-active { color: #17658b; background: #e6f4fb; }
-    .status-overdue { color: #a42b37; background: #ffeaec; }
-    .status-completed { color: #08704f; background: #e3f5ed; }
-    .gantt { min-width: 300px; }
-    .week-labels, .gantt-track { display: grid; grid-template-columns: repeat(12, minmax(12px, 1fr)); gap: 2px; }
-    .week-labels { margin-bottom: 5px; color: #8a94a3; text-align: center; font-size: 8px; }
-    .gantt-track { position: relative; height: 21px; padding: 2px; border-radius: 5px; background: repeating-linear-gradient(90deg, #f1f3f6 0, #f1f3f6 calc(8.333% - 1px), #e5e9ef calc(8.333% - 1px), #e5e9ef 8.333%); }
-    .gantt-bar { z-index: 1; align-self: stretch; border-radius: 4px; background: #6390cc; }
-    .gantt-bar.completed { background: var(--green); }
+    .priority, .status-pill { display: inline-flex; border-radius: 99px; padding: 4px 7px; font-size: 9px; font-weight: 900; white-space: nowrap; }
+    .priority-1 { color: #9c2331; background: #ffe8ea; }
+    .priority-2 { color: #8d5004; background: #fff1d2; }
+    .priority-3 { color: #155e9b; background: #e8f2ff; }
+    .priority-4 { color: #525d6d; background: #edf0f4; }
+    .status-NEW { color: #4b5565; background: #edf0f4; }
+    .status-IN_PROGRESS { color: #17658b; background: #e6f4fb; }
+    .status-PENDING { color: #8a5708; background: #fff2d6; }
+    .status-COMPLETED, .status-APPROVED { color: #08704f; background: #e3f5ed; }
+    .status-REJECTED { color: #a42b37; background: #ffeaec; }
+    .task-title { max-width: 240px; font-weight: 850; line-height: 1.35; }
+    .muted { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.4; }
+    .assignee-list { max-width: 145px; line-height: 1.5; }
+    .gantt { min-width: 270px; }
+    .day-labels, .gantt-track { display: grid; grid-template-columns: repeat(7, minmax(20px, 1fr)); gap: 3px; }
+    .day-labels { margin-bottom: 5px; color: #7d8796; text-align: center; font-size: 8px; font-weight: 800; }
+    .gantt-track { position: relative; height: 20px; padding: 2px; border-radius: 5px; background: repeating-linear-gradient(90deg, #f1f3f6 0, #f1f3f6 calc(14.2857% - 1px), #e2e7ed calc(14.2857% - 1px), #e2e7ed 14.2857%); }
+    .gantt-bar { z-index: 1; align-self: stretch; min-width: 4px; border-radius: 4px; background: #6390cc; }
     .gantt-bar.overdue { background: var(--red); }
-    .reward, .consequence { max-width: 160px; color: #445064; font-size: 11px; line-height: 1.4; }
-    .reward.unlocked { color: var(--green); font-weight: 800; }
-    .check-cell { text-align: center; }
-    .task-check { width: 18px; height: 18px; accent-color: var(--green); vertical-align: middle; }
-    .note-input { width: 170px; min-height: 38px; resize: vertical; border: 1px solid #dce2e9; border-radius: 8px; padding: 7px; font-size: 11px; }
-    .row-actions { display: flex; gap: 5px; }
-    .icon-button { border: 0; border-radius: 8px; padding: 7px 8px; background: #f1f3f6; color: #415064; font-size: 11px; font-weight: 800; }
-    .icon-button:hover { background: #e7ebf0; }
-    .empty-state { padding: 48px 20px; color: var(--muted); text-align: center; }
-    .empty-state strong { display: block; margin-bottom: 6px; color: #364255; font-size: 15px; }
+    .gantt-bar.PENDING { background: #dc9a20; }
+    .gantt-bar.COMPLETED { background: var(--green); }
+    .task-actions { display: flex; flex-wrap: wrap; gap: 5px; min-width: 165px; }
+    .small-button { border: 0; border-radius: 7px; padding: 7px 8px; color: #394659; background: #eef1f5; font-size: 9px; font-weight: 850; }
+    .small-button:hover { background: #dfe5ec; }
+    .small-button.primary { color: white; background: var(--wine); }
+    .small-button.good { color: white; background: #087451; }
+    .small-button.danger { color: #a52835; background: #fff0f1; }
+    .empty-state { padding: 40px 18px; color: var(--muted); text-align: center; }
+    .empty-state strong { display: block; margin-bottom: 5px; color: #364255; }
     .mobile-list { display: none; }
-    .toast { position: fixed; right: 18px; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 10; max-width: min(380px, calc(100vw - 36px)); padding: 12px 15px; border-radius: 11px; color: white; background: #202936; box-shadow: 0 8px 30px #0003; font-size: 12px; }
-    dialog { width: min(620px, calc(100vw - 24px)); max-height: min(90vh, 760px); padding: 0; border: 0; border-radius: 16px; box-shadow: 0 20px 70px #0005; }
+    dialog { width: min(720px, calc(100vw - 24px)); max-height: min(90vh, 780px); padding: 0; border: 0; border-radius: 16px; box-shadow: 0 20px 70px #0005; }
+    dialog.wide { width: min(1080px, calc(100vw - 20px)); }
     dialog::backdrop { background: #101723a8; backdrop-filter: blur(3px); }
-    .dialog-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 19px; color: white; background: var(--wine); }
+    .dialog-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; color: white; background: var(--wine); }
     .dialog-head h2 { margin: 0; font-size: 15px; }
     .dialog-head button { border: 0; color: white; background: transparent; font-size: 25px; }
     .dialog-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 18px; overflow-y: auto; }
     .dialog-form .full { grid-column: 1 / -1; }
-    .dialog-form textarea { min-height: 72px; resize: vertical; }
-    .dialog-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
-    .inline-error { grid-column: 1 / -1; color: #a42b37; font-size: 12px; }
-    @media (max-width: 800px) {
+    .dialog-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
+    .assignee-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-height: 140px; overflow: auto; padding: 8px; border: 1px solid var(--line); border-radius: 9px; }
+    .assignee-option { display: flex; align-items: center; gap: 7px; font-size: 11px; }
+    .schedule-form { padding: 18px; }
+    .schedule-form .dialog-form { padding: 0; }
+    .schedule-table-wrap { max-height: 65vh; overflow: auto; }
+    .schedule-table { min-width: 850px; }
+    .toast { position: fixed; right: 18px; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 10; max-width: min(420px, calc(100vw - 36px)); padding: 12px 15px; border-radius: 11px; color: white; background: #202936; box-shadow: 0 8px 30px #0003; font-size: 12px; }
+    @media (max-width: 900px) {
       .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .filters { grid-template-columns: repeat(2, minmax(125px, 1fr)); }
       .table-wrap { display: none; }
-      .mobile-list { display: grid; gap: 10px; }
-      .task-card { padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 3px 12px #17203308; }
-      .card-heading { display: flex; justify-content: space-between; gap: 10px; }
-      .card-title { font-weight: 850; line-height: 1.4; }
-      .card-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-      .card-detail span { display: block; color: var(--muted); font-size: 10px; }
-      .card-detail strong { display: block; margin-top: 3px; font-size: 11px; }
-      .card-gantt { margin-top: 13px; }
-      .card-note { width: 100%; min-height: 55px; margin-top: 9px; resize: vertical; border: 1px solid #dce2e9; border-radius: 8px; padding: 8px; font-size: 11px; }
-      .card-controls { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
-      .card-reward { margin-top: 10px; color: #445064; font-size: 11px; line-height: 1.45; }
-      .card-reward strong { color: var(--green); }
+      .mobile-list { display: grid; gap: 9px; }
+      .task-card { padding: 13px; border: 1px solid var(--line); border-radius: 13px; background: white; }
+      .card-heading { display: flex; justify-content: space-between; gap: 8px; }
+      .card-title { font-size: 13px; font-weight: 850; line-height: 1.4; }
+      .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+      .card-grid span { display: block; color: var(--muted); font-size: 9px; }
+      .card-grid strong { display: block; margin-top: 3px; font-size: 10px; }
+      .card-gantt { margin-top: 12px; }
+      .card-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+      .card-actions .small-button { flex: 1; }
+      .card-note { width: 100%; margin-top: 9px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 11px; }
     }
-    @media (max-width: 520px) {
-      .topbar-inner, main { padding-right: 14px; padding-left: 14px; }
+    @media (max-width: 560px) {
+      .topbar-inner, main { padding-right: 13px; padding-left: 13px; }
       .topbar-inner { align-items: flex-start; }
       .brand-mark { width: 36px; height: 36px; }
-      h1 { font-size: 14px; }
-      .subtitle { max-width: 195px; font-size: 10px; }
-      .top-link { padding: 8px 9px; font-size: 10px; }
-      .top-actions { flex-direction: column; align-items: flex-end; }
-      .section-heading { align-items: flex-start; flex-direction: column; }
-      .toolbar { align-items: stretch; }
+      h1 { font-size: 13px; }
+      .subtitle { font-size: 9px; }
+      .top-actions { justify-content: end; flex-wrap: wrap; }
+      .manager-box { display: none; }
+      .top-link { padding: 8px; font-size: 9px; }
       .filters { grid-template-columns: 1fr 1fr; }
-      .quarter-field { max-width: none; }
-      .toolbar > .button { width: 100%; }
+      .toolbar { align-items: stretch; }
+      .toolbar-actions > .button { flex: 1; }
+      .week-control input { width: 125px; }
       .dialog-form { grid-template-columns: 1fr; padding: 14px; }
-      .dialog-form .full, .dialog-actions, .inline-error { grid-column: auto; }
+      .dialog-form .full, .dialog-actions { grid-column: auto; }
+      .manager-config { align-items: stretch; flex-direction: column; }
+      .manager-config .field { max-width: none; }
+      .assignee-options { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -156,381 +173,617 @@
     <div class="topbar-inner">
       <a class="brand" href="index.html" aria-label="Thiên Vy Global — về trang chủ">
         <div class="brand-mark"><img src="Logo Thien Vy.png" alt=""></div>
-        <div>
-          <h1>THIÊN VY GLOBAL</h1>
-          <p class="subtitle">Tracker điều hành · Tiến độ 12 tuần</p>
-        </div>
+        <div><h1>THIÊN VY GLOBAL</h1><p class="subtitle">Gantt task tracker · 7 ngày</p></div>
       </a>
       <div class="top-actions">
-        <a class="top-link" href="index.html">← Về hệ thống</a>
-        <button id="export-button" class="top-link" type="button">Xuất dữ liệu</button>
+        <div id="manager-box" class="manager-box" hidden><div id="manager-avatar" class="manager-avatar">—</div><div><div class="manager-label">Manager hiện tại</div><div id="manager-name" class="manager-name">Chưa ủy quyền</div></div></div>
+        <button id="schedules-button" class="top-link" type="button" hidden>Xem lịch nghỉ & tăng ca</button>
+        <button id="logout-button" class="top-link" type="button" hidden>Đăng xuất</button>
       </div>
     </div>
   </header>
 
   <main>
-    <aside class="backend-note">
-      <strong>Chế độ hiện tại: lưu trên trình duyệt này.</strong> Chưa có đồng bộ giữa người dùng hoặc thiết bị. Không dùng dữ liệu này làm phân quyền bảo mật hay lưu thông tin nhạy cảm.
-      <details>
-        <summary>Cần backend thế nào để dùng chung?</summary>
-        <ol>
-          <li>Tạo tab Google Sheet riêng, ví dụ <code>ExecutiveTasks</code>, với cột mã, người phụ trách, nội dung, ưu tiên, ngày bắt đầu/hạn, trạng thái, ghi chú, phần thưởng và hành động xử lý.</li>
-          <li>Mở rộng Apps Script đang kết nối hệ thống bằng các API đọc danh sách, tạo/cập nhật/xóa nhiệm vụ. Kiểm tra dữ liệu và người dùng ở phía máy chủ trước khi ghi Sheet.</li>
-          <li>Gắn quyền vào tài khoản đã xác thực (Admin được quản lý; người thực hiện chỉ cập nhật nhiệm vụ được giao). Không coi nút chuyển Master/User hay giá trị trong trình duyệt là cơ chế bảo mật.</li>
-          <li>Triển khai phiên bản Apps Script mới, sau đó đổi trang này từ <code>localStorage</code> sang gọi API. Google Sheet/Apps Script đã dùng được cho dữ liệu học viên, nhưng cần bổ sung các API và quyền riêng cho Tracker.</li>
-        </ol>
-        GitHub Pages chỉ host giao diện tĩnh; Apps Script có thể làm backend nhẹ cho bản đầu. Nếu cần phân quyền mạnh, nhiều người dùng đồng thời và nhật ký thay đổi, nên dùng backend có đăng nhập và cơ sở dữ liệu (ví dụ Firebase/Supabase hoặc API riêng).
-      </details>
-    </aside>
-
-    <section class="section-heading">
-      <div>
-        <h2>Bảng tiến độ</h2>
-        <p id="range-label">Lịch trình 12 tuần</p>
-      </div>
-      <div class="view-switch" role="group" aria-label="Chế độ xem">
-        <button id="master-view-button" type="button" aria-pressed="true">Master View</button>
-        <button id="user-view-button" type="button" aria-pressed="false">User View</button>
+    <section id="login-screen" class="login-screen">
+      <div class="login-card">
+        <span class="role-pill">ĐĂNG NHẬP TRACKER</span>
+        <h2 id="login-title" style="margin-top:12px">Bảng theo dõi công việc</h2>
+        <p id="login-description">Đăng nhập từ lối vào dành riêng cho vai trò của bạn.</p>
+        <form id="login-form" class="login-form">
+          <div class="field"><label for="login-name">Tài khoản</label><input id="login-name" required autocomplete="username" placeholder="Tên trợ giảng hoặc director"></div>
+          <div class="field"><label for="login-password">Mật khẩu</label><input id="login-password" type="password" required autocomplete="current-password"></div>
+          <p id="login-error" class="form-error" hidden></p>
+          <button id="login-submit" class="button button-primary" type="submit">Đăng nhập</button>
+        </form>
       </div>
     </section>
 
-    <section class="kpis" aria-label="Tổng quan">
-      <article class="kpi"><div class="kpi-label">Tổng nhiệm vụ</div><div id="kpi-total" class="kpi-value">0</div><div class="kpi-hint">Trong phạm vi bộ lọc</div></article>
-      <article class="kpi"><div class="kpi-label">Đã hoàn thành</div><div id="kpi-completed" class="kpi-value">0</div><div class="kpi-hint">Đã đánh dấu hoàn tất</div></article>
-      <article class="kpi"><div class="kpi-label">Đang thực hiện</div><div id="kpi-active" class="kpi-value">0</div><div class="kpi-hint">Chưa hoàn thành, còn hạn</div></article>
-      <article class="kpi"><div class="kpi-label">Quá hạn</div><div id="kpi-overdue" class="kpi-value">0</div><div class="kpi-hint">Chưa hoàn thành sau hạn</div></article>
-    </section>
-
-    <section class="toolbar" aria-label="Lọc nhiệm vụ">
-      <div class="filters">
-        <div class="field"><label for="filter-delegate">Người phụ trách</label><select id="filter-delegate"><option value="">Tất cả</option></select></div>
-        <div class="field"><label for="filter-status">Trạng thái</label><select id="filter-status"><option value="">Tất cả</option><option value="completed">Hoàn thành</option><option value="active">Đang thực hiện</option><option value="overdue">Quá hạn</option></select></div>
-        <div class="field"><label for="filter-priority">Ưu tiên</label><select id="filter-priority"><option value="">Tất cả</option><option value="High">Cao</option><option value="Medium">Trung bình</option><option value="Low">Thấp</option></select></div>
-        <div class="field quarter-field"><label for="quarter-start">Ngày bắt đầu 12 tuần</label><input id="quarter-start" type="date"></div>
+    <section id="tracker-screen" hidden>
+      <div class="page-heading">
+        <div><span id="role-pill" class="role-pill"></span><h2 id="tracker-title" style="margin-top:8px">Tracking Gantt Chart</h2><p id="identity-line">—</p></div>
+        <div class="week-control">
+          <button id="previous-week" class="button button-light" type="button" aria-label="Tuần trước">‹</button>
+          <input id="week-start" type="date" aria-label="Ngày đầu tuần">
+          <button id="next-week" class="button button-light" type="button" aria-label="Tuần sau">›</button>
+          <button id="this-week" class="button button-light" type="button">Tuần này</button>
+        </div>
       </div>
-      <button id="add-task-button" class="button button-primary" type="button">＋ Giao nhiệm vụ</button>
-    </section>
 
-    <section class="table-wrap" aria-label="Bảng nhiệm vụ">
-      <table>
-        <thead id="table-head"></thead>
-        <tbody id="task-table-body"></tbody>
-      </table>
+      <section id="manager-config" class="manager-config" hidden>
+        <div class="field"><label for="manager-select">Ủy quyền trợ giảng làm Manager</label><select id="manager-select"><option value="">Không có Manager</option></select></div>
+        <button id="save-manager" class="button button-primary" type="button">Lưu phân quyền</button>
+      </section>
+
+      <section class="kpis" aria-label="Tổng quan nhiệm vụ">
+        <article class="kpi"><div class="kpi-label">Tổng nhiệm vụ</div><div id="kpi-total" class="kpi-value">0</div></article>
+        <article class="kpi"><div class="kpi-label">Đang chờ duyệt</div><div id="kpi-pending" class="kpi-value">0</div></article>
+        <article class="kpi"><div class="kpi-label">Quá hạn</div><div id="kpi-overdue" class="kpi-value">0</div></article>
+        <article class="kpi"><div class="kpi-label">Tổng sao tích lũy</div><div id="kpi-stars" class="kpi-value">0</div></article>
+      </section>
+
+      <section class="toolbar" aria-label="Bộ lọc và thao tác">
+        <div class="filters">
+          <div class="field"><label for="filter-priority">Priority</label><select id="filter-priority"><option value="">Tất cả</option><option value="1">Priority 1</option><option value="2">Priority 2</option><option value="3">Priority 3</option><option value="4">Priority 4</option></select></div>
+          <div class="field"><label for="filter-teacher">Trợ giảng</label><select id="filter-teacher"><option value="">Tất cả</option></select></div>
+          <div class="field"><label for="filter-status">Trạng thái</label><select id="filter-status"><option value="">Tất cả</option><option value="NEW">Mới giao</option><option value="IN_PROGRESS">Đang làm</option><option value="PENDING">Chờ duyệt</option><option value="COMPLETED">Hoàn thành</option><option value="OVERDUE">Quá hạn</option></select></div>
+          <div class="field"><label for="task-search">Tìm nhiệm vụ</label><input id="task-search" placeholder="Tên việc, người giao..."></div>
+        </div>
+        <div class="toolbar-actions">
+          <button id="create-task" class="button button-primary" type="button" hidden>＋ Giao nhiệm vụ</button>
+          <button id="submit-schedule" class="button button-light" type="button" hidden>＋ Đăng ký nghỉ/tăng ca</button>
+        </div>
+      </section>
+
+      <section class="table-wrap" aria-label="Bảng Gantt task">
+        <table>
+          <thead id="task-head"></thead>
+          <tbody id="task-body"></tbody>
+        </table>
+      </section>
+      <section id="mobile-list" class="mobile-list" aria-label="Danh sách task"></section>
     </section>
-    <section id="mobile-list" class="mobile-list" aria-label="Danh sách nhiệm vụ"></section>
   </main>
 
   <dialog id="task-dialog">
-    <div class="dialog-head"><h2 id="dialog-title">Giao nhiệm vụ</h2><button id="close-dialog" type="button" aria-label="Đóng">&times;</button></div>
+    <div class="dialog-head"><h2 id="task-dialog-title">Tạo task</h2><button type="button" data-close="task-dialog" aria-label="Đóng">&times;</button></div>
     <form id="task-form" class="dialog-form">
-      <input id="task-id" type="hidden">
-      <div class="field"><label for="task-delegate">Người phụ trách / vai trò</label><input id="task-delegate" required maxlength="80" placeholder="Ví dụ: CFO — Nguyễn An"></div>
-      <div class="field"><label for="task-priority">Ưu tiên</label><select id="task-priority"><option value="High">Cao</option><option value="Medium">Trung bình</option><option value="Low">Thấp</option></select></div>
-      <div class="field full"><label for="task-title">Tên nhiệm vụ</label><input id="task-title" required maxlength="180" placeholder="Mục tiêu / công việc cần hoàn thành"></div>
+      <div class="field full"><label for="task-title">Tên task</label><input id="task-title" required maxlength="300"></div>
+      <div id="assignee-field" class="field full"><label>Giao cho trợ giảng</label><div id="assignee-options" class="assignee-options"></div></div>
       <div class="field"><label for="task-start">Ngày bắt đầu</label><input id="task-start" type="date" required></div>
-      <div class="field"><label for="task-deadline">Hạn hoàn thành</label><input id="task-deadline" type="date" required></div>
-      <div class="field"><label for="task-reward">Phần thưởng khi hoàn thành</label><input id="task-reward" maxlength="180" placeholder="Có thể để trống"></div>
-      <div class="field"><label for="task-consequence">Hành động nếu quá hạn</label><input id="task-consequence" maxlength="180" placeholder="Ví dụ: họp rà soát tiến độ"></div>
-      <div class="field full"><label for="task-note">Ghi chú ban đầu</label><textarea id="task-note" maxlength="1000" placeholder="Cập nhật, vướng mắc hoặc thông tin cần lưu"></textarea></div>
-      <p id="form-error" class="inline-error" hidden></p>
-      <div class="dialog-actions">
-        <button id="cancel-dialog" class="button button-light" type="button">Hủy</button>
-        <button class="button button-primary" type="submit">Lưu nhiệm vụ</button>
-      </div>
+      <div class="field"><label for="task-deadline">Deadline</label><input id="task-deadline" type="date" required></div>
+      <div class="field"><label for="task-time">Giờ deadline</label><input id="task-time" type="time" required></div>
+      <div class="field"><label for="task-punishment">Phạt khi vi phạm</label><input id="task-punishment" maxlength="300" placeholder="Cảnh cáo, trừ điểm KPI..."></div>
+      <div class="field full"><label for="task-note">Chi tiết / ghi chú</label><textarea id="task-note" maxlength="2000"></textarea></div>
+      <p id="task-error" class="form-error full" hidden></p>
+      <div class="dialog-actions"><button class="button button-light" type="button" data-close="task-dialog">Hủy</button><button id="task-save" class="button button-primary" type="submit">Tạo task</button></div>
     </form>
+  </dialog>
+
+  <dialog id="schedule-dialog">
+    <div class="dialog-head"><h2>Đăng ký nghỉ / tăng ca</h2><button type="button" data-close="schedule-dialog" aria-label="Đóng">&times;</button></div>
+    <form id="schedule-form" class="dialog-form">
+      <div class="field"><label for="schedule-type">Loại đăng ký</label><select id="schedule-type"><option value="LEAVE">Xin nghỉ</option><option value="OVERTIME">Đăng ký tăng ca</option></select></div>
+      <div class="field"><label for="schedule-date">Ngày</label><input id="schedule-date" type="date" required></div>
+      <div class="field"><label for="schedule-start">Giờ bắt đầu</label><input id="schedule-start" type="time" required></div>
+      <div class="field"><label for="schedule-end">Giờ kết thúc</label><input id="schedule-end" type="time" required></div>
+      <div class="field full"><label for="schedule-reason">Lý do / nội dung</label><textarea id="schedule-reason" required maxlength="1000"></textarea></div>
+      <p id="schedule-error" class="form-error full" hidden></p>
+      <div class="dialog-actions"><button class="button button-light" type="button" data-close="schedule-dialog">Hủy</button><button class="button button-primary" type="submit">Gửi đơn</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="schedule-list-dialog" class="wide">
+    <div class="dialog-head"><h2>Lịch nghỉ & tăng ca</h2><div class="top-actions"><button id="export-schedules" class="top-link" type="button">Export Excel</button><button type="button" data-close="schedule-list-dialog" aria-label="Đóng">&times;</button></div></div>
+    <div class="schedule-table-wrap">
+      <table class="schedule-table"><thead><tr><th>Trợ giảng</th><th>Loại đăng ký</th><th>Ngày</th><th>Giờ</th><th>Ghi chú / lý do</th><th>Trạng thái</th><th>Duyệt</th></tr></thead><tbody id="schedule-body"></tbody></table>
+    </div>
   </dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script>
     (() => {
-      const STORAGE_KEY = 'TV_GLOBAL_EXECUTIVE_TRACKER_V1';
-      const RANGE_KEY = `${STORAGE_KEY}_RANGE`;
-      const DAY = 24 * 60 * 60 * 1000;
-      const today = new Date();
-      const startOfThisWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const mondayOffset = (startOfThisWeek.getDay() + 6) % 7;
-      startOfThisWeek.setDate(startOfThisWeek.getDate() - mondayOffset);
-      const toDateInput = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      const defaultRangeStart = toDateInput(startOfThisWeek);
-      const sampleTasks = [
-        { id: 'demo-1', delegate: 'CFO', title: 'Hoàn thiện kế hoạch ngân sách quý', priority: 'High', start: defaultRangeStart, deadline: toDateInput(new Date(startOfThisWeek.getTime() + 28 * DAY)), completed: false, note: 'Bổ sung dự báo chi phí và các giả định.', reward: 'Ghi nhận hoàn thành mục tiêu quý', consequence: 'Rà soát tiến độ cùng quản lý' },
-        { id: 'demo-2', delegate: 'CTO', title: 'Chuẩn hóa quy trình sao lưu dữ liệu', priority: 'High', start: toDateInput(new Date(startOfThisWeek.getTime() + 7 * DAY)), deadline: toDateInput(new Date(startOfThisWeek.getTime() + 42 * DAY)), completed: false, note: 'Đang thu thập yêu cầu từ các nhóm.', reward: 'Ưu tiên ngân sách cải tiến', consequence: 'Lập kế hoạch khắc phục' },
-        { id: 'demo-3', delegate: 'COO', title: 'Cải tiến quy trình vận hành nội bộ', priority: 'Medium', start: toDateInput(new Date(startOfThisWeek.getTime() + 14 * DAY)), deadline: toDateInput(new Date(startOfThisWeek.getTime() + 63 * DAY)), completed: false, note: '', reward: 'Biểu dương trong buổi tổng kết', consequence: 'Họp rà soát các vướng mắc' }
-      ];
-      let tasks = loadTasks();
-      let toastTimer;
-
+      const API_URL = 'https://script.google.com/macros/s/AKfycbzM-2b7qRmgDG1iXBQ_TfTEs5Vpune5U8j-wivC9djnf2xGfYh6Q1msmS98xli8YAK3/exec';
+      const TOKEN_KEY = 'TV_GLOBAL_TRACKER_TOKEN';
+      const entryMode = new URLSearchParams(window.location.search).get('view') || '';
+      const entryRoles = { director: 'director', manager: 'manager', teacher: 'teacher' };
+      const entryTitles = {
+        director: 'Tracking Giám đốc',
+        manager: 'Tracking Manager',
+        teacher: 'Task của tôi'
+      };
+      const DAY = 86400000;
+      const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
       const $ = id => document.getElementById(id);
+      let token = '';
+      let session = null;
+      let tasks = [];
+      let requests = [];
+      let teachers = [];
+      let manager = '';
+      let toastTimer;
       const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
       const localDate = value => {
-        const [year, month, day] = String(value).split('-').map(Number);
-        return year && month && day ? new Date(year, month - 1, day) : null;
+        const parts = String(value || '').slice(0, 10).split('-').map(Number);
+        return parts.length === 3 && parts[0] && parts[1] && parts[2] ? new Date(parts[0], parts[1] - 1, parts[2]) : null;
       };
+      const dateInputValue = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const dateLabel = value => {
         const date = localDate(value);
         return date ? date.toLocaleDateString('vi-VN') : '—';
       };
-      const currentStatus = task => {
-        if (task.completed) return 'completed';
-        const deadline = localDate(task.deadline);
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        return deadline && deadline < now ? 'overdue' : 'active';
+      const weekMonday = date => {
+        const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+        return monday;
       };
-      const statusText = status => ({ completed: 'Hoàn thành', active: 'Đang thực hiện', overdue: 'Quá hạn' })[status];
-      const priorityText = priority => ({ High: 'Cao', Medium: 'Trung bình', Low: 'Thấp' })[priority] || priority;
-
-      function loadTasks() {
-        try {
-          const saved = localStorage.getItem(STORAGE_KEY);
-          if (!saved) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleTasks));
-            return sampleTasks;
-          }
-          const parsed = JSON.parse(saved);
-          if (!Array.isArray(parsed)) throw new Error('Dữ liệu nhiệm vụ không hợp lệ.');
-          return parsed;
-        } catch (error) {
-          console.error('Không đọc được dữ liệu Tracker:', error);
-          setTimeout(() => notify('Không đọc được dữ liệu đã lưu. Có thể bộ nhớ trình duyệt bị chặn.'), 0);
-          return [];
-        }
-      }
-
-      function persist(nextTasks = tasks) {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
-        } catch (error) {
-          console.error('Không thể lưu dữ liệu Tracker:', error);
-          notify('Không lưu được dữ liệu. Kiểm tra dung lượng hoặc cài đặt trình duyệt.');
-          return false;
-        }
-        return true;
-      }
+      const actorRole = () => session?.actor?.role || '';
+      const statusLabel = status => ({ NEW: 'Mới giao', IN_PROGRESS: 'Đang làm', PENDING: 'Chờ duyệt', COMPLETED: 'Hoàn thành', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối', OVERDUE: 'Quá hạn' })[status] || status;
+      const roleLabel = role => ({ director: 'Giám đốc', manager: 'Manager', teacher: 'Trợ giảng' })[role] || role;
+      const initials = name => String(name || '—').trim().split(/\s+/).slice(-2).map(part => part[0] || '').join('').toLocaleUpperCase('vi');
 
       function notify(message) {
-        const toast = $('toast');
-        toast.textContent = message;
-        toast.hidden = false;
+        $('toast').textContent = message;
+        $('toast').hidden = false;
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => { toast.hidden = true; }, 3200);
+        toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500);
       }
 
-      function getFilteredTasks() {
-        const delegate = $('filter-delegate').value;
-        const status = $('filter-status').value;
-        const priority = $('filter-priority').value;
-        return tasks.filter(task =>
-          (!delegate || task.delegate === delegate)
-          && (!status || currentStatus(task) === status)
-          && (!priority || task.priority === priority)
-        );
+      function apiCall(action, payload = {}) {
+        return new Promise((resolve, reject) => {
+          const callbackName = `trackerApi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+          const script = document.createElement('script');
+          let timeout;
+          const cleanup = () => {
+            clearTimeout(timeout);
+            delete window[callbackName];
+            script.remove();
+          };
+          window[callbackName] = result => {
+            cleanup();
+            if (!result || result.status !== 'success') reject(new Error(result?.message || 'Apps Script trả về phản hồi không hợp lệ.'));
+            else resolve(result);
+          };
+          script.onerror = () => { cleanup(); reject(new Error('Không kết nối được Apps Script. Kiểm tra URL /exec và deployment Web app.')); };
+          const query = new URLSearchParams({ callback: callbackName, data: JSON.stringify({ action, ...payload }), _: String(Date.now()) });
+          script.async = true;
+          script.src = `${API_URL}?${query}`;
+          timeout = setTimeout(() => { cleanup(); reject(new Error('Apps Script không phản hồi. Kiểm tra quyền truy cập deployment và kết nối mạng.')); }, 20000);
+          document.head.appendChild(script);
+        });
       }
 
-      function ganttMarkup(task) {
-        const rangeStart = localDate($('quarter-start').value);
-        const rangeEnd = rangeStart ? new Date(rangeStart.getTime() + 84 * DAY) : null;
-        const taskStart = localDate(task.start);
-        const deadline = localDate(task.deadline);
-        let bar = '';
-        if (rangeStart && rangeEnd && taskStart && deadline) {
-          const clippedStart = Math.max(taskStart.getTime(), rangeStart.getTime());
-          const clippedEnd = Math.min(deadline.getTime(), rangeEnd.getTime() - DAY);
-          if (clippedEnd >= clippedStart) {
-            const firstWeek = Math.max(0, Math.floor((clippedStart - rangeStart.getTime()) / (7 * DAY)));
-            const lastWeek = Math.min(11, Math.floor((clippedEnd - rangeStart.getTime()) / (7 * DAY)));
-            bar = `<span class="gantt-bar ${currentStatus(task)}" style="grid-column:${firstWeek + 1} / ${lastWeek + 2}" title="${escapeHtml(dateLabel(task.start))} – ${escapeHtml(dateLabel(task.deadline))}"></span>`;
+      function getStatus(task) {
+        if (task.status !== 'COMPLETED') {
+          const deadline = localDate(task.deadline);
+          if (deadline) {
+            const [hour, minute] = String(task.deadlineTime || '23:59').split(':').map(Number);
+            deadline.setHours(hour || 0, minute || 0, 0, 0);
+            if (deadline < new Date() && task.status !== 'PENDING') return 'OVERDUE';
           }
         }
-        const labels = Array.from({ length: 12 }, (_, index) => `<span>W${index + 1}</span>`).join('');
-        return `<div class="gantt"><div class="week-labels">${labels}</div><div class="gantt-track">${bar}</div></div>`;
+        return task.status;
       }
 
-      function renderFilters() {
-        const select = $('filter-delegate');
-        const current = select.value;
-        const names = [...new Set(tasks.map(task => task.delegate).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
-        select.innerHTML = '<option value="">Tất cả</option>' + names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
-        if (names.includes(current)) select.value = current;
+      function dayGantt(task) {
+        const monday = localDate($('week-start').value);
+        if (!monday) return `<div class="gantt"><div class="day-labels">${WEEKDAYS.map(day => `<span>${day}</span>`).join('')}</div><div class="gantt-track"></div></div>`;
+        const sunday = new Date(monday.getTime() + 6 * DAY);
+        const start = localDate(task.startDate);
+        const end = localDate(task.deadline);
+        let bar = '';
+        if (start && end && end >= monday && start <= sunday) {
+          const first = Math.max(0, Math.floor((Math.max(start, monday) - monday) / DAY));
+          const last = Math.min(6, Math.floor((Math.min(end, sunday) - monday) / DAY));
+          const status = getStatus(task);
+          bar = `<span class="gantt-bar ${status}" style="grid-column:${first + 1} / ${last + 2}" title="${escapeHtml(dateLabel(task.startDate))}–${escapeHtml(dateLabel(task.deadline))}"></span>`;
+        }
+        const dayLabels = WEEKDAYS.map((day, index) => {
+          const date = new Date(monday.getTime() + index * DAY);
+          return `<span>${day}<br>${date.getDate()}</span>`;
+        }).join('');
+        return `<div class="gantt"><div class="day-labels">${dayLabels}</div><div class="gantt-track">${bar}</div></div>`;
+      }
+
+      function visibleTasks() {
+        const priority = $('filter-priority').value;
+        const teacher = $('filter-teacher').value;
+        const status = $('filter-status').value;
+        const query = $('task-search').value.trim().toLocaleLowerCase('vi');
+        return tasks.filter(task => {
+          const currentStatus = getStatus(task);
+          const matchesStatus = !status || (status === 'OVERDUE' ? currentStatus === 'OVERDUE' : task.status === status);
+          const personText = [...(task.assignees || []), task.createdBy].join(' ').toLocaleLowerCase('vi');
+          const content = `${task.title} ${task.note} ${personText}`.toLocaleLowerCase('vi');
+          return (!priority || String(task.priority) === priority)
+            && (!teacher || (task.assignees || []).includes(teacher))
+            && matchesStatus
+            && (!query || content.includes(query));
+        }).sort((a, b) => Number(a.priority) - Number(b.priority)
+          || String(a.deadline || '').localeCompare(String(b.deadline || ''))
+          || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+      }
+
+      function taskActionMarkup(task) {
+        const role = actorRole();
+        const assigned = (task.assignees || []).includes(session.actor.name);
+        const buttons = [];
+        if (assigned && role !== 'director' && task.status === 'NEW') buttons.push(`<button class="small-button primary" data-task-action="accept" data-id="${escapeHtml(task.id)}">Nhận việc</button>`);
+        if (assigned && role !== 'director' && task.status === 'IN_PROGRESS') buttons.push(`<button class="small-button good" data-task-action="submit" data-id="${escapeHtml(task.id)}">Yêu cầu hoàn thành</button>`);
+        if (assigned && role !== 'director' && ['NEW', 'IN_PROGRESS'].includes(task.status)) buttons.push(`<button class="small-button" data-task-action="note" data-id="${escapeHtml(task.id)}">Cập nhật ghi chú</button>`);
+        if (['director', 'manager'].includes(role) && task.status === 'PENDING') {
+          buttons.push(`<button class="small-button good" data-task-action="approve" data-id="${escapeHtml(task.id)}">Duyệt</button>`);
+          buttons.push(`<button class="small-button danger" data-task-action="reject" data-id="${escapeHtml(task.id)}">Từ chối</button>`);
+        }
+        return buttons.length ? `<div class="task-actions">${buttons.join('')}</div>` : `<span class="muted">Không có thao tác</span>`;
       }
 
       function render() {
-        renderFilters();
-        const filtered = getFilteredTasks();
-        const statuses = filtered.map(currentStatus);
-        $('kpi-total').textContent = filtered.length;
-        $('kpi-completed').textContent = statuses.filter(status => status === 'completed').length;
-        $('kpi-active').textContent = statuses.filter(status => status === 'active').length;
-        $('kpi-overdue').textContent = statuses.filter(status => status === 'overdue').length;
-        const rangeStart = localDate($('quarter-start').value);
-        if (rangeStart) {
-          const rangeEnd = new Date(rangeStart.getTime() + 83 * DAY);
-          $('range-label').textContent = `12 tuần: ${dateLabel(toDateInput(rangeStart))} – ${dateLabel(toDateInput(rangeEnd))}`;
-        }
-        const isMaster = document.body.dataset.view !== 'user';
-        $('master-view-button').setAttribute('aria-pressed', String(isMaster));
-        $('user-view-button').setAttribute('aria-pressed', String(!isMaster));
-        $('add-task-button').hidden = !isMaster;
-        $('table-head').innerHTML = isMaster
-          ? '<tr><th>Phân công</th><th>Nhiệm vụ & ưu tiên</th><th>Hạn</th><th>Gantt 12 tuần</th><th>Phần thưởng</th><th>Hành động nếu quá hạn</th><th>Thao tác</th></tr>'
-          : '<tr><th>Phân công</th><th>Nhiệm vụ & ưu tiên</th><th>Hạn</th><th>Gantt 12 tuần</th><th>Hoàn thành</th><th>Ghi chú</th></tr>';
+        const role = actorRole();
+        const filtered = visibleTasks();
+        $('role-pill').textContent = roleLabel(role);
+        $('tracker-title').textContent = entryTitles[entryMode];
+        $('identity-line').textContent = `Đăng nhập: ${session.actor.name}`;
+        $('manager-box').hidden = role === 'teacher';
+        $('manager-name').textContent = manager || 'Chưa ủy quyền';
+        $('manager-avatar').textContent = manager ? initials(manager) : '—';
+        $('manager-config').hidden = role !== 'director';
+        $('create-task').hidden = role === 'teacher' && false;
+        $('create-task').textContent = role === 'director' ? '＋ Giao nhiệm vụ' : role === 'manager' ? '＋ Giao / tự tạo task' : '＋ Tạo task cá nhân';
+        $('submit-schedule').hidden = role === 'director';
+        $('schedules-button').hidden = role === 'teacher';
+        $('task-head').innerHTML = '<tr><th>Priority</th><th>Tên task & trạng thái</th><th>Người phân công</th><th>Trợ giảng được giao</th><th>Deadline & phạt / sao</th><th>Gantt 7 ngày · T2–CN</th><th>Hành động</th></tr>';
+        const overdueCount = tasks.filter(task => getStatus(task) === 'OVERDUE').length;
+        $('kpi-total').textContent = tasks.length;
+        $('kpi-pending').textContent = tasks.filter(task => task.status === 'PENDING').length;
+        $('kpi-overdue').textContent = overdueCount;
+        $('kpi-stars').textContent = tasks.reduce((sum, task) => sum + (Number(task.stars) || 0), 0);
+        const managerSelect = $('manager-select');
+        if (managerSelect.dataset.loaded !== 'true') {
+          managerSelect.innerHTML = '<option value="">Không có Manager</option>' + teachers.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+          managerSelect.value = manager;
+          managerSelect.dataset.loaded = 'true';
+        } else if (managerSelect.value !== manager) managerSelect.value = manager;
+        const teacherFilter = $('filter-teacher');
+        const selectedTeacher = teacherFilter.value;
+        teacherFilter.innerHTML = '<option value="">Tất cả</option>' + teachers.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+        if (teachers.includes(selectedTeacher)) teacherFilter.value = selectedTeacher;
 
         if (!filtered.length) {
-          $('task-table-body').innerHTML = `<tr><td colspan="7"><div class="empty-state"><strong>Chưa có nhiệm vụ phù hợp</strong>Thử đổi bộ lọc hoặc giao nhiệm vụ mới.</div></td></tr>`;
-          $('mobile-list').innerHTML = '<div class="empty-state"><strong>Chưa có nhiệm vụ phù hợp</strong>Thử đổi bộ lọc hoặc giao nhiệm vụ mới.</div>';
+          $('task-body').innerHTML = '<tr><td colspan="7"><div class="empty-state"><strong>Chưa có nhiệm vụ phù hợp</strong>Điều chỉnh bộ lọc hoặc tạo nhiệm vụ mới.</div></td></tr>';
+          $('mobile-list').innerHTML = '<div class="empty-state"><strong>Chưa có nhiệm vụ phù hợp</strong>Điều chỉnh bộ lọc hoặc tạo nhiệm vụ mới.</div>';
           return;
         }
 
-        $('task-table-body').innerHTML = filtered.map(task => {
-          const status = currentStatus(task);
-          const actions = isMaster
-            ? `<td><div class="row-actions"><button class="icon-button" type="button" data-edit="${escapeHtml(task.id)}">Sửa</button><button class="icon-button" type="button" data-delete="${escapeHtml(task.id)}">Xóa</button></div></td>`
-            : `<td class="check-cell"><input class="task-check" type="checkbox" data-complete="${escapeHtml(task.id)}" ${task.completed ? 'checked' : ''} aria-label="Đánh dấu hoàn thành"></td><td><textarea class="note-input" data-note="${escapeHtml(task.id)}" maxlength="1000" aria-label="Ghi chú">${escapeHtml(task.note)}</textarea></td>`;
-          const reward = task.completed
-            ? `<div class="reward unlocked">ĐÃ MỞ: ${escapeHtml(task.reward || 'Hoàn thành nhiệm vụ')}</div>`
-            : `<div class="reward">${escapeHtml(task.reward || '—')}</div>`;
+        $('task-body').innerHTML = filtered.map(task => {
+          const status = getStatus(task);
+          const stars = Number(task.stars) ? `⭐ ${task.stars}/5` : 'Chưa chấm sao';
+          const deadlineText = `${dateLabel(task.deadline)} ${escapeHtml(task.deadlineTime || '')}`;
           return `<tr>
-            <td><div class="delegate">${escapeHtml(task.delegate)}</div><div class="task-meta">${escapeHtml(dateLabel(task.start))} bắt đầu</div></td>
-            <td><div class="task-name">${escapeHtml(task.title)}</div><div class="task-meta"><span class="priority priority-${String(task.priority).toLowerCase()}">${escapeHtml(priorityText(task.priority))}</span> <span class="status-pill status-${status}">${statusText(status)}</span></div></td>
-            <td>${escapeHtml(dateLabel(task.deadline))}</td><td>${ganttMarkup(task)}</td>
-            ${isMaster ? `<td>${reward}</td><td><div class="consequence">${escapeHtml(task.consequence || '—')}</div></td>` : ''}
-            ${actions}
+            <td><span class="priority priority-${Number(task.priority)}">P${Number(task.priority)}</span></td>
+            <td><div class="task-title">${escapeHtml(task.title)}</div><div class="muted"><span class="status-pill status-${status}">${statusLabel(status)}</span> ${escapeHtml(task.note || '')}</div>${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
+            <td>${escapeHtml(task.createdBy)}</td>
+            <td><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || '—')}</div></td>
+            <td><strong>${deadlineText}</strong><div class="muted">${escapeHtml(task.punishment || stars)}</div></td>
+            <td>${dayGantt(task)}</td>
+            <td>${taskActionMarkup(task)}</td>
           </tr>`;
         }).join('');
 
         $('mobile-list').innerHTML = filtered.map(task => {
-          const status = currentStatus(task);
-          const controls = isMaster
-            ? `<div class="card-controls"><span class="status-pill status-${status}">${statusText(status)}</span><span class="row-actions"><button class="icon-button" type="button" data-edit="${escapeHtml(task.id)}">Sửa</button><button class="icon-button" type="button" data-delete="${escapeHtml(task.id)}">Xóa</button></span></div>
-              <div class="card-reward"><strong>Phần thưởng:</strong> ${escapeHtml(task.completed ? `ĐÃ MỞ — ${task.reward || 'Hoàn thành nhiệm vụ'}` : (task.reward || '—'))}<br><strong>Quá hạn:</strong> ${escapeHtml(task.consequence || '—')}</div>`
-            : `<div class="card-controls"><label><input class="task-check" type="checkbox" data-complete="${escapeHtml(task.id)}" ${task.completed ? 'checked' : ''}> Đánh dấu hoàn thành</label><span class="status-pill status-${status}">${statusText(status)}</span></div><textarea class="card-note" data-note="${escapeHtml(task.id)}" maxlength="1000" aria-label="Ghi chú">${escapeHtml(task.note)}</textarea>`;
+          const status = getStatus(task);
+          const due = `${dateLabel(task.deadline)} ${task.deadlineTime || ''}`;
+          const noteInput = (task.assignees || []).includes(session.actor.name) && ['NEW', 'IN_PROGRESS'].includes(task.status)
+            ? `<textarea class="card-note" data-note-id="${escapeHtml(task.id)}" maxlength="2000" aria-label="Ghi chú nhiệm vụ">${escapeHtml(task.note || '')}</textarea>`
+            : '';
           return `<article class="task-card">
-            <div class="card-heading"><div><div class="card-title">${escapeHtml(task.title)}</div><div class="task-meta">${escapeHtml(task.delegate)} · <span class="priority priority-${String(task.priority).toLowerCase()}">${escapeHtml(priorityText(task.priority))}</span></div></div></div>
-            <div class="card-detail"><div><span>Bắt đầu</span><strong>${escapeHtml(dateLabel(task.start))}</strong></div><div><span>Hạn hoàn thành</span><strong>${escapeHtml(dateLabel(task.deadline))}</strong></div></div>
-            <div class="card-gantt">${ganttMarkup(task)}</div>${controls}
+            <div class="card-heading"><div><div class="card-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy)} giao · ${escapeHtml((task.assignees || []).join(', ') || 'Chưa giao')}</div></div><span class="priority priority-${Number(task.priority)}">P${Number(task.priority)}</span></div>
+            <div class="muted" style="margin-top:8px"><span class="status-pill status-${status}">${statusLabel(status)}</span></div>
+            <div class="card-grid"><div><span>Deadline</span><strong>${due}</strong></div><div><span>Phạt / số sao</span><strong>${escapeHtml(task.punishment || (Number(task.stars) ? `⭐ ${task.stars}/5` : '—'))}</strong></div></div>
+            ${dayGantt(task).replace('class="gantt"', 'class="gantt card-gantt"')}
+            ${noteInput}
+            <div class="card-actions">${taskActionMarkup(task)}</div>
           </article>`;
         }).join('');
       }
 
-      function setView(view) {
-        document.body.dataset.view = view;
-        render();
+      async function refresh() {
+        try {
+          session = await apiCall('trackerBootstrap', { token });
+          if (!entryRoles[entryMode] || actorRole() !== entryRoles[entryMode]) {
+            throw new Error('Vai trò này không thể mở trang theo dõi hiện tại. Hãy quay lại giao diện đúng vai trò.');
+          }
+          tasks = Array.isArray(session.tasks) ? session.tasks : [];
+          requests = Array.isArray(session.requests) ? session.requests : [];
+          teachers = Array.isArray(session.teachers) ? session.teachers : [];
+          manager = session.manager || '';
+          $('login-screen').hidden = true;
+          $('tracker-screen').hidden = false;
+          $('logout-button').hidden = false;
+          $('schedules-button').hidden = actorRole() === 'teacher';
+          $('create-task').hidden = false;
+          $('submit-schedule').hidden = actorRole() === 'director';
+          render();
+        } catch (error) {
+          console.error('Tracker bootstrap failed:', error);
+          sessionStorage.removeItem(TOKEN_KEY);
+          token = '';
+          session = null;
+          $('tracker-screen').hidden = true;
+          $('login-screen').hidden = false;
+          $('login-error').textContent = error.message;
+          $('login-error').hidden = false;
+        }
       }
 
-      function openTaskDialog(task) {
-        const form = $('task-form');
-        form.reset();
-        $('form-error').hidden = true;
-        $('task-id').value = task?.id || '';
-        $('dialog-title').textContent = task ? 'Chỉnh sửa nhiệm vụ' : 'Giao nhiệm vụ';
-        $('task-delegate').value = task?.delegate || '';
-        $('task-priority').value = task?.priority || 'High';
-        $('task-title').value = task?.title || '';
-        $('task-start').value = task?.start || $('quarter-start').value || defaultRangeStart;
-        $('task-deadline').value = task?.deadline || '';
-        $('task-reward').value = task?.reward || '';
-        $('task-consequence').value = task?.consequence || '';
-        $('task-note').value = task?.note || '';
+      async function login(event) {
+        event.preventDefault();
+        const button = $('login-submit');
+        button.disabled = true;
+        button.textContent = 'Đang đăng nhập...';
+        $('login-error').hidden = true;
+        try {
+          const result = await apiCall('trackerLogin', {
+            username: $('login-name').value.trim(),
+            password: $('login-password').value
+          });
+          token = result.token;
+          sessionStorage.setItem(TOKEN_KEY, token);
+          $('login-password').value = '';
+          await refresh();
+        } catch (error) {
+          $('login-error').textContent = error.message;
+          $('login-error').hidden = false;
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Đăng nhập';
+        }
+      }
+
+      function openTaskDialog() {
+        $('task-form').reset();
+        $('task-error').hidden = true;
+        $('task-start').value = dateInputValue(new Date());
+        $('task-deadline').value = dateInputValue(new Date());
+        $('task-time').value = '17:00';
+        const role = actorRole();
+        const assignField = $('assignee-field');
+        assignField.hidden = role === 'teacher';
+        const assignNames = role === 'manager' ? teachers.filter(name => name !== session.actor.name) : teachers;
+        $('assignee-options').innerHTML = assignNames.map(name => `<label class="assignee-option"><input type="checkbox" name="assignee" value="${escapeHtml(name)}"><span>${escapeHtml(name)}</span></label>`).join('') || '<span class="muted">Chưa có trợ giảng trong hệ thống.</span>';
+        $('task-dialog-title').textContent = role === 'director' ? 'Giao task · Priority 1' : role === 'manager' ? 'Giao task P2 hoặc tạo task cá nhân P3' : 'Tạo task cá nhân · Priority 4';
         $('task-dialog').showModal();
       }
 
-      function saveTask(event) {
+      async function saveTask(event) {
         event.preventDefault();
-        const start = $('task-start').value;
+        const startDate = $('task-start').value;
         const deadline = $('task-deadline').value;
-        if (deadline < start) {
-          $('form-error').textContent = 'Hạn hoàn thành phải bằng hoặc sau ngày bắt đầu.';
-          $('form-error').hidden = false;
+        if (deadline < startDate) {
+          $('task-error').textContent = 'Deadline phải bằng hoặc sau ngày bắt đầu.';
+          $('task-error').hidden = false;
           return;
         }
-        const id = $('task-id').value || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-        const existing = tasks.find(task => task.id === id);
-        const updated = {
-          id,
-          delegate: $('task-delegate').value.trim(),
-          title: $('task-title').value.trim(),
-          priority: $('task-priority').value,
-          start,
-          deadline,
-          completed: existing?.completed || false,
-          note: $('task-note').value.trim(),
-          reward: $('task-reward').value.trim(),
-          consequence: $('task-consequence').value.trim()
-        };
-        const nextTasks = existing
-          ? tasks.map(task => task.id === id ? updated : task)
-          : [...tasks, updated];
-        if (!persist(nextTasks)) return;
-        tasks = nextTasks;
-        $('task-dialog').close();
-        render();
-        notify(existing ? 'Đã cập nhật nhiệm vụ.' : 'Đã giao nhiệm vụ.');
-      }
-
-      function handleTaskAction(event) {
-        const editId = event.target.closest('[data-edit]')?.dataset.edit;
-        const deleteId = event.target.closest('[data-delete]')?.dataset.delete;
-        const completeId = event.type === 'change'
-          ? event.target.closest('[data-complete]')?.dataset.complete
-          : null;
-        const noteId = event.type === 'input' || event.type === 'change'
-          ? event.target.closest('[data-note]')?.dataset.note
-          : null;
-        if (editId) {
-          const task = tasks.find(item => item.id === editId);
-          if (task) openTaskDialog(task);
-        } else if (deleteId) {
-          if (!window.confirm('Xóa nhiệm vụ này khỏi trình duyệt hiện tại?')) return;
-          const nextTasks = tasks.filter(task => task.id !== deleteId);
-          if (persist(nextTasks)) { tasks = nextTasks; render(); notify('Đã xóa nhiệm vụ.'); }
-        } else if (completeId) {
-          const nextTasks = tasks.map(task => task.id === completeId ? { ...task, completed: event.target.checked } : task);
-          if (persist(nextTasks)) { tasks = nextTasks; render(); notify(event.target.checked ? 'Đã đánh dấu hoàn thành.' : 'Đã mở lại nhiệm vụ.'); }
-        } else if (noteId) {
-          const nextTasks = tasks.map(task => task.id === noteId ? { ...task, note: event.target.value } : task);
-          if (persist(nextTasks)) tasks = nextTasks;
+        const assignees = [...document.querySelectorAll('input[name="assignee"]:checked')].map(input => input.value);
+        try {
+          await apiCall('trackerCreateTask', {
+            token,
+            task: {
+              title: $('task-title').value.trim(),
+              assignees,
+              startDate,
+              deadline,
+              deadlineTime: $('task-time').value,
+              punishment: $('task-punishment').value.trim(),
+              note: $('task-note').value.trim()
+            }
+          });
+          $('task-dialog').close();
+          await refresh();
+          notify('Đã lưu nhiệm vụ vào Google Sheet.');
+        } catch (error) {
+          $('task-error').textContent = error.message;
+          $('task-error').hidden = false;
         }
       }
 
-      function exportData() {
-        const file = new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), tasks }, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(file);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'executive-tracker-data.json';
-        link.click();
-        URL.revokeObjectURL(url);
-        notify('Đã xuất dữ liệu JSON.');
+      async function taskAction(event) {
+        const button = event.target.closest('[data-task-action]');
+        if (!button) return;
+        const action = button.dataset.taskAction;
+        const taskId = button.dataset.id;
+        button.disabled = true;
+        try {
+          if (action === 'accept') await apiCall('trackerAcceptTask', { token, taskId });
+          else if (action === 'submit') await apiCall('trackerRequestCompletion', { token, taskId });
+          else if (action === 'note') {
+            const task = tasks.find(item => item.id === taskId);
+            const note = window.prompt('Cập nhật ghi chú cho nhiệm vụ:', task?.note || '');
+            if (note === null) return;
+            await apiCall('trackerSaveNote', { token, taskId, note });
+          } else {
+            let note = '';
+            let stars = 0;
+            if (action === 'reject') {
+              note = window.prompt('Nhập lý do từ chối để trợ giảng cập nhật:', '');
+              if (!note || !note.trim()) { notify('Cần nhập lý do từ chối.'); return; }
+            } else {
+              const rating = window.prompt('Chấm sao cho nhiệm vụ (1–5):', '5');
+              if (rating === null) return;
+              stars = Number(rating);
+              if (!Number.isInteger(stars) || stars < 1 || stars > 5) { notify('Số sao cần nằm trong khoảng 1–5.'); return; }
+            }
+            await apiCall('trackerReviewTask', { token, taskId, decision: action, note, stars });
+          }
+          await refresh();
+          notify(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'submit' ? 'Đã gửi yêu cầu hoàn thành để duyệt.' : action === 'approve' ? 'Đã duyệt hoàn thành.' : action === 'reject' ? 'Đã từ chối và gửi phản hồi.' : 'Đã cập nhật ghi chú.');
+        } catch (error) {
+          notify(error.message);
+        } finally {
+          button.disabled = false;
+        }
       }
 
-      let savedRange = null;
-      try {
-        savedRange = localStorage.getItem(RANGE_KEY);
-      } catch (error) {
-        console.error('Không đọc được mốc Gantt:', error);
-        notify('Không đọc được cài đặt thời gian đã lưu.');
+      async function saveNoteOnChange(event) {
+        const field = event.target.closest('[data-note-id]');
+        if (!field) return;
+        try {
+          await apiCall('trackerSaveNote', { token, taskId: field.dataset.noteId, note: field.value });
+          notify('Đã lưu ghi chú.');
+        } catch (error) { notify(error.message); }
       }
-      $('quarter-start').value = savedRange || defaultRangeStart;
-      $('quarter-start').addEventListener('change', () => {
-        try { localStorage.setItem(RANGE_KEY, $('quarter-start').value); }
-        catch (error) { console.error('Không thể lưu mốc Gantt:', error); notify('Không lưu được mốc thời gian.'); }
+
+      async function saveManager() {
+        try {
+          await apiCall('trackerSetManager', { token, manager: $('manager-select').value });
+          $('manager-select').dataset.loaded = '';
+          await refresh();
+          notify('Đã cập nhật quyền Manager.');
+        } catch (error) { notify(error.message); }
+      }
+
+      async function submitSchedule(event) {
+        event.preventDefault();
+        $('schedule-error').hidden = true;
+        if ($('schedule-end').value <= $('schedule-start').value) {
+          $('schedule-error').textContent = 'Giờ kết thúc phải sau giờ bắt đầu.';
+          $('schedule-error').hidden = false;
+          return;
+        }
+        try {
+          await apiCall('trackerSubmitSchedule', {
+            token,
+            request: {
+              type: $('schedule-type').value,
+              date: $('schedule-date').value,
+              startTime: $('schedule-start').value,
+              endTime: $('schedule-end').value,
+              reason: $('schedule-reason').value.trim()
+            }
+          });
+          $('schedule-dialog').close();
+          $('schedule-form').reset();
+          await refresh();
+          notify('Đã gửi đơn, chờ Giám đốc duyệt.');
+        } catch (error) {
+          $('schedule-error').textContent = error.message;
+          $('schedule-error').hidden = false;
+        }
+      }
+
+      function renderScheduleList() {
+        const role = actorRole();
+        const rows = requests.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+        $('schedule-body').innerHTML = rows.length ? rows.map(request => {
+          const actions = role === 'director' && request.status === 'PENDING'
+            ? `<button class="small-button good" data-schedule-action="approve" data-id="${escapeHtml(request.id)}">Duyệt</button> <button class="small-button danger" data-schedule-action="reject" data-id="${escapeHtml(request.id)}">Từ chối</button>`
+            : '—';
+          const type = request.type === 'LEAVE' ? 'Nghỉ' : 'Tăng ca';
+          return `<tr><td>${escapeHtml(request.teacher)}</td><td>${type}</td><td>${dateLabel(request.date)}</td><td>${escapeHtml(request.startTime)}–${escapeHtml(request.endTime)}</td><td>${escapeHtml(request.reason)}${request.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(request.reviewNote)}</div>` : ''}</td><td><span class="status-pill status-${escapeHtml(request.status)}">${statusLabel(request.status)}</span></td><td>${actions}</td></tr>`;
+        }).join('') : '<tr><td colspan="7"><div class="empty-state">Chưa có đơn đăng ký.</div></td></tr>';
+      }
+
+      async function scheduleAction(event) {
+        const button = event.target.closest('[data-schedule-action]');
+        if (!button) return;
+        const decision = button.dataset.scheduleAction;
+        let note = '';
+        if (decision === 'reject') {
+          note = window.prompt('Nhập lý do từ chối đơn:', '');
+          if (!note || !note.trim()) { notify('Cần nhập lý do từ chối.'); return; }
+        }
+        try {
+          await apiCall('trackerReviewSchedule', { token, requestId: button.dataset.id, decision, note });
+          await refresh();
+          renderScheduleList();
+          notify(decision === 'approve' ? 'Đã duyệt đơn.' : 'Đã từ chối đơn.');
+        } catch (error) { notify(error.message); }
+      }
+
+      async function loadXlsx() {
+        if (window.XLSX?.utils?.json_to_sheet) return;
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+          script.onload = resolve;
+          script.onerror = () => reject(new Error('Không tải được thư viện Excel. Kiểm tra kết nối mạng.'));
+          document.head.appendChild(script);
+        });
+      }
+
+      async function exportSchedules() {
+        try {
+          const result = await apiCall('trackerExportSchedules', { token });
+          await loadXlsx();
+          const rows = result.requests.map(item => ({
+            'Trợ giảng': item.teacher,
+            'Loại đăng ký': item.type === 'LEAVE' ? 'Nghỉ' : 'Tăng ca',
+            'Ngày': dateLabel(item.date),
+            'Giờ bắt đầu': item.startTime,
+            'Giờ kết thúc': item.endTime,
+            'Ghi chú / lý do': item.reason,
+            'Trạng thái': statusLabel(item.status),
+            'Người duyệt': item.reviewer,
+            'Ghi chú duyệt': item.reviewNote
+          }));
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'LichNghiTangCa');
+          XLSX.writeFile(workbook, `TVG_LichNghi_TangCa_${dateInputValue(new Date())}.xlsx`);
+        } catch (error) { notify(error.message); }
+      }
+
+      function logout() {
+        sessionStorage.removeItem(TOKEN_KEY);
+        token = '';
+        session = null;
+        tasks = [];
+        requests = [];
+        $('tracker-screen').hidden = true;
+        $('login-screen').hidden = false;
+      }
+
+      $('login-form').addEventListener('submit', login);
+      $('task-form').addEventListener('submit', saveTask);
+      $('schedule-form').addEventListener('submit', submitSchedule);
+      $('create-task').addEventListener('click', openTaskDialog);
+      $('submit-schedule').addEventListener('click', () => {
+        $('schedule-form').reset();
+        $('schedule-date').value = dateInputValue(new Date());
+        $('schedule-dialog').showModal();
+      });
+      $('schedules-button').addEventListener('click', () => { renderScheduleList(); $('schedule-list-dialog').showModal(); });
+      $('save-manager').addEventListener('click', saveManager);
+      $('logout-button').addEventListener('click', logout);
+      $('task-body').addEventListener('click', taskAction);
+      $('mobile-list').addEventListener('click', taskAction);
+      $('task-body').addEventListener('change', saveNoteOnChange);
+      $('mobile-list').addEventListener('change', saveNoteOnChange);
+      $('schedule-body').addEventListener('click', scheduleAction);
+      $('export-schedules').addEventListener('click', exportSchedules);
+      document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => $(button.dataset.close).close()));
+      ['filter-priority', 'filter-teacher', 'filter-status'].forEach(id => $(id).addEventListener('change', render));
+      $('task-search').addEventListener('input', render);
+      $('week-start').value = dateInputValue(weekMonday(new Date()));
+      $('week-start').addEventListener('change', () => {
+        const date = localDate($('week-start').value);
+        if (date) $('week-start').value = dateInputValue(weekMonday(date));
         render();
       });
-      ['filter-delegate', 'filter-status', 'filter-priority'].forEach(id => $(id).addEventListener('change', render));
-      $('master-view-button').addEventListener('click', () => setView('master'));
-      $('user-view-button').addEventListener('click', () => setView('user'));
-      $('add-task-button').addEventListener('click', () => openTaskDialog());
-      $('task-form').addEventListener('submit', saveTask);
-      $('close-dialog').addEventListener('click', () => $('task-dialog').close());
-      $('cancel-dialog').addEventListener('click', () => $('task-dialog').close());
-      $('task-table-body').addEventListener('click', handleTaskAction);
-      $('task-table-body').addEventListener('change', handleTaskAction);
-      $('task-table-body').addEventListener('input', handleTaskAction);
-      $('mobile-list').addEventListener('click', handleTaskAction);
-      $('mobile-list').addEventListener('change', handleTaskAction);
-      $('mobile-list').addEventListener('input', handleTaskAction);
-      $('export-button').addEventListener('click', exportData);
-      render();
+      $('previous-week').addEventListener('click', () => { const date = localDate($('week-start').value); date.setDate(date.getDate() - 7); $('week-start').value = dateInputValue(date); render(); });
+      $('next-week').addEventListener('click', () => { const date = localDate($('week-start').value); date.setDate(date.getDate() + 7); $('week-start').value = dateInputValue(date); render(); });
+      $('this-week').addEventListener('click', () => { $('week-start').value = dateInputValue(weekMonday(new Date())); render(); });
+      $('login-name').addEventListener('input', () => {
+        const input = $('login-name');
+        if (input.value.trim().toLowerCase() === 'director') input.value = 'director';
+      });
+      if (entryTitles[entryMode]) {
+        $('login-title').textContent = entryTitles[entryMode];
+      } else {
+        $('login-title').textContent = 'Chưa chọn giao diện Tracking';
+        $('login-description').textContent = 'Hãy mở Tracking từ nút tương ứng trong giao diện Giám đốc, Trợ giảng hoặc Manager.';
+        $('login-form').hidden = true;
+      }
+      token = sessionStorage.getItem(TOKEN_KEY) || '';
+      if (token && entryRoles[entryMode]) refresh();
     })();
   </script>
 </body>

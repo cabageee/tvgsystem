@@ -17,7 +17,6 @@
       STUDENTS: 'TV_GLOBAL_STUDENTS_DATA',
       TEACHERS: 'TV_GLOBAL_TEACHERS_DATA',
       INACTIVE: 'TV_GLOBAL_INACTIVE_STUDENTS',
-      PASSWORDS: 'TV_GLOBAL_PASSWORDS_DATA',
       LEVELS: 'TV_GLOBAL_CUSTOM_LEVELS'
     };
     const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23f1f5f9'/%3E%3Ccircle cx='32' cy='24' r='12' fill='%2394a3b8'/%3E%3Cpath d='M10 58c2-12 10-18 22-18s20 6 22 18' fill='%2394a3b8'/%3E%3C/svg%3E";
@@ -312,7 +311,7 @@
       image.src = DEFAULT_AVATAR;
     }
 
-    let assistantTeachers = [], accountPasswords = { 'director': '123456' }, currentUserRole = null, currentUserName = '';
+    let assistantTeachers = [], currentUserRole = null, currentUserName = '', trackerManagerName = '', trackerManagerLoaded = false;
     let studentsData = [], inactiveStudentsData = [];
     let currentReportStudent = null;
     let activeSessionEditor = null;
@@ -624,39 +623,16 @@
           assistantTeachers = fetchedTeachers;
         }
 
-        if (Array.isArray(res.teachers)) {
-          res.teachers.forEach(teacher => {
-            if (typeof teacher === 'object' && teacher?.name) {
-              accountPasswords[teacher.name] = teacher.password || '123456';
-            }
-          });
-        }
-
         if (Array.isArray(res.levels)) {
           customLevelsList = res.levels;
         } else if (Array.isArray(res.config?.customLevels)) {
           customLevelsList = res.config.customLevels;
         }
-
-        if (res.passwords?.director) {
-          accountPasswords.director = res.passwords.director;
-        }
-
-        if (res.config?.directorPassword) {
-          accountPasswords.director = res.config.directorPassword;
-        }
-
-        if (!accountPasswords.director) {
-          accountPasswords.director = '123456';
-        }
-
-        assistantTeachers.forEach(name => {
-          if (name && !accountPasswords[name]) {
-            accountPasswords[name] = '123456';
-          }
-        });
+        trackerManagerName = String(res.config?.trackerManager || '').trim();
+        trackerManagerLoaded = true;
 
         updateAllViews();
+        updateTrackerNavigation();
 
         if (isManual) {
           showToast(`Đã tải ${studentsData.length} học viên từ Google Sheet`);
@@ -1351,6 +1327,17 @@
       if (pageId === 'page-director-attendance') renderDirectorAttendance();
     }
 
+    function updateTrackerNavigation() {
+      const teacherLink = document.getElementById('teacher-tracker-link');
+      const managerLink = document.getElementById('manager-tracker-link');
+      const nav = document.getElementById('teacher-tracker-nav');
+      const isAssistant = currentUserRole === 'teacher';
+      const isManager = isAssistant && trackerManagerLoaded && currentUserName === trackerManagerName;
+      if (nav) nav.classList.toggle('hidden', !isAssistant || !trackerManagerLoaded);
+      if (teacherLink) teacherLink.classList.toggle('hidden', !isAssistant || !trackerManagerLoaded || isManager);
+      if (managerLink) managerLink.classList.toggle('hidden', !isManager);
+    }
+
     function getAllLevels() {
       const allSet = new Set([...defaultLevelOptions, ...customLevelsList]);
       if (Array.isArray(studentsData)) studentsData.forEach(s => { if (s.level?.trim()) allSet.add(s.level.trim()); });
@@ -1363,7 +1350,6 @@
         localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(studentsData));
         localStorage.setItem(STORAGE_KEYS.TEACHERS, JSON.stringify(assistantTeachers));
         localStorage.setItem(STORAGE_KEYS.INACTIVE, JSON.stringify(inactiveStudentsData));
-        localStorage.setItem(STORAGE_KEYS.PASSWORDS, JSON.stringify(accountPasswords));
         localStorage.setItem(STORAGE_KEYS.LEVELS, JSON.stringify(customLevelsList));
       } catch (e) { console.warn("Lỗi lưu offline:", e); }
     }
@@ -1378,12 +1364,7 @@
           const cachedInactive = JSON.parse(localStorage.getItem(STORAGE_KEYS.INACTIVE));
           if (Array.isArray(cachedInactive)) inactiveStudentsData = cachedInactive;
         }
-        if (localStorage.getItem(STORAGE_KEYS.PASSWORDS)) {
-          const cachedPasswords = JSON.parse(localStorage.getItem(STORAGE_KEYS.PASSWORDS));
-          if (cachedPasswords && typeof cachedPasswords === 'object') {
-            accountPasswords = { ...{ director: '123456' }, ...cachedPasswords };
-          }
-        }
+        localStorage.removeItem('TV_GLOBAL_PASSWORDS_DATA');
         if (localStorage.getItem(STORAGE_KEYS.LEVELS)) {
           const cachedLevels = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEVELS));
           if (Array.isArray(cachedLevels)) customLevelsList = cachedLevels;
@@ -1396,10 +1377,6 @@
             return true;
           }
         }
-        if (!accountPasswords.director) accountPasswords.director = '123456';
-        assistantTeachers.forEach(name => {
-          if (name && !accountPasswords[name]) accountPasswords[name] = '123456';
-        });
       } catch (e) { console.error(e); }
       return false;
     }
@@ -2742,7 +2719,6 @@
           <div class="flex justify-between items-center p-3 bg-slate-50 border rounded-xl">
             <div>
               <span class="text-xs font-bold text-slate-800">${renderUiIcon('user')} ${escapeHtml(t)}</span>
-              <span class="text-[10px] text-slate-400 font-mono ml-2">(MK: ${accountPasswords[t] || '123456'})</span>
             </div>
             <button onclick="removeTeacher('${t}')" class="action-button action-button--danger">${renderUiIcon('trash')} Xóa</button>
           </div>`).join('')
@@ -2813,7 +2789,6 @@
       if (assistantTeachers.includes(name)) return alert("⚠️ Trợ giảng này đã tồn tại!");
 
       assistantTeachers.push(name);
-      accountPasswords[name] = pwd;
       saveAllDataToLocalStorage();
       closeModal('modal-add-teacher');
       updateAllViews();
@@ -2831,7 +2806,6 @@
       const confirmOk = await showConfirmModal(`Xóa trợ giảng "${teacherName}"?`);
       if (!confirmOk) return;
       assistantTeachers = assistantTeachers.filter(t => t !== teacherName);
-      delete accountPasswords[teacherName];
       studentsData.forEach(s => { if (Array.isArray(s.assistants)) s.assistants = s.assistants.filter(t => t !== teacherName); });
       saveAllDataToLocalStorage();
       updateAllViews();
@@ -2855,14 +2829,9 @@
       }
 
       const accountName = currentUserRole === 'director' ? 'director' : currentUserName;
-      const currentPwd = accountPasswords[accountName] || '123456';
-      if (oldPwd !== currentPwd) {
-        return alert("⚠️ Mật khẩu hiện tại không đúng!");
-      }
 
       try {
         await apiCall('changePassword', { username: accountName, oldPassword: oldPwd, newPassword: newPwd });
-        accountPasswords[accountName] = newPwd;
         saveAllDataToLocalStorage();
         await refreshDataAfterMutation();
         showToast("Đã đổi mật khẩu và cập nhật lên Sheet thành công!");
@@ -2885,24 +2854,39 @@
       }
     }
 
-    function handleLoginSubmit(role) {
-      document.getElementById('login-error-msg').classList.add('hidden');
+    async function handleLoginSubmit(role) {
+      const errorMessage = document.getElementById('login-error-msg');
+      errorMessage.classList.add('hidden');
       const isDirector = role === 'director';
       const username = isDirector ? 'director' : document.getElementById('login-teacher-select').value;
       const pwdInput = isDirector ? document.getElementById('login-pwd-director') : document.getElementById('login-pwd-teacher');
-      const validPwd = accountPasswords[username] || '123456';
-
-      if (pwdInput.value === validPwd) {
-        loginAs(role, isDirector ? 'Giám Đốc' : username);
+      const loginButtons = document.querySelectorAll(
+        `button[onclick="handleLoginSubmit('${role}')"]`
+      );
+      loginButtons.forEach(button => { button.disabled = true; });
+      try {
+        const identity = await apiCall('trackerLogin', {
+          username,
+          password: pwdInput.value
+        });
+        if (identity?.status !== 'success' || !identity.token) {
+          throw new Error(identity?.message || 'Tài khoản hoặc mật khẩu không đúng.');
+        }
+        sessionStorage.setItem('TV_GLOBAL_TRACKER_TOKEN', identity.token);
+        loginAs(identity.role, identity.name);
         pwdInput.value = '';
-      } else {
-        document.getElementById('login-error-msg').classList.remove('hidden');
+      } catch (error) {
+        errorMessage.textContent = error.message || 'Không thể xác minh tài khoản. Vui lòng thử lại.';
+        errorMessage.classList.remove('hidden');
+      } finally {
+        loginButtons.forEach(button => { button.disabled = false; });
       }
     }
 
     function loginAs(role, name, fromSession = false) {
       currentUserRole = role;
       currentUserName = name;
+      updateTrackerNavigation();
       sessionStorage.setItem('TV_GLOBAL_ROLE', role);
       sessionStorage.setItem('TV_GLOBAL_USER', name);
       showUpcomingBirthdays();

@@ -14,7 +14,7 @@ Mỗi mục điều hướng có một URL HTML riêng và chỉ tải nội dun
 - `levels.html` — Quản lý cấp độ lớp
 - `teacher-attendance.html` — Điểm danh lớp của trợ giảng
 - `change-password.html` — Đổi mật khẩu
-- `executive-tracker.html` — Tracker điều hành với Master/User View và Gantt 12 tuần
+- `executive-tracker.html` — Tracker Gantt 7 ngày với phân quyền Giám đốc/Manager/Trợ giảng
 
 Trong giao diện trợ giảng, nút **Điểm danh hôm nay** trên thẻ học viên ghi ngày hiện tại vào buổi còn trống tiếp theo. Trợ giảng không cần mở phần chỉnh sửa ngày hoặc chuyển bàn phím sang chế độ số; nút chỉ khả dụng khi học viên chưa được điểm danh trong ngày và còn buổi học.
 
@@ -28,9 +28,17 @@ Giữ các file HTML, `app.js` và `app.css` trong cùng thư mục khi triển 
 
 ## Tracker điều hành
 
-Trang `executive-tracker.html` là một bảng Gantt độc lập gồm Master View để giao/quản lý nhiệm vụ và User View để cập nhật hoàn thành, ghi chú. Bộ lọc hỗ trợ người phụ trách, trạng thái và ưu tiên; dữ liệu có thể xuất thành JSON.
+Trang `executive-tracker.html` dùng chung Google Apps Script/Google Sheet, có Gantt theo 7 ngày (Thứ 2–Chủ Nhật), bộ lọc priority 1–4, trợ giảng và trạng thái, đồng thời sắp xếp priority trước rồi deadline.
 
-Hiện tại nhiệm vụ chỉ được lưu trong `localStorage` của trình duyệt đang mở. Vì vậy trang chạy được trên GitHub Pages mà không cần backend riêng, nhưng dữ liệu không đồng bộ giữa thiết bị/người dùng và nút chuyển Master/User chỉ là giao diện, không phải phân quyền an toàn. Để dùng chung, cần mở rộng Google Apps Script hiện tại với một tab Sheet và API riêng cho danh sách/thêm/sửa/xóa nhiệm vụ; máy chủ phải xác thực người dùng và kiểm tra quyền trước khi ghi dữ liệu. Không đưa dữ liệu nhạy cảm lên bản local-only.
+Apps Script source đã được cập nhật trong `tracker-backend.gs.txt`. Để bật Tracker, thay toàn bộ mã dự án Apps Script hiện tại bằng nội dung file này, lưu và triển khai **New version** của Web app; giữ nguyên URL `/exec`. Khi lần đầu gọi API, Apps Script tự tạo hai tab `TrackerTasks` và `TrackerRequests` trong spreadsheet hiện có.
+
+Quyền Tracker được kiểm tra ở Apps Script: Giám đốc gán Manager; Giám đốc tạo Priority 1; Manager giao Priority 2 hoặc tạo việc cá nhân Priority 3; Trợ giảng tạo việc cá nhân Priority 4, nhận task và gửi yêu cầu hoàn thành. Giám đốc/Manager duyệt task; chỉ Giám đốc duyệt đơn nghỉ/tăng ca. Tracker dùng token phiên hết hạn sau 6 giờ. Đăng nhập website hiện cũng xác minh thông tin qua Apps Script; thông tin mật khẩu không còn được gửi về giao diện trong danh sách trợ giảng/dữ liệu khởi tạo.
+
+Trợ giảng chỉ nhận task được giao và đơn lịch của chính mình. Manager xem toàn bộ task/đơn trong Tracker và có thể duyệt task; Giám đốc quản lý Manager và duyệt lịch nghỉ/tăng ca. Excel lịch dùng thư viện tải khi người dùng chọn Export Excel.
+
+Lối vào được tách theo vai trò: Giám đốc mở **Tracking Giám đốc** từ thanh điều hướng quản trị; trợ giảng mở **Task của tôi** trong giao diện trợ giảng; Manager được cấu hình trong Apps Script/Sheet sẽ thấy nút riêng **Tracking Manager**. Apps Script trả tên Manager hiện tại trong cấu hình không nhạy cảm để website chỉ hiện đúng nút. Phiên Tracker được cấp khi đăng nhập website nên không cần đăng nhập lần hai; mỗi lối vào giới hạn vai trò theo `view` và API vẫn kiểm tra quyền.
+
+Lưu ý giới hạn bảo mật của kiến trúc hiện tại: GitHub Pages gọi Apps Script bằng JSONP nên thông tin đăng nhập được gửi trong query của HTTPS request, không phải POST. Ngoài ra, các API dữ liệu học viên cũ vẫn chưa yêu cầu phiên đăng nhập; phần phân quyền mới bảo vệ các thao tác Tracker, không đồng nghĩa toàn bộ API đã được khóa. Nếu cần bảo vệ dữ liệu toàn hệ thống, cần chuyển API sang backend/proxy có xác thực và POST trước khi dùng dữ liệu nhạy cảm.
 
 ## Thông báo sinh nhật
 

@@ -1,0 +1,1569 @@
+// =====================================================
+// CẤU HÌNH
+// =====================================================
+
+const SPREADSHEET_ID = '1vDz0Wmc2PeQy9KnEG-w3HZaQnk1bq7TYohjgwVfOM2M';
+const AVATAR_FOLDER_ID = '';
+const AVATAR_FOLDER_NAME = 'Thien Vy Global - Avatar Hoc Vien';
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+
+const TAB = {
+  STUDENTS: 'ThongTinHocSinh',
+  ATTENDANCE: 'DiemDanh',
+  INACTIVE: 'HocVienNghiHoc',
+  TEACHERS: 'TroGiang',
+  CONFIG: 'CauHinh',
+  TRACKER_TASKS: 'TrackerTasks',
+  TRACKER_REQUESTS: 'TrackerRequests'
+};
+
+const DEFAULT_DIRECTOR_PASSWORD = '123456';
+
+function getSpreadsheet() {
+  if (SPREADSHEET_ID && SPREADSHEET_ID.trim() !== '') {
+    return SpreadsheetApp.openById(SPREADSHEET_ID);
+  }
+
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+
+// =====================================================
+// WEB APP ENTRY POINT
+// =====================================================
+
+function doGet(e) {
+  const params = e && e.parameter ? e.parameter : {};
+  if (params.callback && params.avatarRequestId) {
+    const callback = String(params.callback).replace(/[^a-zA-Z0-9_.$]/g, '');
+    const result = getAvatarUploadStatus_(params.avatarRequestId);
+    return ContentService
+      .createTextOutput(`${callback}(${JSON.stringify(result)})`)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  if (params.callback && params.data) {
+    try {
+      const result = handleApiAction(JSON.parse(params.data));
+      const callback = String(params.callback).replace(/[^a-zA-Z0-9_.$]/g, '');
+      return ContentService
+        .createTextOutput(`${callback}(${JSON.stringify(result)})`)
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    } catch (error) {
+      return ContentService
+        .createTextOutput(`${params.callback}(${JSON.stringify({ status: 'error', message: error.message })})`)
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+  }
+
+  return HtmlService
+    .createHtmlOutputFromFile('Index')
+    .setTitle('Thiên Vy Global');
+}
+
+function doPost(e) {
+  if (e && e.parameter && e.parameter.requestId) {
+    return uploadAvatarToDrive_(e.parameter);
+  }
+
+  try {
+    const payload = JSON.parse(e.postData.contents || '{}');
+    const result = handleApiAction(payload);
+
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    return jsonResponse({
+      status: 'error',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+}
+
+function getAvatarUploadStatus_(requestId) {
+  const id = String(requestId || '');
+  if (!/^[a-zA-Z0-9_-]{1,100}$/.test(id)) {
+    return { requestId: id, success: false, error: 'Mã yêu cầu upload không hợp lệ.' };
+  }
+
+  const cachedResult = CacheService.getScriptCache().get(`AVATAR_UPLOAD_${id}`);
+  return cachedResult
+    ? JSON.parse(cachedResult)
+    : { requestId: id, pending: true };
+}
+
+function getAvatarFolder_() {
+  const configuredFolderId = String(AVATAR_FOLDER_ID || '').trim();
+  if (configuredFolderId) {
+    return DriveApp.getFolderById(configuredFolderId);
+  }
+
+  const properties = PropertiesService.getScriptProperties();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const savedFolderId = properties.getProperty('AVATAR_FOLDER_ID');
+    if (savedFolderId) {
+      return DriveApp.getFolderById(savedFolderId);
+    }
+
+    const folder = DriveApp.createFolder(AVATAR_FOLDER_NAME);
+    properties.setProperty('AVATAR_FOLDER_ID', folder.getId());
+    return folder;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function uploadAvatarToDrive_(params) {
+  const requestId = String(params.requestId || '');
+  let result;
+  try {
+    if (!/^[a-zA-Z0-9_-]{1,100}$/.test(requestId)) {
+      throw new Error('Mã yêu cầu upload không hợp lệ.');
+    }
+
+    const mimeType = String(params.mimeType || '');
+    const dataUrl = String(params.dataUrl || '');
+    const match = dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+    if (!ALLOWED_AVATAR_TYPES.includes(mimeType) || !match || match[1] !== mimeType) {
+      throw new Error('File không phải ảnh PNG, JPEG hoặc WebP hợp lệ.');
+    }
+    if (dataUrl.length > Math.ceil(MAX_AVATAR_BYTES * 4 / 3) + 256) {
+      throw new Error('Ảnh không được vượt quá 5 MB.');
+    }
+
+    const bytes = Utilities.base64Decode(match[2]);
+    if (bytes.length > MAX_AVATAR_BYTES) {
+      throw new Error('Ảnh không được vượt quá 5 MB.');
+    }
+
+    const extensionByType = {
+      'image/png': 'png',
+      'image/jpeg': 'jpg',
+      'image/webp': 'webp'
+    };
+    const safeName = String(params.fileName || 'avatar')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .slice(0, 80);
+    const blob = Utilities.newBlob(
+      bytes,
+      mimeType,
+      `${safeName || 'avatar'}_${Date.now()}.${extensionByType[mimeType]}`
+    );
+    const file = getAvatarFolder_().createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    result = {
+      requestId: requestId,
+      success: true,
+      url: `https://drive.google.com/uc?export=view&id=${file.getId()}`
+    };
+  } catch (error) {
+    Logger.log(`Upload avatar ${requestId} thất bại: ${error && error.message ? error.message : String(error)}`);
+    result = {
+      requestId: requestId,
+      success: false,
+      error: error && error.message ? error.message : String(error)
+    };
+  }
+
+  try {
+    CacheService.getScriptCache().put(
+      `AVATAR_UPLOAD_${requestId}`,
+      JSON.stringify(result),
+      300
+    );
+  } catch (cacheError) {
+    Logger.log(`Không lưu được trạng thái upload avatar ${requestId}: ${cacheError.message}`);
+  }
+
+  return avatarUploadResponse_(result);
+}
+
+function avatarUploadResponse_(result) {
+  const message = JSON.stringify(result).replace(/</g, '\\u003c');
+  return HtmlService.createHtmlOutput(
+    `<!doctype html><html><body><script>window.parent.postMessage(${message}, '*');</script></body></html>`
+  ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function jsonResponse(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+
+// =====================================================
+// KHỞI TẠO GOOGLE SHEET
+// =====================================================
+
+function initDatabase() {
+  const ss = getSpreadsheet();
+
+  const attendanceHeaders = [
+    'Mã Học Viên',
+    'Họ Và Tên',
+    'Ngày Đăng Ký'
+  ];
+
+  for (let i = 1; i <= 40; i++) {
+    attendanceHeaders.push('Buổi ' + i);
+  }
+
+  const schemas = [
+    {
+      name: TAB.STUDENTS,
+      headers: [
+        'Mã Học Viên',
+        'Họ Và Tên',
+        'Ngày Sinh',
+        'Giới Tính',
+        'Cấp Độ',
+        'Ngày Đăng Ký',
+        'Tên Phụ Huynh',
+        'Số Điện Thoại',
+        'Địa Chỉ',
+        'Trạng Thái Học Phí',
+        'Ghi Chú',
+        'Avatar',
+        'Trợ Giảng'
+      ]
+    },
+    {
+      name: TAB.ATTENDANCE,
+      headers: attendanceHeaders
+    },
+    {
+      name: TAB.INACTIVE,
+      headers: [
+        'Mã Học Viên',
+        'Họ Và Tên',
+        'Ngày Sinh',
+        'Giới Tính',
+        'Cấp Độ',
+        'Ngày Đăng Ký',
+        'Tên Phụ Huynh',
+        'Số Điện Thoại',
+        'Trạng Thái Học Phí',
+        'Địa Chỉ',
+        'Ghi Chú',
+        'Avatar',
+        'Trợ Giảng',
+        'Lý Do Nghỉ'
+      ]
+    },
+    {
+      name: TAB.TEACHERS,
+      headers: [
+        'Tên Trợ Giảng',
+        'Mật Khẩu'
+      ]
+    },
+    {
+      name: TAB.CONFIG,
+      headers: [
+        'Cấp Độ',
+        'Mật Khẩu Quản Lý'
+      ]
+    },
+    {
+      name: TAB.TRACKER_TASKS,
+      headers: [
+        'ID', 'Nhiệm vụ', 'Người giao', 'Priority', 'Người được giao (JSON)',
+        'Ngày bắt đầu', 'Deadline', 'Giờ deadline', 'Trạng thái', 'Ghi chú',
+        'Hình thức phạt', 'Số sao', 'Ghi chú duyệt', 'Ngày tạo', 'Cập nhật lần cuối'
+      ]
+    },
+    {
+      name: TAB.TRACKER_REQUESTS,
+      headers: [
+        'ID', 'Trợ giảng', 'Loại đơn', 'Ngày', 'Giờ bắt đầu', 'Giờ kết thúc',
+        'Lý do / nội dung', 'Trạng thái', 'Người duyệt', 'Ghi chú duyệt', 'Ngày tạo'
+      ]
+    }
+  ];
+
+  schemas.forEach(schema => {
+    let sheet = ss.getSheetByName(schema.name);
+
+    if (!sheet) {
+      sheet = ss.insertSheet(schema.name);
+    }
+
+    if (sheet.getLastRow() === 0) {
+      sheet
+        .getRange(1, 1, 1, schema.headers.length)
+        .setValues([schema.headers]);
+    }
+
+    const headerRange = sheet.getRange(
+      1,
+      1,
+      1,
+      schema.headers.length
+    );
+
+    headerRange
+      .setFontWeight('bold')
+      .setBackground('#8B1515')
+      .setFontColor('#ffffff');
+
+    sheet.setFrozenRows(1);
+  });
+
+  return {
+    status: 'success',
+    message: 'Đã tạo đầy đủ các sheet hệ thống'
+  };
+}
+
+
+// =====================================================
+// ROUTER API
+// =====================================================
+
+function handleApiAction(payload) {
+  const action = payload.action;
+
+  switch (action) {
+    case 'verifyLogin':
+      return verifyLogin_(payload.username, payload.password);
+    case 'trackerLogin':
+      return trackerLogin_(payload.username, payload.password);
+    case 'trackerBootstrap':
+      return trackerBootstrap_(payload.token);
+    case 'trackerSetManager':
+      return trackerSetManager_(payload.token, payload.manager);
+    case 'trackerCreateTask':
+      return trackerCreateTask_(payload.token, payload.task);
+    case 'trackerAcceptTask':
+      return trackerAcceptTask_(payload.token, payload.taskId);
+    case 'trackerRequestCompletion':
+      return trackerRequestCompletion_(payload.token, payload.taskId);
+    case 'trackerReviewTask':
+      return trackerReviewTask_(payload.token, payload.taskId, payload.decision, payload.note, payload.stars);
+    case 'trackerSaveNote':
+      return trackerSaveNote_(payload.token, payload.taskId, payload.note);
+    case 'trackerSubmitSchedule':
+      return trackerSubmitSchedule_(payload.token, payload.request);
+    case 'trackerReviewSchedule':
+      return trackerReviewSchedule_(payload.token, payload.requestId, payload.decision, payload.note);
+    case 'trackerExportSchedules':
+      return trackerExportSchedules_(payload.token);
+    case 'getData':
+    case 'getAllData':
+      return getAllData();
+
+    case 'updateFeeStatus': 
+      return updateFeeStatus(payload.studentId, payload.feeStatus); 
+
+    case 'processPayment':
+      return processPayment(payload.studentId, payload.packageSessions);
+
+    case 'addLevel':
+      return addLevel(payload.level);
+
+    case 'deleteLevel':
+      return deleteLevel(payload.level);
+
+    case 'changePassword':
+      return changePassword(
+        payload.username,
+        payload.oldPassword,
+        payload.newPassword
+      );
+
+    case 'addStudent':
+      return addStudent(payload.student);
+
+    case 'updateAttendance':
+      return updateAttendance(
+        payload.studentId,
+        payload.sessionIndex,
+        payload.value
+      );
+
+    case 'updateAssistants':
+    case 'update_assistants':
+      return updateAssistants(
+        payload.studentId,
+        payload.assistants
+      );
+
+    case 'updateLevel':
+    case 'update_level':
+      return updateLevel(
+        payload.studentId,
+        payload.level
+      );
+
+    case 'updateStudentInfo':
+      return updateStudentInfo(payload.student);
+
+    case 'moveToInactive':
+      return moveToInactive(
+        payload.studentId,
+        payload.reason
+      );
+
+    case 'restoreStudent':
+      return restoreStudent(payload.student);
+
+    case 'saveMasterData':
+      return saveMasterData(payload.students);
+
+    case 'addTeacher':
+      return addTeacher(
+        payload.teacherName,
+        payload.password
+      );
+
+    case 'deleteTeacher':
+      return deleteTeacher(payload.teacherName);
+
+    case 'initDatabase':
+      return initDatabase();
+
+    default:
+      return {
+        status: 'error',
+        message: 'Action không được hỗ trợ: ' + action
+      };
+  }
+}
+
+// =====================================================
+// TRACKER GANTT: AUTH, TASKS, SCHEDULE REQUESTS
+// =====================================================
+
+function trackerLogin_(username, password) {
+  initDatabase();
+  const identity = verifyLogin_(username, password);
+  if (identity.status !== 'success') return identity;
+  const token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  CacheService.getScriptCache().put('tracker:' + token, JSON.stringify({
+    name: identity.name,
+    role: identity.role
+  }), 21600);
+  return { status: 'success', token: token, name: identity.name, role: identity.role };
+}
+
+function verifyLogin_(username, password) {
+  const name = String(username || '').trim();
+  const secret = String(password || '');
+  if (name === 'director' || name === 'Giám Đốc') {
+    const config = readConfig(getSpreadsheet().getSheetByName(TAB.CONFIG));
+    if (secret === config.directorPassword) {
+      return { status: 'success', name: 'Giám Đốc', role: 'director' };
+    }
+    return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
+  }
+
+  const teacherSheet = getSpreadsheet().getSheetByName(TAB.TEACHERS);
+  const row = findRowByTeacherName(teacherSheet, name);
+  if (row && secret === String(teacherSheet.getRange(row, 2).getValue() || DEFAULT_DIRECTOR_PASSWORD)) {
+    return { status: 'success', name: name, role: 'teacher' };
+  }
+  return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
+}
+
+function trackerActor_(token) {
+  const value = CacheService.getScriptCache().get('tracker:' + String(token || ''));
+  if (!value) throw new Error('Phiên đăng nhập Tracker đã hết hạn. Vui lòng đăng nhập lại.');
+  const actor = JSON.parse(value);
+  if (actor.role === 'director') return actor;
+
+  const teacherRow = findRowByTeacherName(getSpreadsheet().getSheetByName(TAB.TEACHERS), actor.name);
+  if (!teacherRow) throw new Error('Tài khoản trợ giảng không còn tồn tại.');
+  const configValues = getSpreadsheet().getSheetByName(TAB.CONFIG).getDataRange().getValues();
+  const manager = configValues.slice(1).find(row => String(row[0] || '').trim() === 'trackerManager');
+  actor.role = manager && String(manager[1] || '').trim() === actor.name ? 'manager' : 'teacher';
+  return actor;
+}
+
+function trackerManager_() {
+  const values = getSpreadsheet().getSheetByName(TAB.CONFIG).getDataRange().getValues();
+  const row = values.slice(1).find(item => String(item[0] || '').trim() === 'trackerManager');
+  return row ? String(row[1] || '').trim() : '';
+}
+
+function trackerTaskRecords_() {
+  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_TASKS);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 15).getValues()
+    .filter(row => String(row[0] || '').trim())
+    .map(row => {
+      let assignees = [];
+      try { assignees = JSON.parse(String(row[4] || '[]')); } catch (error) {
+        console.error('Invalid tracker assignees JSON for task ' + row[0], error);
+      }
+      return {
+        id: String(row[0]),
+        title: String(row[1] || ''),
+        createdBy: String(row[2] || ''),
+        priority: Number(row[3]) || 4,
+        assignees: Array.isArray(assignees) ? assignees : [],
+        startDate: String(row[5] || ''),
+        deadline: String(row[6] || ''),
+        deadlineTime: String(row[7] || ''),
+        status: String(row[8] || 'NEW'),
+        note: String(row[9] || ''),
+        punishment: String(row[10] || ''),
+        stars: Number(row[11]) || 0,
+        reviewNote: String(row[12] || ''),
+        createdAt: String(row[13] || ''),
+        updatedAt: String(row[14] || '')
+      };
+    });
+}
+
+function trackerRequestRecords_() {
+  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_REQUESTS);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues()
+    .filter(row => String(row[0] || '').trim())
+    .map(row => ({
+      id: String(row[0]),
+      teacher: String(row[1] || ''),
+      type: String(row[2] || ''),
+      date: String(row[3] || ''),
+      startTime: String(row[4] || ''),
+      endTime: String(row[5] || ''),
+      reason: String(row[6] || ''),
+      status: String(row[7] || 'PENDING'),
+      reviewer: String(row[8] || ''),
+      reviewNote: String(row[9] || ''),
+      createdAt: String(row[10] || '')
+    }));
+}
+
+function trackerBootstrap_(token) {
+  const actor = trackerActor_(token);
+  const teachers = readTeachers(getSpreadsheet().getSheetByName(TAB.TEACHERS))
+    .map(teacher => teacher.name);
+  const allTasks = trackerTaskRecords_();
+  const allRequests = trackerRequestRecords_();
+  const manager = trackerManager_();
+  const tasks = actor.role === 'teacher'
+    ? allTasks.filter(task => task.assignees.indexOf(actor.name) !== -1)
+    : allTasks;
+  const requests = actor.role === 'teacher'
+    ? allRequests.filter(request => request.teacher === actor.name)
+    : allRequests;
+  return {
+    status: 'success',
+    actor: actor,
+    manager: manager,
+    teachers: teachers,
+    tasks: tasks,
+    requests: requests
+  };
+}
+
+function trackerSetManager_(token, manager) {
+  const actor = trackerActor_(token);
+  if (actor.role !== 'director') throw new Error('Chỉ Giám đốc được ủy quyền Manager.');
+  const name = String(manager || '').trim();
+  if (name && !findRowByTeacherName(getSpreadsheet().getSheetByName(TAB.TEACHERS), name)) {
+    throw new Error('Không tìm thấy tài khoản trợ giảng được chọn.');
+  }
+
+  const sheet = getSpreadsheet().getSheetByName(TAB.CONFIG);
+  const values = sheet.getDataRange().getValues();
+  const index = values.findIndex((row, i) => i > 0 && String(row[0] || '').trim() === 'trackerManager');
+  if (!name) {
+    if (index > 0) sheet.deleteRow(index + 1);
+  } else if (index > 0) {
+    sheet.getRange(index + 1, 2).setValue(name);
+  } else {
+    sheet.appendRow(['trackerManager', name]);
+  }
+  return { status: 'success', manager: name };
+}
+
+function trackerCreateTask_(token, input) {
+  const actor = trackerActor_(token);
+  const task = input || {};
+  const assignees = Array.isArray(task.assignees)
+    ? Array.from(new Set(task.assignees.map(name => String(name || '').trim()).filter(Boolean)))
+    : [];
+  const title = String(task.title || '').trim();
+  const startDate = String(task.startDate || '');
+  const deadline = String(task.deadline || '');
+  const deadlineTime = String(task.deadlineTime || '');
+  if (!title || title.length > 300) throw new Error('Tên nhiệm vụ không hợp lệ.');
+  if (!trackerValidDate_(startDate) || !trackerValidDate_(deadline) || deadline < startDate) {
+    throw new Error('Ngày bắt đầu hoặc hạn hoàn thành không hợp lệ.');
+  }
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(deadlineTime)) throw new Error('Vui lòng nhập giờ deadline hợp lệ.');
+
+  const teacherSheet = getSpreadsheet().getSheetByName(TAB.TEACHERS);
+  const validTeachers = readTeachers(teacherSheet).map(teacher => teacher.name);
+  let priority;
+  let creator = actor.name;
+  if (actor.role === 'director') {
+    priority = 1;
+    if (!assignees.length) throw new Error('Chọn ít nhất một trợ giảng được giao nhiệm vụ.');
+  } else if (actor.role === 'manager') {
+    if (assignees.length) {
+      priority = 2;
+      if (assignees.indexOf(actor.name) !== -1) throw new Error('Manager chỉ giao Priority 2 cho trợ giảng khác.');
+    } else {
+      priority = 3;
+      assignees.push(actor.name);
+    }
+  } else {
+    priority = 4;
+    assignees.splice(0, assignees.length, actor.name);
+  }
+  if (assignees.some(name => validTeachers.indexOf(name) === -1)) {
+    throw new Error('Danh sách người được giao có tài khoản không hợp lệ.');
+  }
+
+  const id = Utilities.getUuid();
+  const now = new Date().toISOString();
+  const row = [
+    id, title, creator, priority, JSON.stringify(assignees), startDate, deadline,
+    deadlineTime, 'NEW', String(task.note || '').slice(0, 2000),
+    String(task.punishment || '').slice(0, 300), 0, '', now, now
+  ];
+  getSpreadsheet().getSheetByName(TAB.TRACKER_TASKS).appendRow(row);
+  return { status: 'success', taskId: id };
+}
+
+function trackerUpdateTaskStatus_(token, taskId, nextAction) {
+  const actor = trackerActor_(token);
+  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_TASKS);
+  const tasks = trackerTaskRecords_();
+  const task = tasks.find(item => item.id === String(taskId || ''));
+  if (!task) throw new Error('Không tìm thấy nhiệm vụ.');
+  if (actor.role === 'teacher' && task.assignees.indexOf(actor.name) === -1) {
+    throw new Error('Bạn không được giao nhiệm vụ này.');
+  }
+
+  const row = findRowById(sheet, task.id);
+  if (nextAction === 'accept') {
+    if (actor.role === 'director' || task.status !== 'NEW') throw new Error('Nhiệm vụ không còn ở trạng thái mới giao.');
+    sheet.getRange(row, 9).setValue('IN_PROGRESS');
+  } else {
+    if (actor.role === 'director' || task.status !== 'IN_PROGRESS') throw new Error('Chỉ có thể yêu cầu hoàn thành khi nhiệm vụ đang thực hiện.');
+    sheet.getRange(row, 9).setValue('PENDING');
+  }
+  sheet.getRange(row, 15).setValue(new Date().toISOString());
+  return { status: 'success' };
+}
+
+function trackerAcceptTask_(token, taskId) {
+  return trackerUpdateTaskStatus_(token, taskId, 'accept');
+}
+
+function trackerRequestCompletion_(token, taskId) {
+  return trackerUpdateTaskStatus_(token, taskId, 'complete');
+}
+
+function trackerReviewTask_(token, taskId, decision, note, stars) {
+  const actor = trackerActor_(token);
+  if (actor.role === 'teacher') throw new Error('Chỉ Giám đốc hoặc Manager được duyệt nhiệm vụ.');
+  if (decision !== 'approve' && decision !== 'reject') throw new Error('Lựa chọn duyệt không hợp lệ.');
+  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_TASKS);
+  const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
+  if (!task || task.status !== 'PENDING') throw new Error('Nhiệm vụ không ở trạng thái chờ duyệt.');
+  const manager = trackerManager_();
+  if (actor.role === 'manager' && task.createdBy !== actor.name && task.assignees.indexOf(actor.name) === -1 && manager !== actor.name) {
+    throw new Error('Bạn không có quyền duyệt nhiệm vụ này.');
+  }
+  const rating = Number(stars || 0);
+  if (decision === 'approve' && rating && (rating < 1 || rating > 5 || Math.floor(rating) !== rating)) {
+    throw new Error('Số sao phải từ 1 đến 5.');
+  }
+  const row = findRowById(sheet, task.id);
+  sheet.getRange(row, 9).setValue(decision === 'approve' ? 'COMPLETED' : 'IN_PROGRESS');
+  sheet.getRange(row, 12).setValue(decision === 'approve' ? rating : 0);
+  sheet.getRange(row, 13).setValue(String(note || '').slice(0, 1000));
+  sheet.getRange(row, 15).setValue(new Date().toISOString());
+  return { status: 'success' };
+}
+
+function trackerSaveNote_(token, taskId, note) {
+  const actor = trackerActor_(token);
+  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_TASKS);
+  const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
+  if (!task || task.assignees.indexOf(actor.name) === -1) throw new Error('Bạn không được cập nhật nhiệm vụ này.');
+  const row = findRowById(sheet, task.id);
+  sheet.getRange(row, 10).setValue(String(note || '').slice(0, 2000));
+  sheet.getRange(row, 15).setValue(new Date().toISOString());
+  return { status: 'success' };
+}
+
+function trackerSubmitSchedule_(token, input) {
+  const actor = trackerActor_(token);
+  if (actor.role === 'director') throw new Error('Giám đốc không thể gửi đơn lịch cá nhân.');
+  const request = input || {};
+  const type = String(request.type || '');
+  const date = String(request.date || '');
+  const startTime = String(request.startTime || '');
+  const endTime = String(request.endTime || '');
+  const reason = String(request.reason || '').trim();
+  if (type !== 'LEAVE' && type !== 'OVERTIME') throw new Error('Loại đăng ký không hợp lệ.');
+  if (!trackerValidDate_(date)) throw new Error('Ngày đăng ký không hợp lệ.');
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime) || endTime <= startTime) {
+    throw new Error('Khung giờ đăng ký không hợp lệ.');
+  }
+  if (!reason || reason.length > 1000) throw new Error('Vui lòng nhập lý do/nội dung (tối đa 1000 ký tự).');
+  const id = Utilities.getUuid();
+  getSpreadsheet().getSheetByName(TAB.TRACKER_REQUESTS).appendRow([
+    id, actor.name, type, date, startTime, endTime, reason, 'PENDING', '', '', new Date().toISOString()
+  ]);
+  return { status: 'success', requestId: id };
+}
+
+function trackerReviewSchedule_(token, requestId, decision, note) {
+  const actor = trackerActor_(token);
+  if (actor.role !== 'director') throw new Error('Chỉ Giám đốc được duyệt đơn nghỉ/tăng ca.');
+  if (decision !== 'approve' && decision !== 'reject') throw new Error('Lựa chọn duyệt không hợp lệ.');
+  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_REQUESTS);
+  const request = trackerRequestRecords_().find(item => item.id === String(requestId || ''));
+  if (!request || request.status !== 'PENDING') throw new Error('Đơn không còn ở trạng thái chờ duyệt.');
+  const row = findRowById(sheet, request.id);
+  sheet.getRange(row, 8).setValue(decision === 'approve' ? 'APPROVED' : 'REJECTED');
+  sheet.getRange(row, 9).setValue(actor.name);
+  sheet.getRange(row, 10).setValue(String(note || '').slice(0, 1000));
+  return { status: 'success' };
+}
+
+function trackerExportSchedules_(token) {
+  const actor = trackerActor_(token);
+  if (actor.role === 'teacher') throw new Error('Chỉ Giám đốc hoặc Manager được xuất lịch.');
+  return { status: 'success', requests: trackerRequestRecords_() };
+}
+
+function trackerValidDate_(value) {
+  const text = String(value || '');
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return date.getFullYear() === Number(match[1])
+    && date.getMonth() === Number(match[2]) - 1
+    && date.getDate() === Number(match[3]);
+}
+
+
+// =====================================================
+// ĐỌC TOÀN BỘ DỮ LIỆU
+// =====================================================
+
+function getAllData() {
+  initDatabase();
+
+  const ss = getSpreadsheet();
+
+  const students = readStudents(
+    ss.getSheetByName(TAB.STUDENTS),
+    ss.getSheetByName(TAB.ATTENDANCE)
+  );
+
+  const inactive = readInactive(
+    ss.getSheetByName(TAB.INACTIVE)
+  );
+
+  const teachers = readTeachers(
+    ss.getSheetByName(TAB.TEACHERS)
+  ).map(teacher => ({ name: teacher.name }));
+
+  const config = readConfig(
+    ss.getSheetByName(TAB.CONFIG)
+  );
+
+  return {
+    status: 'success',
+    data: students,
+    inactive: inactive,
+    teachers: teachers,
+    config: {
+      customLevels: config.customLevels,
+      trackerManager: config.trackerManager
+    }
+  };
+}
+
+function readStudents(studentSheet, attendanceSheet) {
+  if (!studentSheet || studentSheet.getLastRow() < 2) {
+    return [];
+  }
+
+  const values = studentSheet.getDataRange().getValues();
+  const attendanceMap = {};
+
+  if (attendanceSheet && attendanceSheet.getLastRow() >= 2) {
+    const attendanceValues = attendanceSheet.getDataRange().getValues();
+
+    for (let i = 1; i < attendanceValues.length; i++) {
+      const row = attendanceValues[i];
+      const id = String(row[0] || '').trim();
+
+      if (!id) continue;
+
+      attendanceMap[id] = row.slice(3, 43).map(value =>
+        value instanceof Date
+          ? formatDate(value)
+          : String(value || '')
+      );
+    }
+  }
+
+  return values.slice(1)
+    .filter(row => String(row[0] || '').trim() !== '')
+    .map(row => {
+      const id = String(row[0] || '').trim();
+      const sessions = attendanceMap[id] || Array(40).fill('');
+
+      return {
+        id: id,
+        name: String(row[1] || ''),
+        dob: formatCell(row[2]),
+        gender: String(row[3] || ''),
+        level: String(row[4] || ''),
+        regDate: formatCell(row[5]),
+        parentName: String(row[6] || ''),
+        parentPhone: String(row[7] || ''),
+        address: String(row[8] || ''),
+        feeStatus: String(row[9] || ''),
+        note: String(row[10] || ''),
+        avatar: String(row[11] || ''),
+        assistants: splitAssistants(row[12]),
+        sessions: sessions,
+        completedSessions: sessions.filter(Boolean).length
+      };
+    });
+}
+
+function readInactive(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) {
+    return [];
+  }
+
+  const values = sheet.getDataRange().getValues();
+
+  return values.slice(1)
+    .filter(row => String(row[0] || '').trim() !== '')
+    .map(row => ({
+      id: String(row[0] || ''),
+      name: String(row[1] || ''),
+      dob: formatCell(row[2]),
+      gender: String(row[3] || ''),
+      level: String(row[4] || ''),
+      regDate: formatCell(row[5]),
+      parentName: String(row[6] || ''),
+      parentPhone: String(row[7] || ''),
+      feeStatus: String(row[8] || ''),
+      address: String(row[9] || ''),
+      note: String(row[10] || ''),
+      avatar: String(row[11] || ''),
+      assistants: splitAssistants(row[12]),
+      inactiveReason: String(row[13] || '')
+    }));
+}
+
+function readTeachers(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) {
+    return [];
+  }
+
+  const values = sheet.getDataRange().getValues();
+
+  return values.slice(1)
+    .filter(row => String(row[0] || '').trim() !== '')
+    .map(row => ({
+      name: String(row[0] || '').trim(),
+      password: String(row[1] || DEFAULT_DIRECTOR_PASSWORD)
+    }));
+}
+
+function readConfig(sheet) {
+  const result = {
+    customLevels: [],
+    trackerManager: '',
+    directorPassword: DEFAULT_DIRECTOR_PASSWORD
+  };
+
+  if (!sheet || sheet.getLastRow() < 2) {
+    return result;
+  }
+
+  const values = sheet.getDataRange().getValues();
+
+  values.slice(1).forEach(row => {
+    const type = String(row[0] || '').trim();
+    const value = String(row[1] || '').trim();
+
+    if (type === 'directorPassword' && value) {
+      result.directorPassword = value;
+    }
+
+    if (type === 'level' && value) {
+      result.customLevels.push(value);
+    }
+
+    if (type === 'trackerManager' && value) {
+      result.trackerManager = value;
+    }
+  });
+
+  return result;
+}
+
+function addLevel(level) {
+  initDatabase();
+  const value = String(level || '').trim();
+  if (!value) return { status: 'error', message: 'Tên cấp độ không được để trống' };
+
+  const sheet = getSpreadsheet().getSheetByName(TAB.CONFIG);
+  const values = sheet.getDataRange().getValues();
+  const exists = values.slice(1).some(row =>
+    String(row[0] || '').trim() === 'level' &&
+    String(row[1] || '').trim().toLowerCase() === value.toLowerCase()
+  );
+
+  if (exists) return { status: 'error', message: 'Cấp độ đã tồn tại trên Sheet' };
+
+  sheet.appendRow(['level', value]);
+  return { status: 'success', message: 'Đã lưu cấp độ lên Sheet' };
+}
+
+function deleteLevel(level) {
+  initDatabase();
+  const value = String(level || '').trim().toLowerCase();
+  const sheet = getSpreadsheet().getSheetByName(TAB.CONFIG);
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (
+      String(values[i][0] || '').trim() === 'level' &&
+      String(values[i][1] || '').trim().toLowerCase() === value
+    ) {
+      sheet.deleteRow(i + 1);
+    }
+  }
+
+  return { status: 'success', message: 'Đã xóa cấp độ khỏi Sheet' };
+}
+
+function changePassword(username, oldPassword, newPassword) {
+  initDatabase();
+  const user = String(username || '').trim();
+  const oldValue = String(oldPassword || '');
+  const newValue = String(newPassword || '');
+
+  if (newValue.length < 4) {
+    return { status: 'error', message: 'Mật khẩu mới phải có ít nhất 4 ký tự' };
+  }
+
+  const ss = getSpreadsheet();
+  if (user === 'director' || user === 'Giám Đốc') {
+    const sheet = ss.getSheetByName(TAB.CONFIG);
+    const values = sheet.getDataRange().getValues();
+    let rowNumber = null;
+    let currentValue = DEFAULT_DIRECTOR_PASSWORD;
+
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][0] || '').trim() === 'directorPassword') {
+        rowNumber = i + 1;
+        currentValue = String(values[i][1] || DEFAULT_DIRECTOR_PASSWORD);
+        break;
+      }
+    }
+
+    if (oldValue !== currentValue) {
+      return { status: 'error', message: 'Mật khẩu hiện tại không đúng' };
+    }
+
+    if (rowNumber) sheet.getRange(rowNumber, 2).setValue(newValue);
+    else sheet.appendRow(['directorPassword', newValue]);
+  } else {
+    const sheet = ss.getSheetByName(TAB.TEACHERS);
+    const row = findRowByTeacherName(sheet, user);
+    if (!row) return { status: 'error', message: 'Không tìm thấy tài khoản trợ giảng' };
+
+    const currentValue = String(sheet.getRange(row, 2).getValue() || DEFAULT_DIRECTOR_PASSWORD);
+    if (oldValue !== currentValue) {
+      return { status: 'error', message: 'Mật khẩu hiện tại không đúng' };
+    }
+
+    sheet.getRange(row, 2).setValue(newValue);
+  }
+
+  return { status: 'success', message: 'Đã cập nhật mật khẩu lên Sheet' };
+}
+
+
+// =====================================================
+// THÊM HỌC VIÊN
+// =====================================================
+
+function addStudent(student) {
+  initDatabase();
+
+  const ss = getSpreadsheet();
+  const studentSheet = ss.getSheetByName(TAB.STUDENTS);
+  const attendanceSheet = ss.getSheetByName(TAB.ATTENDANCE);
+
+  const generatedId = generateNextStudentId(studentSheet);
+  const id = String(student?.id || generatedId).trim() || generatedId;
+
+  const existing = studentSheet
+    .getRange(2, 1, Math.max(studentSheet.getLastRow() - 1, 1), 1)
+    .getValues()
+    .flat()
+    .map(String);
+
+  if (existing.includes(id)) {
+    return {
+      status: 'error',
+      message: 'Mã học viên đã tồn tại'
+    };
+  }
+
+  const assistants = splitAssistants(student.assistants).join(', ');
+  const feeStatus = normalizeFeeStatus(student.feeStatus);
+
+  studentSheet.appendRow([
+    id,
+    student.name || '',
+    student.dob || '',
+    student.gender || '',
+    student.level || '',
+    student.regDate || '',
+    student.parentName || '',
+    student.parentPhone || '',
+    student.address || '',
+    feeStatus,
+    student.note || '',
+    student.avatar || '',
+    assistants
+  ]);
+
+  const attendanceData = attendanceSheet.getDataRange().getValues();
+  const attendanceHasStudent = attendanceData.slice(1).some(row =>
+    String(row[0] || '').trim() === id
+  );
+
+  if (!attendanceHasStudent) {
+    attendanceSheet.appendRow([
+      id,
+      student.name || '',
+      student.regDate || '',
+      ...Array(40).fill('')
+    ]);
+  }
+
+  return {
+    status: 'success',
+    studentId: id
+  };
+}
+
+
+// =====================================================
+// CẬP NHẬT ĐIỂM DANH
+// =====================================================
+
+function updateAttendance(studentId, sessionIndex, value) {
+  const sheet = getSpreadsheet().getSheetByName(TAB.ATTENDANCE);
+
+  if (!sheet) {
+    return {
+      status: 'error',
+      message: 'Không tìm thấy sheet DiemDanh'
+    };
+  }
+
+  const index = Number(sessionIndex);
+
+  if (!Number.isInteger(index) || index < 1 || index > 40) {
+    return {
+      status: 'error',
+      message: 'Số buổi học không hợp lệ'
+    };
+  }
+
+  const values = sheet.getDataRange().getValues();
+
+  for (let row = 1; row < values.length; row++) {
+    if (String(values[row][0]).trim() === String(studentId).trim()) {
+      // Cột A là ID, B là tên, C là ngày đăng ký.
+      // Buổi 1 bắt đầu từ cột D.
+      sheet.getRange(row + 1, index + 3).setValue(value || '');
+
+      return {
+        status: 'success',
+        message: 'Đã cập nhật điểm danh'
+      };
+    }
+  }
+
+  return {
+    status: 'error',
+    message: 'Không tìm thấy học viên'
+  };
+}
+
+
+// =====================================================
+// CẬP NHẬT HỌC VIÊN
+// =====================================================
+
+function updateLevel(studentId, level) {
+  const sheet = getSpreadsheet().getSheetByName(TAB.STUDENTS);
+  const row = findRowById(sheet, studentId);
+
+  if (!row) {
+    return {
+      status: 'error',
+      message: 'Không tìm thấy học viên'
+    };
+  }
+
+  sheet.getRange(row, 5).setValue(level || '');
+
+  return {
+    status: 'success',
+    message: 'Đã cập nhật cấp độ'
+  };
+}
+
+function updateAssistants(studentId, assistants) {
+  const sheet = getSpreadsheet().getSheetByName(TAB.STUDENTS);
+  const row = findRowById(sheet, studentId);
+
+  if (!row) {
+    return {
+      status: 'error',
+      message: 'Không tìm thấy học viên'
+    };
+  }
+
+  const assistantsText = splitAssistants(assistants).join(', ');
+
+  sheet.getRange(row, 13).setValue(assistantsText);
+
+  return {
+    status: 'success',
+    message: 'Đã cập nhật trợ giảng'
+  };
+}
+
+function updateStudentInfo(student) {
+  if (!student || !student.id) {
+    return {
+      status: 'error',
+      message: 'Thiếu thông tin học viên'
+    };
+  }
+
+  const sheet = getSpreadsheet().getSheetByName(TAB.STUDENTS);
+  const row = findRowById(sheet, student.id);
+
+  if (!row) {
+    return {
+      status: 'error',
+      message: 'Không tìm thấy học viên'
+    };
+  }
+
+  const assistants = splitAssistants(student.assistants).join(', ');
+  const feeStatus = normalizeFeeStatus(student.feeStatus);
+
+  sheet.getRange(row, 1, 1, 13).setValues([[
+    student.id || '',
+    student.name || '',
+    student.dob || '',
+    student.gender || '',
+    student.level || '',
+    student.regDate || '',
+    student.parentName || '',
+    student.parentPhone || '',
+    student.address || '',
+    feeStatus,
+    student.note || '',
+    student.avatar || '',
+    assistants
+  ]]);
+
+  return {
+    status: 'success',
+    message: 'Đã cập nhật thông tin học viên'
+  };
+}
+
+/**
+ * 7. Chuyển sang Tab Học Viên Nghỉ Học
+ */
+function moveToInactive(studentId, reason) {
+  initDatabase();
+  const ss = getSpreadsheet();
+  const sheetStudents = ss.getSheetByName(TAB.STUDENTS);
+  const sheetAttendance = ss.getSheetByName(TAB.ATTENDANCE);
+  const sheetInactive = ss.getSheetByName(TAB.INACTIVE);
+
+  const studentsData = sheetStudents.getDataRange().getValues();
+  let studentInfo = null;
+  let targetRowIndex = -1;
+
+  for (let i = 1; i < studentsData.length; i++) {
+    if (String(studentsData[i][0]).trim() === String(studentId).trim()) {
+      studentInfo = studentsData[i];
+      targetRowIndex = i + 1;
+      break;
+    }
+  }
+
+  if (!studentInfo) return { status: 'error', message: 'Không tìm thấy học viên' };
+
+  sheetInactive.appendRow([
+    studentInfo[0],
+    studentInfo[1],
+    studentInfo[2],
+    studentInfo[3],
+    studentInfo[4],
+    studentInfo[5],
+    studentInfo[6],
+    studentInfo[7],
+    "Nghỉ học",
+    studentInfo[8],
+    studentInfo[10],
+    studentInfo[11],
+    studentInfo[12],
+    reason || "Đã dừng học"
+  ]);
+
+  sheetStudents.deleteRow(targetRowIndex);
+
+  const attData = sheetAttendance.getDataRange().getValues();
+  for (let j = 1; j < attData.length; j++) {
+    if (String(attData[j][0]).trim() === String(studentId).trim()) {
+      sheetAttendance.deleteRow(j + 1);
+      break;
+    }
+  }
+
+  return { status: 'success' };
+}
+
+function restoreStudent(student) {
+  initDatabase();
+
+  if (!student || !String(student.id || '').trim()) {
+    return {
+      status: 'error',
+      message: 'Thiếu mã học viên để khôi phục'
+    };
+  }
+
+  const ss = getSpreadsheet();
+  const studentSheet = ss.getSheetByName(TAB.STUDENTS);
+  const attendanceSheet = ss.getSheetByName(TAB.ATTENDANCE);
+  const inactiveSheet = ss.getSheetByName(TAB.INACTIVE);
+  const studentId = String(student.id).trim();
+
+  if (findRowById(studentSheet, studentId)) {
+    return {
+      status: 'error',
+      message: 'Học viên đã tồn tại trong danh sách đang học'
+    };
+  }
+
+  const assistants = splitAssistants(student.assistants).join(', ');
+  const feeStatus = normalizeFeeStatus(student.feeStatus);
+
+  studentSheet.appendRow([
+    studentId,
+    student.name || '',
+    student.dob || '',
+    student.gender || '',
+    student.level || '',
+    student.regDate || '',
+    student.parentName || '',
+    student.parentPhone || '',
+    student.address || '',
+    feeStatus,
+    student.note || '',
+    student.avatar || '',
+    assistants
+  ]);
+
+  const attendanceValues = attendanceSheet.getDataRange().getValues();
+  const existsInAttendance = attendanceValues.slice(1).some(row =>
+    String(row[0] || '').trim() === studentId
+  );
+
+  if (!existsInAttendance) {
+    attendanceSheet.appendRow([
+      studentId,
+      student.name || '',
+      student.regDate || '',
+      ...Array(40).fill('')
+    ]);
+  }
+
+  const inactiveValues = inactiveSheet.getDataRange().getValues();
+  for (let i = inactiveValues.length - 1; i >= 1; i--) {
+    if (String(inactiveValues[i][0] || '').trim() === studentId) {
+      inactiveSheet.deleteRow(i + 1);
+      break;
+    }
+  }
+
+  return {
+    status: 'success',
+    message: 'Đã khôi phục học viên lên Google Sheet'
+  };
+}
+
+// =====================================================
+// LƯU DỮ LIỆU MASTER
+// =====================================================
+
+function saveMasterData(students) {
+  if (!Array.isArray(students)) {
+    return {
+      status: 'error',
+      message: 'Dữ liệu học viên không hợp lệ'
+    };
+  }
+
+  const ss = getSpreadsheet();
+  const studentSheet = ss.getSheetByName(TAB.STUDENTS);
+
+  students.forEach(student => {
+    const row = findRowById(studentSheet, student.id);
+
+    if (!row) return;
+
+    studentSheet
+      .getRange(row, 5)
+      .setValue(student.level || '');
+
+    studentSheet
+      .getRange(row, 13)
+      .setValue(splitAssistants(student.assistants).join(', '));
+  });
+
+  return {
+    status: 'success',
+    message: 'Đã lưu dữ liệu'
+  };
+}
+
+
+// =====================================================
+// QUẢN LÝ TRỢ GIẢNG
+// =====================================================
+
+function addTeacher(teacherName, password) {
+  initDatabase();
+
+  const name = String(teacherName || '').trim();
+  const pwd = String(password || '').trim();
+
+  if (!name || !pwd) {
+    return {
+      status: 'error',
+      message: 'Tên và mật khẩu không được để trống'
+    };
+  }
+
+  const sheet = getSpreadsheet().getSheetByName(TAB.TEACHERS);
+  const teachers = readTeachers(sheet);
+
+  if (teachers.some(t => t.name === name)) {
+    return {
+      status: 'error',
+      message: 'Trợ giảng đã tồn tại'
+    };
+  }
+
+  sheet.appendRow([name, pwd]);
+
+  return {
+    status: 'success',
+    message: 'Đã thêm trợ giảng'
+  };
+}
+
+function deleteTeacher(teacherName) {
+  const sheet = getSpreadsheet().getSheetByName(TAB.TEACHERS);
+  const row = findRowByTeacherName(sheet, teacherName);
+
+  if (!row) {
+    return {
+      status: 'error',
+      message: 'Không tìm thấy trợ giảng'
+    };
+  }
+
+  sheet.deleteRow(row);
+
+  return {
+    status: 'success',
+    message: 'Đã xóa trợ giảng'
+  };
+}
+
+// =====================================================
+// HÀM PHỤ TRỢ
+// =====================================================
+
+function generateNextStudentId(sheet) {
+  if (!sheet) return 'HV001';
+
+  const values = sheet.getDataRange().getValues();
+  const ids = values.slice(1)
+    .map(row => String(row[0] || '').trim())
+    .filter(Boolean)
+    .map(id => {
+      const match = String(id).match(/(\d+)(?!.*\d)/);
+      return match ? Number(match[1]) : NaN;
+    })
+    .filter(value => Number.isFinite(value));
+
+  const nextValue = ids.length ? Math.max(...ids) + 1 : 1;
+  return 'HV' + String(nextValue).padStart(3, '0');
+}
+
+function findRowById(sheet, studentId) {
+  if (!sheet || sheet.getLastRow() < 2) return null;
+
+  const ids = sheet
+    .getRange(2, 1, sheet.getLastRow() - 1, 1)
+    .getValues()
+    .flat();
+
+  const index = ids.findIndex(
+    id => String(id).trim() === String(studentId).trim()
+  );
+
+  return index === -1 ? null : index + 2;
+}
+
+function findRowByTeacherName(sheet, teacherName) {
+  if (!sheet || sheet.getLastRow() < 2) return null;
+
+  const names = sheet
+    .getRange(2, 1, sheet.getLastRow() - 1, 1)
+    .getValues()
+    .flat();
+
+  const index = names.findIndex(
+    name => String(name).trim() === String(teacherName).trim()
+  );
+
+  return index === -1 ? null : index + 2;
+}
+
+function splitAssistants(value) {
+  const values = Array.isArray(value)
+    ? value
+    : String(value || '').split(',');
+
+  return values
+    .map(item => String(item).trim())
+    .filter(item => item && !/^https?:\/\//i.test(item));
+}
+
+function formatCell(value) {
+  if (value instanceof Date) {
+    return formatDate(value);
+  }
+
+  return value == null ? '' : String(value);
+}
+
+function formatDate(date) {
+  return Utilities.formatDate(
+    new Date(date),
+    Session.getScriptTimeZone() || 'Asia/Ho_Chi_Minh',
+    'yyyy-MM-dd'
+  );
+}
+
+function normalizeFeeStatus(value) {
+  return String(value || '').trim() === 'Đã đóng'
+    ? 'Đã đóng'
+    : 'Chưa đóng';
+}
+
+// ================= CẬP NHẬT TRẠNG THÁI HỌC PHÍ =================
+function updateFeeStatus(studentId, feeStatus) {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(TAB.STUDENTS);
+  if (!sheet) return { status: 'error', message: 'Không tìm thấy sheet ThongTinHocSinh' };
+
+  const normalizedFeeStatus = normalizeFeeStatus(feeStatus);
+
+  const data = sheet.getDataRange().getValues();
+  const searchId = String(studentId).trim();
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === searchId) {
+      // Cột J là cột thứ 10 trong Google Sheets
+      sheet.getRange(i + 1, 10).setValue(normalizedFeeStatus);
+      return { status: 'success', message: 'Cập nhật cột J thành công' };
+    }
+  }
+
+  return { status: 'error', message: 'Không tìm thấy học viên có ID: ' + studentId };
+}
+
+function processPayment(studentId, packageSessions) {
+  initDatabase();
+
+  const shiftCount = Number(packageSessions);
+  if (![12, 24, 36].includes(shiftCount)) {
+    return { status: 'error', message: 'Gói học không hợp lệ' };
+  }
+
+  const ss = getSpreadsheet();
+  const studentSheet = ss.getSheetByName(TAB.STUDENTS);
+  const attendanceSheet = ss.getSheetByName(TAB.ATTENDANCE);
+  const studentRow = findRowById(studentSheet, studentId);
+
+  if (!studentRow) {
+    return { status: 'error', message: 'Không tìm thấy học viên' };
+  }
+
+  const attendanceValues = attendanceSheet.getDataRange().getValues();
+  let attendanceRow = null;
+  for (let i = 1; i < attendanceValues.length; i++) {
+    if (String(attendanceValues[i][0]).trim() === String(studentId).trim()) {
+      attendanceRow = i + 1;
+      break;
+    }
+  }
+
+  if (!attendanceRow) {
+    return { status: 'error', message: 'Không tìm thấy dữ liệu điểm danh của học viên' };
+  }
+
+  const currentSessions = attendanceSheet
+    .getRange(attendanceRow, 4, 1, 40)
+    .getValues()[0]
+    .map(value => value instanceof Date ? formatDate(value) : String(value || ''));
+  const newSessions = currentSessions.slice(shiftCount)
+    .concat(Array(shiftCount).fill(''));
+
+  attendanceSheet.getRange(attendanceRow, 4, 1, 40).setValues([newSessions]);
+  studentSheet.getRange(studentRow, 10).setValue('Đã đóng');
+
+  return {
+    status: 'success',
+    message: 'Đã thanh toán và gia hạn học viên',
+    sessions: newSessions,
+    feeStatus: 'Đã đóng'
+  };
+}
