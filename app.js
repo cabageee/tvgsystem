@@ -492,6 +492,24 @@
       return { bg: 'bg-white', text: 'text-slate-800', badge: '', tBadge: '', tBg: 'bg-white border-slate-200' };
     }    
 
+    function getProgressWarningPriority(count, level = '') {
+      const levelName = String(level).toLowerCase();
+      if (levelName.includes('combo')) {
+        if (count >= 30) return 3;
+        if (count >= 24) return 2;
+        if (count >= 12) return 1;
+        return 0;
+      }
+      if (levelName.includes('full')) {
+        if (count >= 22) return 3;
+        if (count >= 12) return 2;
+        return 0;
+      }
+      if (count >= 10) return 3;
+      if (count >= 6) return 2;
+      return 0;
+    }
+
     function isStudentOverdue(s) {
       const count = s.completedSessions || 0;
       const levelName = String(s.level || '').toLowerCase();
@@ -1838,14 +1856,27 @@
       if (!container) return;
 
       const searchKey = (document.getElementById('teacher-search-input')?.value || '').toLowerCase().trim();
-      const myStudents = studentsData.filter(s => {
+      const assignedStudents = studentsData.filter(s => {
         const isMyClass = currentUserRole === 'director' || (s.assistants && s.assistants.includes(currentUserName));
-        const matchSearch = !searchKey || s.name.toLowerCase().includes(searchKey) || s.id.toLowerCase().includes(searchKey);
-        return isMyClass && matchSearch;
+        return isMyClass;
       });
+      const myStudents = assignedStudents
+        .filter(s => {
+          const searchableText = `${s.name || ''} ${s.id || ''}`.toLowerCase();
+          return !searchKey || searchableText.includes(searchKey);
+        })
+        .sort((a, b) => {
+          const priorityDifference = getProgressWarningPriority(b.completedSessions || 0, b.level)
+            - getProgressWarningPriority(a.completedSessions || 0, a.level);
+          return priorityDifference || studentsData.indexOf(a) - studentsData.indexOf(b);
+        });
 
       const countEl = document.getElementById('teacher-student-count');
-      if (countEl) countEl.innerText = myStudents.length;
+      if (countEl) countEl.innerText = assignedStudents.length;
+      const renewalCount = document.getElementById('teacher-renewal-count');
+      if (renewalCount) renewalCount.innerText = assignedStudents.filter(student => getProgressWarningPriority(student.completedSessions || 0, student.level) === 3).length;
+      const careCount = document.getElementById('teacher-care-count');
+      if (careCount) careCount.innerText = assignedStudents.filter(student => getProgressWarningPriority(student.completedSessions || 0, student.level) === 2).length;
 
       if (!myStudents.length) {
         container.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400 bg-white rounded-2xl border">Không có học viên nào thuộc lớp phụ trách.</div>`;
@@ -1855,6 +1886,14 @@
       container.innerHTML = myStudents.map(s => {
         const globalIdx = studentsData.findIndex(st => st.id === s.id);
         const warn = getWarningConfig(s.completedSessions, s.level);
+        const priority = getProgressWarningPriority(s.completedSessions || 0, s.level);
+        const warningLabel = priority === 3
+          ? '<span class="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">Cần gia hạn</span>'
+          : priority === 2
+            ? '<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Cần chăm sóc</span>'
+            : priority === 1
+              ? '<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">Theo dõi tốt</span>'
+              : '';
         const attendedToday = hasAttendanceDate(s.sessions, getFormattedToday());
         return `
           <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
@@ -1866,7 +1905,10 @@
                   <p class="text-[11px] text-slate-400 font-mono">${s.id} - ${s.level}</p>
                 </div>
               </div>
-              <span class="px-2.5 py-1 rounded-full text-xs font-bold font-mono ${warn.bg} ${warn.text}">${s.completedSessions || 0} / 40b</span>
+              <div class="flex flex-col items-end gap-1">
+                <span class="px-2.5 py-1 rounded-full text-xs font-bold font-mono ${warn.bg} ${warn.text}">${s.completedSessions || 0} / 40b</span>
+                ${warningLabel}
+              </div>
             </div>
             
             <div class="flex flex-col gap-2 text-xs">

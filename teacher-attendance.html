@@ -472,6 +472,22 @@
             <span class="flex-1 sm:flex-none text-center text-xs font-mono bg-emerald-900/60 px-3 py-2 rounded-xl border border-emerald-700 font-bold">Sĩ số: <strong id="teacher-student-count" class="text-amber-300">0</strong></span>
           </div>
         </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-red-100 flex items-center justify-between">
+            <div>
+              <p class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Cần Gia Hạn (Đỏ)</p>
+              <h3 id="teacher-renewal-count" class="text-xl sm:text-2xl font-black text-red-600 mt-0.5">0</h3>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center text-lg font-bold">🚨</div>
+          </div>
+          <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-amber-100 flex items-center justify-between">
+            <div>
+              <p class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Cần Chăm Sóc (Vàng)</p>
+              <h3 id="teacher-care-count" class="text-xl sm:text-2xl font-black text-amber-600 mt-0.5">0</h3>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg font-bold">⚠️</div>
+          </div>
+        </div>
         <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2">
           <span class="text-slate-400 text-sm pl-2">🔍</span>
           <input type="text" id="teacher-search-input" oninput="renderTeacherCards()" placeholder="Nhập tên hoặc mã để tìm nhanh..." class="w-full text-xs outline-none bg-transparent py-1 text-slate-700 font-medium">
