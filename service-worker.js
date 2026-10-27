@@ -1,7 +1,8 @@
-const CACHE_NAME = 'thien-vy-global-v6';
+const CACHE_NAME = 'thien-vy-global-v8';
 const APP_FILES = [
   './',
   './index.html',
+  './executive-tracker.html',
   './profiles.html',
   './assignments.html',
   './attendance.html',

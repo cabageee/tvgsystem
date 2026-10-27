@@ -2412,6 +2412,11 @@
               ? '<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">Theo dõi tốt</span>'
               : '';
         const attendedToday = hasAttendanceDate(s.sessions, getFormattedToday());
+        const studentId = String(s.id);
+        const nextSessionIndex = (Array.isArray(s.sessions) ? s.sessions : [])
+          .findIndex(value => !hasRecordedAttendance(value));
+        const isSavingAttendance = attendanceSavingStudentIds.has(studentId);
+        const canMarkAttendance = !attendedToday && nextSessionIndex >= 0 && !isSavingAttendance;
         return `
           <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex items-center justify-between border-b pb-3">
@@ -2429,22 +2434,63 @@
             </div>
             
             <div class="flex flex-col gap-2 text-xs">
-              <div class="flex justify-between items-center">
+              <div>
                 <span class="text-slate-500">Buổi kế tiếp: <strong class="text-slate-800">Buổi ${(s.completedSessions || 0) + 1}</strong></span>
-                <span class="font-bold ${isFeePaid(s) ? 'text-emerald-600' : 'text-red-600'}">${isFeePaid(s) ? 'Đã đóng học phí' : 'Chưa đóng học phí'}</span>
               </div>
               <div class="flex items-center justify-between rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-xs">
                 <span class="text-slate-500">Điểm danh hôm nay</span>
                 <strong class="${attendedToday ? 'text-emerald-700' : 'text-slate-500'}">${attendedToday ? '✓ Đã điểm danh' : 'Chưa điểm danh'}</strong>
               </div>
+              <button type="button" onclick="markTeacherAttendance(${globalIdx})" ${canMarkAttendance ? '' : 'disabled'} class="w-full px-3 py-2.5 rounded-xl text-xs font-bold shadow-sm transition ${canMarkAttendance ? 'bg-emerald-700 hover:bg-emerald-800 text-white active:scale-[0.98]' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}">
+                ${isSavingAttendance ? 'Đang lưu điểm danh...' : attendedToday ? '✓ Đã điểm danh hôm nay' : nextSessionIndex < 0 ? 'Đã đủ 40 buổi' : '✓ Điểm danh hôm nay'}
+              </button>
               <div class="action-buttons action-buttons--card">
                 <button onclick="openTeacherStudentDetails('${s.id}')" class="action-button action-button--neutral">${renderUiIcon('clipboard')} Chi tiết</button>
-                <button onclick="openPaymentPopup('${s.id}')" class="action-button ${isFeePaid(s) ? 'action-button--neutral' : 'action-button--primary'}">${renderUiIcon('payment')} ${isFeePaid(s) ? 'Gia hạn' : 'Đóng học phí'}</button>
+                <button onclick="openPaymentPopup('${s.id}')" class="action-button action-button--primary">${renderUiIcon('payment')} Gia hạn</button>
               </div>
             </div>
           </div>`;
       }).join('');
       upgradeUiEmojis(container);
+    }
+
+    async function markTeacherAttendance(studentIndex) {
+      if (currentUserRole !== 'teacher') {
+        showToast('Chức năng này chỉ dành cho tài khoản trợ giảng.', 'error');
+        return;
+      }
+
+      const student = studentsData[studentIndex];
+      if (!student || !Array.isArray(student.assistants) || !student.assistants.includes(currentUserName)) {
+        showToast('Bạn không được phân công phụ trách học viên này.', 'error');
+        return;
+      }
+
+      const today = getFormattedToday();
+      if (hasAttendanceDate(student.sessions, today)) {
+        showToast(`${student.name} đã được điểm danh hôm nay.`, 'error');
+        renderTeacherCards();
+        return;
+      }
+
+      const sessionIndex = (Array.isArray(student.sessions) ? student.sessions : [])
+        .findIndex(value => !hasRecordedAttendance(value));
+      if (sessionIndex < 0) {
+        showToast(`${student.name} đã đủ 40 buổi học.`, 'error');
+        renderTeacherCards();
+        return;
+      }
+
+      const key = String(student.id);
+      if (attendanceSavingStudentIds.has(key)) return;
+      attendanceSavingStudentIds.add(key);
+      renderTeacherCards();
+      try {
+        await updateMasterSession(studentIndex, sessionIndex, today);
+      } finally {
+        attendanceSavingStudentIds.delete(key);
+        renderTeacherCards();
+      }
     }
 
     function openTeacherStudentDetails(studentId) {

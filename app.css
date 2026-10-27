@@ -111,6 +111,18 @@
       min-height: 74px;
       gap: 18px;
     }
+    .home-brand {
+      color: inherit;
+      text-decoration: none;
+      border-radius: 12px;
+      transition: background-color .18s ease, transform .18s ease;
+    }
+    .home-brand:hover { background-color: rgba(255, 255, 255, .08); }
+    .home-brand:active { transform: scale(.985); }
+    .home-brand:focus-visible {
+      outline: 2px solid #fcd34d;
+      outline-offset: 3px;
+    }
     #app-container header img { border-color: rgba(241, 201, 123, .9); }
     #app-container header h1 { letter-spacing: .075em; }
     #user-info-text { color: #f4d9b3; }

@@ -14,6 +14,9 @@ Mỗi mục điều hướng có một URL HTML riêng và chỉ tải nội dun
 - `levels.html` — Quản lý cấp độ lớp
 - `teacher-attendance.html` — Điểm danh lớp của trợ giảng
 - `change-password.html` — Đổi mật khẩu
+- `executive-tracker.html` — Tracker điều hành với Master/User View và Gantt 12 tuần
+
+Trong giao diện trợ giảng, nút **Điểm danh hôm nay** trên thẻ học viên ghi ngày hiện tại vào buổi còn trống tiếp theo. Trợ giảng không cần mở phần chỉnh sửa ngày hoặc chuyển bàn phím sang chế độ số; nút chỉ khả dụng khi học viên chưa được điểm danh trong ngày và còn buổi học.
 
 ## Mở như ứng dụng web
 
@@ -22,6 +25,12 @@ Mỗi mục điều hướng có một URL HTML riêng và chỉ tải nội dun
 Sau lần truy cập đầu tiên khi có mạng, trình duyệt lưu bộ khung giao diện và các trang để mở lại khi ngoại tuyến. Các thao tác đồng bộ Google Sheets và những chức năng cần dịch vụ bên ngoài vẫn cần kết nối mạng. PWA và service worker yêu cầu website chạy trên HTTPS hoặc localhost.
 
 Giữ các file HTML, `app.js` và `app.css` trong cùng thư mục khi triển khai hoặc di chuyển ứng dụng. Trạng thái đăng nhập được giữ trong `sessionStorage` khi chuyển trang.
+
+## Tracker điều hành
+
+Trang `executive-tracker.html` là một bảng Gantt độc lập gồm Master View để giao/quản lý nhiệm vụ và User View để cập nhật hoàn thành, ghi chú. Bộ lọc hỗ trợ người phụ trách, trạng thái và ưu tiên; dữ liệu có thể xuất thành JSON.
+
+Hiện tại nhiệm vụ chỉ được lưu trong `localStorage` của trình duyệt đang mở. Vì vậy trang chạy được trên GitHub Pages mà không cần backend riêng, nhưng dữ liệu không đồng bộ giữa thiết bị/người dùng và nút chuyển Master/User chỉ là giao diện, không phải phân quyền an toàn. Để dùng chung, cần mở rộng Google Apps Script hiện tại với một tab Sheet và API riêng cho danh sách/thêm/sửa/xóa nhiệm vụ; máy chủ phải xác thực người dùng và kiểm tra quyền trước khi ghi dữ liệu. Không đưa dữ liệu nhạy cảm lên bản local-only.
 
 ## Thông báo sinh nhật
 

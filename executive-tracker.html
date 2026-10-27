@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#761e2b">
+  <meta name="description" content="Bảng theo dõi phân công, tiến độ và Gantt 12 tuần.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>Tracker Điều Hành | Thiên Vy Global</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --wine: #761e2b;
+      --wine-dark: #50131d;
+      --ink: #19212d;
+      --muted: #647083;
+      --line: #e3e8ef;
+      --surface: #fff;
+      --canvas: #f3f5f8;
+      --green: #07805b;
+      --amber: #a76508;
+      --red: #c23a46;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .topbar { background: linear-gradient(110deg, var(--wine-dark), var(--wine)); color: white; }
+    .topbar-inner, main { width: min(1440px, 100%); margin: 0 auto; padding: 16px 22px; }
+    .topbar-inner { display: flex; justify-content: space-between; align-items: center; gap: 18px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; min-width: 0; padding: 5px 12px 5px 5px; border: 1px solid transparent; border-radius: 15px; color: inherit; text-decoration: none; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+    .brand:hover, .brand:focus-visible { border-color: #ffffff30; background: #ffffff12; }
+    .brand:active { transform: scale(.985); }
+    .brand:focus-visible { outline: 3px solid #f5cf7a; outline-offset: 3px; }
+    .brand-mark { width: 46px; height: 46px; display: grid; place-items: center; overflow: hidden; border: 2px solid #e8c66f; border-radius: 50%; background: white; box-shadow: 0 2px 8px #0003; flex: 0 0 auto; }
+    .brand-mark img { width: 100%; height: 100%; object-fit: cover; }
+    h1 { margin: 0; font-size: 18px; letter-spacing: .04em; }
+    .subtitle { margin: 4px 0 0; color: #f5d6d8; font-size: 12px; }
+    .top-actions { display: flex; align-items: center; gap: 9px; }
+    .top-link, .button { border: 0; border-radius: 10px; padding: 10px 13px; font-size: 12px; font-weight: 750; text-decoration: none; }
+    .top-link { color: white; background: #ffffff16; }
+    .top-link:hover { background: #ffffff28; }
+    .button-primary { color: white; background: var(--wine); box-shadow: 0 4px 10px #761e2b24; }
+    .button-primary:hover { background: var(--wine-dark); }
+    .button-light { color: #334052; background: #eef1f5; }
+    .button-light:hover { background: #e1e6ed; }
+    .button-danger { color: #a52835; background: #fff0f1; }
+    main { padding-top: 22px; padding-bottom: 48px; }
+    .backend-note { padding: 13px 15px; border: 1px solid #f0d39a; border-radius: 13px; color: #62420d; background: #fff8e9; font-size: 12px; line-height: 1.55; }
+    .backend-note strong { color: #4a3109; }
+    .backend-note details { margin-top: 7px; }
+    .backend-note summary { width: fit-content; font-weight: 800; cursor: pointer; }
+    .backend-note ol { padding-left: 20px; margin: 9px 0 2px; }
+    .backend-note code { padding: 1px 5px; border-radius: 5px; background: #f7eccc; }
+    .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin: 22px 0 13px; }
+    .section-heading h2 { margin: 0; font-size: 20px; }
+    .section-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+    .view-switch { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+    .view-switch button { padding: 8px 12px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 800; }
+    .view-switch button[aria-pressed="true"] { color: var(--wine); background: #fae9eb; }
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .kpi { padding: 16px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); box-shadow: 0 3px 12px #17203308; }
+    .kpi-label { color: var(--muted); font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; }
+    .kpi-value { margin-top: 8px; font-size: 25px; font-weight: 850; }
+    .kpi-hint { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .toolbar { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; margin: 16px 0; padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+    .filters { display: grid; grid-template-columns: repeat(4, minmax(135px, 1fr)); gap: 9px; flex: 1; }
+    .field { display: grid; gap: 5px; }
+    .field label { color: #5a6678; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .055em; }
+    .field input, .field select, .field textarea { width: 100%; min-width: 0; border: 1px solid #dce2e9; border-radius: 9px; padding: 9px 10px; outline: none; color: var(--ink); background: white; font-size: 12px; }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: #b8616b; box-shadow: 0 0 0 3px #761e2b12; }
+    .quarter-field { max-width: 160px; }
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 15px; background: white; box-shadow: 0 3px 12px #17203308; }
+    table { width: 100%; min-width: 1080px; border-collapse: separate; border-spacing: 0; text-align: left; }
+    th { position: sticky; top: 0; z-index: 1; padding: 11px 10px; color: #697488; background: #f7f8fa; border-bottom: 1px solid var(--line); font-size: 10px; font-weight: 850; text-transform: uppercase; letter-spacing: .045em; }
+    td { padding: 12px 10px; border-bottom: 1px solid #edf0f4; vertical-align: middle; font-size: 12px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .delegate { font-weight: 800; white-space: nowrap; }
+    .task-name { max-width: 240px; font-weight: 800; line-height: 1.4; }
+    .task-meta { margin-top: 5px; color: var(--muted); font-size: 10px; }
+    .priority, .status-pill { display: inline-flex; border-radius: 999px; padding: 4px 8px; font-size: 10px; font-weight: 850; white-space: nowrap; }
+    .priority-high { color: #a42b37; background: #ffeaec; }
+    .priority-medium { color: #8a5708; background: #fff2d6; }
+    .priority-low { color: #32644d; background: #e7f5ed; }
+    .status-active { color: #17658b; background: #e6f4fb; }
+    .status-overdue { color: #a42b37; background: #ffeaec; }
+    .status-completed { color: #08704f; background: #e3f5ed; }
+    .gantt { min-width: 300px; }
+    .week-labels, .gantt-track { display: grid; grid-template-columns: repeat(12, minmax(12px, 1fr)); gap: 2px; }
+    .week-labels { margin-bottom: 5px; color: #8a94a3; text-align: center; font-size: 8px; }
+    .gantt-track { position: relative; height: 21px; padding: 2px; border-radius: 5px; background: repeating-linear-gradient(90deg, #f1f3f6 0, #f1f3f6 calc(8.333% - 1px), #e5e9ef calc(8.333% - 1px), #e5e9ef 8.333%); }
+    .gantt-bar { z-index: 1; align-self: stretch; border-radius: 4px; background: #6390cc; }
+    .gantt-bar.completed { background: var(--green); }
+    .gantt-bar.overdue { background: var(--red); }
+    .reward, .consequence { max-width: 160px; color: #445064; font-size: 11px; line-height: 1.4; }
+    .reward.unlocked { color: var(--green); font-weight: 800; }
+    .check-cell { text-align: center; }
+    .task-check { width: 18px; height: 18px; accent-color: var(--green); vertical-align: middle; }
+    .note-input { width: 170px; min-height: 38px; resize: vertical; border: 1px solid #dce2e9; border-radius: 8px; padding: 7px; font-size: 11px; }
+    .row-actions { display: flex; gap: 5px; }
+    .icon-button { border: 0; border-radius: 8px; padding: 7px 8px; background: #f1f3f6; color: #415064; font-size: 11px; font-weight: 800; }
+    .icon-button:hover { background: #e7ebf0; }
+    .empty-state { padding: 48px 20px; color: var(--muted); text-align: center; }
+    .empty-state strong { display: block; margin-bottom: 6px; color: #364255; font-size: 15px; }
+    .mobile-list { display: none; }
+    .toast { position: fixed; right: 18px; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 10; max-width: min(380px, calc(100vw - 36px)); padding: 12px 15px; border-radius: 11px; color: white; background: #202936; box-shadow: 0 8px 30px #0003; font-size: 12px; }
+    dialog { width: min(620px, calc(100vw - 24px)); max-height: min(90vh, 760px); padding: 0; border: 0; border-radius: 16px; box-shadow: 0 20px 70px #0005; }
+    dialog::backdrop { background: #101723a8; backdrop-filter: blur(3px); }
+    .dialog-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 19px; color: white; background: var(--wine); }
+    .dialog-head h2 { margin: 0; font-size: 15px; }
+    .dialog-head button { border: 0; color: white; background: transparent; font-size: 25px; }
+    .dialog-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 18px; overflow-y: auto; }
+    .dialog-form .full { grid-column: 1 / -1; }
+    .dialog-form textarea { min-height: 72px; resize: vertical; }
+    .dialog-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+    .inline-error { grid-column: 1 / -1; color: #a42b37; font-size: 12px; }
+    @media (max-width: 800px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .table-wrap { display: none; }
+      .mobile-list { display: grid; gap: 10px; }
+      .task-card { padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 3px 12px #17203308; }
+      .card-heading { display: flex; justify-content: space-between; gap: 10px; }
+      .card-title { font-weight: 850; line-height: 1.4; }
+      .card-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+      .card-detail span { display: block; color: var(--muted); font-size: 10px; }
+      .card-detail strong { display: block; margin-top: 3px; font-size: 11px; }
+      .card-gantt { margin-top: 13px; }
+      .card-note { width: 100%; min-height: 55px; margin-top: 9px; resize: vertical; border: 1px solid #dce2e9; border-radius: 8px; padding: 8px; font-size: 11px; }
+      .card-controls { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+      .card-reward { margin-top: 10px; color: #445064; font-size: 11px; line-height: 1.45; }
+      .card-reward strong { color: var(--green); }
+    }
+    @media (max-width: 520px) {
+      .topbar-inner, main { padding-right: 14px; padding-left: 14px; }
+      .topbar-inner { align-items: flex-start; }
+      .brand-mark { width: 36px; height: 36px; }
+      h1 { font-size: 14px; }
+      .subtitle { max-width: 195px; font-size: 10px; }
+      .top-link { padding: 8px 9px; font-size: 10px; }
+      .top-actions { flex-direction: column; align-items: flex-end; }
+      .section-heading { align-items: flex-start; flex-direction: column; }
+      .toolbar { align-items: stretch; }
+      .filters { grid-template-columns: 1fr 1fr; }
+      .quarter-field { max-width: none; }
+      .toolbar > .button { width: 100%; }
+      .dialog-form { grid-template-columns: 1fr; padding: 14px; }
+      .dialog-form .full, .dialog-actions, .inline-error { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html" aria-label="Thiên Vy Global — về trang chủ">
+        <div class="brand-mark"><img src="Logo Thien Vy.png" alt=""></div>
+        <div>
+          <h1>THIÊN VY GLOBAL</h1>
+          <p class="subtitle">Tracker điều hành · Tiến độ 12 tuần</p>
+        </div>
+      </a>
+      <div class="top-actions">
+        <a class="top-link" href="index.html">← Về hệ thống</a>
+        <button id="export-button" class="top-link" type="button">Xuất dữ liệu</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <aside class="backend-note">
+      <strong>Chế độ hiện tại: lưu trên trình duyệt này.</strong> Chưa có đồng bộ giữa người dùng hoặc thiết bị. Không dùng dữ liệu này làm phân quyền bảo mật hay lưu thông tin nhạy cảm.
+      <details>
+        <summary>Cần backend thế nào để dùng chung?</summary>
+        <ol>
+          <li>Tạo tab Google Sheet riêng, ví dụ <code>ExecutiveTasks</code>, với cột mã, người phụ trách, nội dung, ưu tiên, ngày bắt đầu/hạn, trạng thái, ghi chú, phần thưởng và hành động xử lý.</li>
+          <li>Mở rộng Apps Script đang kết nối hệ thống bằng các API đọc danh sách, tạo/cập nhật/xóa nhiệm vụ. Kiểm tra dữ liệu và người dùng ở phía máy chủ trước khi ghi Sheet.</li>
+          <li>Gắn quyền vào tài khoản đã xác thực (Admin được quản lý; người thực hiện chỉ cập nhật nhiệm vụ được giao). Không coi nút chuyển Master/User hay giá trị trong trình duyệt là cơ chế bảo mật.</li>
+          <li>Triển khai phiên bản Apps Script mới, sau đó đổi trang này từ <code>localStorage</code> sang gọi API. Google Sheet/Apps Script đã dùng được cho dữ liệu học viên, nhưng cần bổ sung các API và quyền riêng cho Tracker.</li>
+        </ol>
+        GitHub Pages chỉ host giao diện tĩnh; Apps Script có thể làm backend nhẹ cho bản đầu. Nếu cần phân quyền mạnh, nhiều người dùng đồng thời và nhật ký thay đổi, nên dùng backend có đăng nhập và cơ sở dữ liệu (ví dụ Firebase/Supabase hoặc API riêng).
+      </details>
+    </aside>
+
+    <section class="section-heading">
+      <div>
+        <h2>Bảng tiến độ</h2>
+        <p id="range-label">Lịch trình 12 tuần</p>
+      </div>
+      <div class="view-switch" role="group" aria-label="Chế độ xem">
+        <button id="master-view-button" type="button" aria-pressed="true">Master View</button>
+        <button id="user-view-button" type="button" aria-pressed="false">User View</button>
+      </div>
+    </section>
+
+    <section class="kpis" aria-label="Tổng quan">
+      <article class="kpi"><div class="kpi-label">Tổng nhiệm vụ</div><div id="kpi-total" class="kpi-value">0</div><div class="kpi-hint">Trong phạm vi bộ lọc</div></article>
+      <article class="kpi"><div class="kpi-label">Đã hoàn thành</div><div id="kpi-completed" class="kpi-value">0</div><div class="kpi-hint">Đã đánh dấu hoàn tất</div></article>
+      <article class="kpi"><div class="kpi-label">Đang thực hiện</div><div id="kpi-active" class="kpi-value">0</div><div class="kpi-hint">Chưa hoàn thành, còn hạn</div></article>
+      <article class="kpi"><div class="kpi-label">Quá hạn</div><div id="kpi-overdue" class="kpi-value">0</div><div class="kpi-hint">Chưa hoàn thành sau hạn</div></article>
+    </section>
+
+    <section class="toolbar" aria-label="Lọc nhiệm vụ">
+      <div class="filters">
+        <div class="field"><label for="filter-delegate">Người phụ trách</label><select id="filter-delegate"><option value="">Tất cả</option></select></div>
+        <div class="field"><label for="filter-status">Trạng thái</label><select id="filter-status"><option value="">Tất cả</option><option value="completed">Hoàn thành</option><option value="active">Đang thực hiện</option><option value="overdue">Quá hạn</option></select></div>
+        <div class="field"><label for="filter-priority">Ưu tiên</label><select id="filter-priority"><option value="">Tất cả</option><option value="High">Cao</option><option value="Medium">Trung bình</option><option value="Low">Thấp</option></select></div>
+        <div class="field quarter-field"><label for="quarter-start">Ngày bắt đầu 12 tuần</label><input id="quarter-start" type="date"></div>
+      </div>
+      <button id="add-task-button" class="button button-primary" type="button">＋ Giao nhiệm vụ</button>
+    </section>
+
+    <section class="table-wrap" aria-label="Bảng nhiệm vụ">
+      <table>
+        <thead id="table-head"></thead>
+        <tbody id="task-table-body"></tbody>
+      </table>
+    </section>
+    <section id="mobile-list" class="mobile-list" aria-label="Danh sách nhiệm vụ"></section>
+  </main>
+
+  <dialog id="task-dialog">
+    <div class="dialog-head"><h2 id="dialog-title">Giao nhiệm vụ</h2><button id="close-dialog" type="button" aria-label="Đóng">&times;</button></div>
+    <form id="task-form" class="dialog-form">
+      <input id="task-id" type="hidden">
+      <div class="field"><label for="task-delegate">Người phụ trách / vai trò</label><input id="task-delegate" required maxlength="80" placeholder="Ví dụ: CFO — Nguyễn An"></div>
+      <div class="field"><label for="task-priority">Ưu tiên</label><select id="task-priority"><option value="High">Cao</option><option value="Medium">Trung bình</option><option value="Low">Thấp</option></select></div>
+      <div class="field full"><label for="task-title">Tên nhiệm vụ</label><input id="task-title" required maxlength="180" placeholder="Mục tiêu / công việc cần hoàn thành"></div>
+      <div class="field"><label for="task-start">Ngày bắt đầu</label><input id="task-start" type="date" required></div>
+      <div class="field"><label for="task-deadline">Hạn hoàn thành</label><input id="task-deadline" type="date" required></div>
+      <div class="field"><label for="task-reward">Phần thưởng khi hoàn thành</label><input id="task-reward" maxlength="180" placeholder="Có thể để trống"></div>
+      <div class="field"><label for="task-consequence">Hành động nếu quá hạn</label><input id="task-consequence" maxlength="180" placeholder="Ví dụ: họp rà soát tiến độ"></div>
+      <div class="field full"><label for="task-note">Ghi chú ban đầu</label><textarea id="task-note" maxlength="1000" placeholder="Cập nhật, vướng mắc hoặc thông tin cần lưu"></textarea></div>
+      <p id="form-error" class="inline-error" hidden></p>
+      <div class="dialog-actions">
+        <button id="cancel-dialog" class="button button-light" type="button">Hủy</button>
+        <button class="button button-primary" type="submit">Lưu nhiệm vụ</button>
+      </div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = 'TV_GLOBAL_EXECUTIVE_TRACKER_V1';
+      const RANGE_KEY = `${STORAGE_KEY}_RANGE`;
+      const DAY = 24 * 60 * 60 * 1000;
+      const today = new Date();
+      const startOfThisWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const mondayOffset = (startOfThisWeek.getDay() + 6) % 7;
+      startOfThisWeek.setDate(startOfThisWeek.getDate() - mondayOffset);
+      const toDateInput = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const defaultRangeStart = toDateInput(startOfThisWeek);
+      const sampleTasks = [
+        { id: 'demo-1', delegate: 'CFO', title: 'Hoàn thiện kế hoạch ngân sách quý', priority: 'High', start: defaultRangeStart, deadline: toDateInput(new Date(startOfThisWeek.getTime() + 28 * DAY)), completed: false, note: 'Bổ sung dự báo chi phí và các giả định.', reward: 'Ghi nhận hoàn thành mục tiêu quý', consequence: 'Rà soát tiến độ cùng quản lý' },
+        { id: 'demo-2', delegate: 'CTO', title: 'Chuẩn hóa quy trình sao lưu dữ liệu', priority: 'High', start: toDateInput(new Date(startOfThisWeek.getTime() + 7 * DAY)), deadline: toDateInput(new Date(startOfThisWeek.getTime() + 42 * DAY)), completed: false, note: 'Đang thu thập yêu cầu từ các nhóm.', reward: 'Ưu tiên ngân sách cải tiến', consequence: 'Lập kế hoạch khắc phục' },
+        { id: 'demo-3', delegate: 'COO', title: 'Cải tiến quy trình vận hành nội bộ', priority: 'Medium', start: toDateInput(new Date(startOfThisWeek.getTime() + 14 * DAY)), deadline: toDateInput(new Date(startOfThisWeek.getTime() + 63 * DAY)), completed: false, note: '', reward: 'Biểu dương trong buổi tổng kết', consequence: 'Họp rà soát các vướng mắc' }
+      ];
+      let tasks = loadTasks();
+      let toastTimer;
+
+      const $ = id => document.getElementById(id);
+      const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+      const localDate = value => {
+        const [year, month, day] = String(value).split('-').map(Number);
+        return year && month && day ? new Date(year, month - 1, day) : null;
+      };
+      const dateLabel = value => {
+        const date = localDate(value);
+        return date ? date.toLocaleDateString('vi-VN') : '—';
+      };
+      const currentStatus = task => {
+        if (task.completed) return 'completed';
+        const deadline = localDate(task.deadline);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        return deadline && deadline < now ? 'overdue' : 'active';
+      };
+      const statusText = status => ({ completed: 'Hoàn thành', active: 'Đang thực hiện', overdue: 'Quá hạn' })[status];
+      const priorityText = priority => ({ High: 'Cao', Medium: 'Trung bình', Low: 'Thấp' })[priority] || priority;
+
+      function loadTasks() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (!saved) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleTasks));
+            return sampleTasks;
+          }
+          const parsed = JSON.parse(saved);
+          if (!Array.isArray(parsed)) throw new Error('Dữ liệu nhiệm vụ không hợp lệ.');
+          return parsed;
+        } catch (error) {
+          console.error('Không đọc được dữ liệu Tracker:', error);
+          setTimeout(() => notify('Không đọc được dữ liệu đã lưu. Có thể bộ nhớ trình duyệt bị chặn.'), 0);
+          return [];
+        }
+      }
+
+      function persist(nextTasks = tasks) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
+        } catch (error) {
+          console.error('Không thể lưu dữ liệu Tracker:', error);
+          notify('Không lưu được dữ liệu. Kiểm tra dung lượng hoặc cài đặt trình duyệt.');
+          return false;
+        }
+        return true;
+      }
+
+      function notify(message) {
+        const toast = $('toast');
+        toast.textContent = message;
+        toast.hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toast.hidden = true; }, 3200);
+      }
+
+      function getFilteredTasks() {
+        const delegate = $('filter-delegate').value;
+        const status = $('filter-status').value;
+        const priority = $('filter-priority').value;
+        return tasks.filter(task =>
+          (!delegate || task.delegate === delegate)
+          && (!status || currentStatus(task) === status)
+          && (!priority || task.priority === priority)
+        );
+      }
+
+      function ganttMarkup(task) {
+        const rangeStart = localDate($('quarter-start').value);
+        const rangeEnd = rangeStart ? new Date(rangeStart.getTime() + 84 * DAY) : null;
+        const taskStart = localDate(task.start);
+        const deadline = localDate(task.deadline);
+        let bar = '';
+        if (rangeStart && rangeEnd && taskStart && deadline) {
+          const clippedStart = Math.max(taskStart.getTime(), rangeStart.getTime());
+          const clippedEnd = Math.min(deadline.getTime(), rangeEnd.getTime() - DAY);
+          if (clippedEnd >= clippedStart) {
+            const firstWeek = Math.max(0, Math.floor((clippedStart - rangeStart.getTime()) / (7 * DAY)));
+            const lastWeek = Math.min(11, Math.floor((clippedEnd - rangeStart.getTime()) / (7 * DAY)));
+            bar = `<span class="gantt-bar ${currentStatus(task)}" style="grid-column:${firstWeek + 1} / ${lastWeek + 2}" title="${escapeHtml(dateLabel(task.start))} – ${escapeHtml(dateLabel(task.deadline))}"></span>`;
+          }
+        }
+        const labels = Array.from({ length: 12 }, (_, index) => `<span>W${index + 1}</span>`).join('');
+        return `<div class="gantt"><div class="week-labels">${labels}</div><div class="gantt-track">${bar}</div></div>`;
+      }
+
+      function renderFilters() {
+        const select = $('filter-delegate');
+        const current = select.value;
+        const names = [...new Set(tasks.map(task => task.delegate).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
+        select.innerHTML = '<option value="">Tất cả</option>' + names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+        if (names.includes(current)) select.value = current;
+      }
+
+      function render() {
+        renderFilters();
+        const filtered = getFilteredTasks();
+        const statuses = filtered.map(currentStatus);
+        $('kpi-total').textContent = filtered.length;
+        $('kpi-completed').textContent = statuses.filter(status => status === 'completed').length;
+        $('kpi-active').textContent = statuses.filter(status => status === 'active').length;
+        $('kpi-overdue').textContent = statuses.filter(status => status === 'overdue').length;
+        const rangeStart = localDate($('quarter-start').value);
+        if (rangeStart) {
+          const rangeEnd = new Date(rangeStart.getTime() + 83 * DAY);
+          $('range-label').textContent = `12 tuần: ${dateLabel(toDateInput(rangeStart))} – ${dateLabel(toDateInput(rangeEnd))}`;
+        }
+        const isMaster = document.body.dataset.view !== 'user';
+        $('master-view-button').setAttribute('aria-pressed', String(isMaster));
+        $('user-view-button').setAttribute('aria-pressed', String(!isMaster));
+        $('add-task-button').hidden = !isMaster;
+        $('table-head').innerHTML = isMaster
+          ? '<tr><th>Phân công</th><th>Nhiệm vụ & ưu tiên</th><th>Hạn</th><th>Gantt 12 tuần</th><th>Phần thưởng</th><th>Hành động nếu quá hạn</th><th>Thao tác</th></tr>'
+          : '<tr><th>Phân công</th><th>Nhiệm vụ & ưu tiên</th><th>Hạn</th><th>Gantt 12 tuần</th><th>Hoàn thành</th><th>Ghi chú</th></tr>';
+
+        if (!filtered.length) {
+          $('task-table-body').innerHTML = `<tr><td colspan="7"><div class="empty-state"><strong>Chưa có nhiệm vụ phù hợp</strong>Thử đổi bộ lọc hoặc giao nhiệm vụ mới.</div></td></tr>`;
+          $('mobile-list').innerHTML = '<div class="empty-state"><strong>Chưa có nhiệm vụ phù hợp</strong>Thử đổi bộ lọc hoặc giao nhiệm vụ mới.</div>';
+          return;
+        }
+
+        $('task-table-body').innerHTML = filtered.map(task => {
+          const status = currentStatus(task);
+          const actions = isMaster
+            ? `<td><div class="row-actions"><button class="icon-button" type="button" data-edit="${escapeHtml(task.id)}">Sửa</button><button class="icon-button" type="button" data-delete="${escapeHtml(task.id)}">Xóa</button></div></td>`
+            : `<td class="check-cell"><input class="task-check" type="checkbox" data-complete="${escapeHtml(task.id)}" ${task.completed ? 'checked' : ''} aria-label="Đánh dấu hoàn thành"></td><td><textarea class="note-input" data-note="${escapeHtml(task.id)}" maxlength="1000" aria-label="Ghi chú">${escapeHtml(task.note)}</textarea></td>`;
+          const reward = task.completed
+            ? `<div class="reward unlocked">ĐÃ MỞ: ${escapeHtml(task.reward || 'Hoàn thành nhiệm vụ')}</div>`
+            : `<div class="reward">${escapeHtml(task.reward || '—')}</div>`;
+          return `<tr>
+            <td><div class="delegate">${escapeHtml(task.delegate)}</div><div class="task-meta">${escapeHtml(dateLabel(task.start))} bắt đầu</div></td>
+            <td><div class="task-name">${escapeHtml(task.title)}</div><div class="task-meta"><span class="priority priority-${String(task.priority).toLowerCase()}">${escapeHtml(priorityText(task.priority))}</span> <span class="status-pill status-${status}">${statusText(status)}</span></div></td>
+            <td>${escapeHtml(dateLabel(task.deadline))}</td><td>${ganttMarkup(task)}</td>
+            ${isMaster ? `<td>${reward}</td><td><div class="consequence">${escapeHtml(task.consequence || '—')}</div></td>` : ''}
+            ${actions}
+          </tr>`;
+        }).join('');
+
+        $('mobile-list').innerHTML = filtered.map(task => {
+          const status = currentStatus(task);
+          const controls = isMaster
+            ? `<div class="card-controls"><span class="status-pill status-${status}">${statusText(status)}</span><span class="row-actions"><button class="icon-button" type="button" data-edit="${escapeHtml(task.id)}">Sửa</button><button class="icon-button" type="button" data-delete="${escapeHtml(task.id)}">Xóa</button></span></div>
+              <div class="card-reward"><strong>Phần thưởng:</strong> ${escapeHtml(task.completed ? `ĐÃ MỞ — ${task.reward || 'Hoàn thành nhiệm vụ'}` : (task.reward || '—'))}<br><strong>Quá hạn:</strong> ${escapeHtml(task.consequence || '—')}</div>`
+            : `<div class="card-controls"><label><input class="task-check" type="checkbox" data-complete="${escapeHtml(task.id)}" ${task.completed ? 'checked' : ''}> Đánh dấu hoàn thành</label><span class="status-pill status-${status}">${statusText(status)}</span></div><textarea class="card-note" data-note="${escapeHtml(task.id)}" maxlength="1000" aria-label="Ghi chú">${escapeHtml(task.note)}</textarea>`;
+          return `<article class="task-card">
+            <div class="card-heading"><div><div class="card-title">${escapeHtml(task.title)}</div><div class="task-meta">${escapeHtml(task.delegate)} · <span class="priority priority-${String(task.priority).toLowerCase()}">${escapeHtml(priorityText(task.priority))}</span></div></div></div>
+            <div class="card-detail"><div><span>Bắt đầu</span><strong>${escapeHtml(dateLabel(task.start))}</strong></div><div><span>Hạn hoàn thành</span><strong>${escapeHtml(dateLabel(task.deadline))}</strong></div></div>
+            <div class="card-gantt">${ganttMarkup(task)}</div>${controls}
+          </article>`;
+        }).join('');
+      }
+
+      function setView(view) {
+        document.body.dataset.view = view;
+        render();
+      }
+
+      function openTaskDialog(task) {
+        const form = $('task-form');
+        form.reset();
+        $('form-error').hidden = true;
+        $('task-id').value = task?.id || '';
+        $('dialog-title').textContent = task ? 'Chỉnh sửa nhiệm vụ' : 'Giao nhiệm vụ';
+        $('task-delegate').value = task?.delegate || '';
+        $('task-priority').value = task?.priority || 'High';
+        $('task-title').value = task?.title || '';
+        $('task-start').value = task?.start || $('quarter-start').value || defaultRangeStart;
+        $('task-deadline').value = task?.deadline || '';
+        $('task-reward').value = task?.reward || '';
+        $('task-consequence').value = task?.consequence || '';
+        $('task-note').value = task?.note || '';
+        $('task-dialog').showModal();
+      }
+
+      function saveTask(event) {
+        event.preventDefault();
+        const start = $('task-start').value;
+        const deadline = $('task-deadline').value;
+        if (deadline < start) {
+          $('form-error').textContent = 'Hạn hoàn thành phải bằng hoặc sau ngày bắt đầu.';
+          $('form-error').hidden = false;
+          return;
+        }
+        const id = $('task-id').value || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        const existing = tasks.find(task => task.id === id);
+        const updated = {
+          id,
+          delegate: $('task-delegate').value.trim(),
+          title: $('task-title').value.trim(),
+          priority: $('task-priority').value,
+          start,
+          deadline,
+          completed: existing?.completed || false,
+          note: $('task-note').value.trim(),
+          reward: $('task-reward').value.trim(),
+          consequence: $('task-consequence').value.trim()
+        };
+        const nextTasks = existing
+          ? tasks.map(task => task.id === id ? updated : task)
+          : [...tasks, updated];
+        if (!persist(nextTasks)) return;
+        tasks = nextTasks;
+        $('task-dialog').close();
+        render();
+        notify(existing ? 'Đã cập nhật nhiệm vụ.' : 'Đã giao nhiệm vụ.');
+      }
+
+      function handleTaskAction(event) {
+        const editId = event.target.closest('[data-edit]')?.dataset.edit;
+        const deleteId = event.target.closest('[data-delete]')?.dataset.delete;
+        const completeId = event.type === 'change'
+          ? event.target.closest('[data-complete]')?.dataset.complete
+          : null;
+        const noteId = event.type === 'input' || event.type === 'change'
+          ? event.target.closest('[data-note]')?.dataset.note
+          : null;
+        if (editId) {
+          const task = tasks.find(item => item.id === editId);
+          if (task) openTaskDialog(task);
+        } else if (deleteId) {
+          if (!window.confirm('Xóa nhiệm vụ này khỏi trình duyệt hiện tại?')) return;
+          const nextTasks = tasks.filter(task => task.id !== deleteId);
+          if (persist(nextTasks)) { tasks = nextTasks; render(); notify('Đã xóa nhiệm vụ.'); }
+        } else if (completeId) {
+          const nextTasks = tasks.map(task => task.id === completeId ? { ...task, completed: event.target.checked } : task);
+          if (persist(nextTasks)) { tasks = nextTasks; render(); notify(event.target.checked ? 'Đã đánh dấu hoàn thành.' : 'Đã mở lại nhiệm vụ.'); }
+        } else if (noteId) {
+          const nextTasks = tasks.map(task => task.id === noteId ? { ...task, note: event.target.value } : task);
+          if (persist(nextTasks)) tasks = nextTasks;
+        }
+      }
+
+      function exportData() {
+        const file = new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), tasks }, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(file);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'executive-tracker-data.json';
+        link.click();
+        URL.revokeObjectURL(url);
+        notify('Đã xuất dữ liệu JSON.');
+      }
+
+      let savedRange = null;
+      try {
+        savedRange = localStorage.getItem(RANGE_KEY);
+      } catch (error) {
+        console.error('Không đọc được mốc Gantt:', error);
+        notify('Không đọc được cài đặt thời gian đã lưu.');
+      }
+      $('quarter-start').value = savedRange || defaultRangeStart;
+      $('quarter-start').addEventListener('change', () => {
+        try { localStorage.setItem(RANGE_KEY, $('quarter-start').value); }
+        catch (error) { console.error('Không thể lưu mốc Gantt:', error); notify('Không lưu được mốc thời gian.'); }
+        render();
+      });
+      ['filter-delegate', 'filter-status', 'filter-priority'].forEach(id => $(id).addEventListener('change', render));
+      $('master-view-button').addEventListener('click', () => setView('master'));
+      $('user-view-button').addEventListener('click', () => setView('user'));
+      $('add-task-button').addEventListener('click', () => openTaskDialog());
+      $('task-form').addEventListener('submit', saveTask);
+      $('close-dialog').addEventListener('click', () => $('task-dialog').close());
+      $('cancel-dialog').addEventListener('click', () => $('task-dialog').close());
+      $('task-table-body').addEventListener('click', handleTaskAction);
+      $('task-table-body').addEventListener('change', handleTaskAction);
+      $('task-table-body').addEventListener('input', handleTaskAction);
+      $('mobile-list').addEventListener('click', handleTaskAction);
+      $('mobile-list').addEventListener('change', handleTaskAction);
+      $('mobile-list').addEventListener('input', handleTaskAction);
+      $('export-button').addEventListener('click', exportData);
+      render();
+    })();
+  </script>
+</body>
+</html>
