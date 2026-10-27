@@ -28,6 +28,14 @@ function getSpreadsheet() {
   return SpreadsheetApp.getActiveSpreadsheet();
 }
 
+function requireSheet_(name) {
+  const sheet = getSpreadsheet().getSheetByName(name);
+  if (!sheet) {
+    throw new Error(`Không tìm thấy sheet "${name}". Hãy chạy action initDatabase một lần để khởi tạo.`);
+  }
+  return sheet;
+}
+
 
 // =====================================================
 // WEB APP ENTRY POINT
@@ -443,9 +451,12 @@ function handleApiAction(payload) {
 // =====================================================
 
 function trackerLogin_(username, password) {
-  initDatabase();
   const identity = verifyLogin_(username, password);
   if (identity.status !== 'success') return identity;
+  const ss = getSpreadsheet();
+  if (!ss.getSheetByName(TAB.TRACKER_TASKS) || !ss.getSheetByName(TAB.TRACKER_REQUESTS)) {
+    initDatabase();
+  }
   const token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
   CacheService.getScriptCache().put('tracker:' + token, JSON.stringify({
     name: identity.name,
@@ -458,14 +469,14 @@ function verifyLogin_(username, password) {
   const name = String(username || '').trim();
   const secret = String(password || '');
   if (name === 'director' || name === 'Giám Đốc') {
-    const config = readConfig(getSpreadsheet().getSheetByName(TAB.CONFIG));
+    const config = readConfig(requireSheet_(TAB.CONFIG));
     if (secret === config.directorPassword) {
       return { status: 'success', name: 'Giám Đốc', role: 'director' };
     }
     return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
   }
 
-  const teacherSheet = getSpreadsheet().getSheetByName(TAB.TEACHERS);
+  const teacherSheet = requireSheet_(TAB.TEACHERS);
   const row = findRowByTeacherName(teacherSheet, name);
   if (row && secret === String(teacherSheet.getRange(row, 2).getValue() || DEFAULT_DIRECTOR_PASSWORD)) {
     return { status: 'success', name: name, role: 'teacher' };
@@ -479,23 +490,23 @@ function trackerActor_(token) {
   const actor = JSON.parse(value);
   if (actor.role === 'director') return actor;
 
-  const teacherRow = findRowByTeacherName(getSpreadsheet().getSheetByName(TAB.TEACHERS), actor.name);
+  const teacherRow = findRowByTeacherName(requireSheet_(TAB.TEACHERS), actor.name);
   if (!teacherRow) throw new Error('Tài khoản trợ giảng không còn tồn tại.');
-  const configValues = getSpreadsheet().getSheetByName(TAB.CONFIG).getDataRange().getValues();
+  const configValues = requireSheet_(TAB.CONFIG).getDataRange().getValues();
   const manager = configValues.slice(1).find(row => String(row[0] || '').trim() === 'trackerManager');
   actor.role = manager && String(manager[1] || '').trim() === actor.name ? 'manager' : 'teacher';
   return actor;
 }
 
 function trackerManager_() {
-  const values = getSpreadsheet().getSheetByName(TAB.CONFIG).getDataRange().getValues();
+  const values = requireSheet_(TAB.CONFIG).getDataRange().getValues();
   const row = values.slice(1).find(item => String(item[0] || '').trim() === 'trackerManager');
   return row ? String(row[1] || '').trim() : '';
 }
 
 function trackerTaskRecords_() {
-  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_TASKS);
-  if (!sheet || sheet.getLastRow() < 2) return [];
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
+  if (sheet.getLastRow() < 2) return [];
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, 15).getValues()
     .filter(row => String(row[0] || '').trim())
     .map(row => {
@@ -524,8 +535,8 @@ function trackerTaskRecords_() {
 }
 
 function trackerRequestRecords_() {
-  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_REQUESTS);
-  if (!sheet || sheet.getLastRow() < 2) return [];
+  const sheet = requireSheet_(TAB.TRACKER_REQUESTS);
+  if (sheet.getLastRow() < 2) return [];
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues()
     .filter(row => String(row[0] || '').trim())
     .map(row => ({
@@ -545,7 +556,7 @@ function trackerRequestRecords_() {
 
 function trackerBootstrap_(token) {
   const actor = trackerActor_(token);
-  const teachers = readTeachers(getSpreadsheet().getSheetByName(TAB.TEACHERS))
+  const teachers = readTeachers(requireSheet_(TAB.TEACHERS))
     .map(teacher => teacher.name);
   const allTasks = trackerTaskRecords_();
   const allRequests = trackerRequestRecords_();
@@ -570,11 +581,11 @@ function trackerSetManager_(token, manager) {
   const actor = trackerActor_(token);
   if (actor.role !== 'director') throw new Error('Chỉ Giám đốc được ủy quyền Manager.');
   const name = String(manager || '').trim();
-  if (name && !findRowByTeacherName(getSpreadsheet().getSheetByName(TAB.TEACHERS), name)) {
+  if (name && !findRowByTeacherName(requireSheet_(TAB.TEACHERS), name)) {
     throw new Error('Không tìm thấy tài khoản trợ giảng được chọn.');
   }
 
-  const sheet = getSpreadsheet().getSheetByName(TAB.CONFIG);
+  const sheet = requireSheet_(TAB.CONFIG);
   const values = sheet.getDataRange().getValues();
   const index = values.findIndex((row, i) => i > 0 && String(row[0] || '').trim() === 'trackerManager');
   if (!name) {
@@ -603,7 +614,7 @@ function trackerCreateTask_(token, input) {
   }
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(deadlineTime)) throw new Error('Vui lòng nhập giờ deadline hợp lệ.');
 
-  const teacherSheet = getSpreadsheet().getSheetByName(TAB.TEACHERS);
+  const teacherSheet = requireSheet_(TAB.TEACHERS);
   const validTeachers = readTeachers(teacherSheet).map(teacher => teacher.name);
   let priority;
   let creator = actor.name;
@@ -633,13 +644,13 @@ function trackerCreateTask_(token, input) {
     deadlineTime, 'NEW', String(task.note || '').slice(0, 2000),
     String(task.punishment || '').slice(0, 300), 0, '', now, now
   ];
-  getSpreadsheet().getSheetByName(TAB.TRACKER_TASKS).appendRow(row);
+  requireSheet_(TAB.TRACKER_TASKS).appendRow(row);
   return { status: 'success', taskId: id };
 }
 
 function trackerUpdateTaskStatus_(token, taskId, nextAction) {
   const actor = trackerActor_(token);
-  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_TASKS);
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
   const tasks = trackerTaskRecords_();
   const task = tasks.find(item => item.id === String(taskId || ''));
   if (!task) throw new Error('Không tìm thấy nhiệm vụ.');
@@ -671,7 +682,7 @@ function trackerReviewTask_(token, taskId, decision, note, stars) {
   const actor = trackerActor_(token);
   if (actor.role === 'teacher') throw new Error('Chỉ Giám đốc hoặc Manager được duyệt nhiệm vụ.');
   if (decision !== 'approve' && decision !== 'reject') throw new Error('Lựa chọn duyệt không hợp lệ.');
-  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_TASKS);
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
   const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
   if (!task || task.status !== 'PENDING') throw new Error('Nhiệm vụ không ở trạng thái chờ duyệt.');
   const manager = trackerManager_();
@@ -692,7 +703,7 @@ function trackerReviewTask_(token, taskId, decision, note, stars) {
 
 function trackerSaveNote_(token, taskId, note) {
   const actor = trackerActor_(token);
-  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_TASKS);
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
   const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
   if (!task || task.assignees.indexOf(actor.name) === -1) throw new Error('Bạn không được cập nhật nhiệm vụ này.');
   const row = findRowById(sheet, task.id);
@@ -717,7 +728,7 @@ function trackerSubmitSchedule_(token, input) {
   }
   if (!reason || reason.length > 1000) throw new Error('Vui lòng nhập lý do/nội dung (tối đa 1000 ký tự).');
   const id = Utilities.getUuid();
-  getSpreadsheet().getSheetByName(TAB.TRACKER_REQUESTS).appendRow([
+  requireSheet_(TAB.TRACKER_REQUESTS).appendRow([
     id, actor.name, type, date, startTime, endTime, reason, 'PENDING', '', '', new Date().toISOString()
   ]);
   return { status: 'success', requestId: id };
@@ -727,7 +738,7 @@ function trackerReviewSchedule_(token, requestId, decision, note) {
   const actor = trackerActor_(token);
   if (actor.role !== 'director') throw new Error('Chỉ Giám đốc được duyệt đơn nghỉ/tăng ca.');
   if (decision !== 'approve' && decision !== 'reject') throw new Error('Lựa chọn duyệt không hợp lệ.');
-  const sheet = getSpreadsheet().getSheetByName(TAB.TRACKER_REQUESTS);
+  const sheet = requireSheet_(TAB.TRACKER_REQUESTS);
   const request = trackerRequestRecords_().find(item => item.id === String(requestId || ''));
   if (!request || request.status !== 'PENDING') throw new Error('Đơn không còn ở trạng thái chờ duyệt.');
   const row = findRowById(sheet, request.id);
@@ -759,25 +770,21 @@ function trackerValidDate_(value) {
 // =====================================================
 
 function getAllData() {
-  initDatabase();
-
-  const ss = getSpreadsheet();
-
   const students = readStudents(
-    ss.getSheetByName(TAB.STUDENTS),
-    ss.getSheetByName(TAB.ATTENDANCE)
+    requireSheet_(TAB.STUDENTS),
+    requireSheet_(TAB.ATTENDANCE)
   );
 
   const inactive = readInactive(
-    ss.getSheetByName(TAB.INACTIVE)
+    requireSheet_(TAB.INACTIVE)
   );
 
   const teachers = readTeachers(
-    ss.getSheetByName(TAB.TEACHERS)
+    requireSheet_(TAB.TEACHERS)
   ).map(teacher => ({ name: teacher.name }));
 
   const config = readConfig(
-    ss.getSheetByName(TAB.CONFIG)
+    requireSheet_(TAB.CONFIG)
   );
 
   return {
@@ -919,11 +926,10 @@ function readConfig(sheet) {
 }
 
 function addLevel(level) {
-  initDatabase();
   const value = String(level || '').trim();
   if (!value) return { status: 'error', message: 'Tên cấp độ không được để trống' };
 
-  const sheet = getSpreadsheet().getSheetByName(TAB.CONFIG);
+  const sheet = requireSheet_(TAB.CONFIG);
   const values = sheet.getDataRange().getValues();
   const exists = values.slice(1).some(row =>
     String(row[0] || '').trim() === 'level' &&
@@ -937,9 +943,8 @@ function addLevel(level) {
 }
 
 function deleteLevel(level) {
-  initDatabase();
   const value = String(level || '').trim().toLowerCase();
-  const sheet = getSpreadsheet().getSheetByName(TAB.CONFIG);
+  const sheet = requireSheet_(TAB.CONFIG);
   const values = sheet.getDataRange().getValues();
 
   for (let i = values.length - 1; i >= 1; i--) {
@@ -955,7 +960,6 @@ function deleteLevel(level) {
 }
 
 function changePassword(username, oldPassword, newPassword) {
-  initDatabase();
   const user = String(username || '').trim();
   const oldValue = String(oldPassword || '');
   const newValue = String(newPassword || '');
@@ -966,7 +970,7 @@ function changePassword(username, oldPassword, newPassword) {
 
   const ss = getSpreadsheet();
   if (user === 'director' || user === 'Giám Đốc') {
-    const sheet = ss.getSheetByName(TAB.CONFIG);
+    const sheet = requireSheet_(TAB.CONFIG);
     const values = sheet.getDataRange().getValues();
     let rowNumber = null;
     let currentValue = DEFAULT_DIRECTOR_PASSWORD;
@@ -986,7 +990,7 @@ function changePassword(username, oldPassword, newPassword) {
     if (rowNumber) sheet.getRange(rowNumber, 2).setValue(newValue);
     else sheet.appendRow(['directorPassword', newValue]);
   } else {
-    const sheet = ss.getSheetByName(TAB.TEACHERS);
+    const sheet = requireSheet_(TAB.TEACHERS);
     const row = findRowByTeacherName(sheet, user);
     if (!row) return { status: 'error', message: 'Không tìm thấy tài khoản trợ giảng' };
 
@@ -1007,11 +1011,9 @@ function changePassword(username, oldPassword, newPassword) {
 // =====================================================
 
 function addStudent(student) {
-  initDatabase();
-
   const ss = getSpreadsheet();
-  const studentSheet = ss.getSheetByName(TAB.STUDENTS);
-  const attendanceSheet = ss.getSheetByName(TAB.ATTENDANCE);
+  const studentSheet = requireSheet_(TAB.STUDENTS);
+  const attendanceSheet = requireSheet_(TAB.ATTENDANCE);
 
   const generatedId = generateNextStudentId(studentSheet);
   const id = String(student?.id || generatedId).trim() || generatedId;
@@ -1119,7 +1121,7 @@ function updateAttendance(studentId, sessionIndex, value) {
 // =====================================================
 
 function updateLevel(studentId, level) {
-  const sheet = getSpreadsheet().getSheetByName(TAB.STUDENTS);
+  const sheet = requireSheet_(TAB.STUDENTS);
   const row = findRowById(sheet, studentId);
 
   if (!row) {
@@ -1138,7 +1140,7 @@ function updateLevel(studentId, level) {
 }
 
 function updateAssistants(studentId, assistants) {
-  const sheet = getSpreadsheet().getSheetByName(TAB.STUDENTS);
+  const sheet = requireSheet_(TAB.STUDENTS);
   const row = findRowById(sheet, studentId);
 
   if (!row) {
@@ -1166,7 +1168,7 @@ function updateStudentInfo(student) {
     };
   }
 
-  const sheet = getSpreadsheet().getSheetByName(TAB.STUDENTS);
+  const sheet = requireSheet_(TAB.STUDENTS);
   const row = findRowById(sheet, student.id);
 
   if (!row) {
@@ -1205,11 +1207,10 @@ function updateStudentInfo(student) {
  * 7. Chuyển sang Tab Học Viên Nghỉ Học
  */
 function moveToInactive(studentId, reason) {
-  initDatabase();
   const ss = getSpreadsheet();
-  const sheetStudents = ss.getSheetByName(TAB.STUDENTS);
-  const sheetAttendance = ss.getSheetByName(TAB.ATTENDANCE);
-  const sheetInactive = ss.getSheetByName(TAB.INACTIVE);
+  const sheetStudents = requireSheet_(TAB.STUDENTS);
+  const sheetAttendance = requireSheet_(TAB.ATTENDANCE);
+  const sheetInactive = requireSheet_(TAB.INACTIVE);
 
   const studentsData = sheetStudents.getDataRange().getValues();
   let studentInfo = null;
@@ -1256,8 +1257,6 @@ function moveToInactive(studentId, reason) {
 }
 
 function restoreStudent(student) {
-  initDatabase();
-
   if (!student || !String(student.id || '').trim()) {
     return {
       status: 'error',
@@ -1266,9 +1265,9 @@ function restoreStudent(student) {
   }
 
   const ss = getSpreadsheet();
-  const studentSheet = ss.getSheetByName(TAB.STUDENTS);
-  const attendanceSheet = ss.getSheetByName(TAB.ATTENDANCE);
-  const inactiveSheet = ss.getSheetByName(TAB.INACTIVE);
+  const studentSheet = requireSheet_(TAB.STUDENTS);
+  const attendanceSheet = requireSheet_(TAB.ATTENDANCE);
+  const inactiveSheet = requireSheet_(TAB.INACTIVE);
   const studentId = String(student.id).trim();
 
   if (findRowById(studentSheet, studentId)) {
@@ -1338,7 +1337,7 @@ function saveMasterData(students) {
   }
 
   const ss = getSpreadsheet();
-  const studentSheet = ss.getSheetByName(TAB.STUDENTS);
+  const studentSheet = requireSheet_(TAB.STUDENTS);
 
   students.forEach(student => {
     const row = findRowById(studentSheet, student.id);
@@ -1366,8 +1365,6 @@ function saveMasterData(students) {
 // =====================================================
 
 function addTeacher(teacherName, password) {
-  initDatabase();
-
   const name = String(teacherName || '').trim();
   const pwd = String(password || '').trim();
 
@@ -1378,7 +1375,7 @@ function addTeacher(teacherName, password) {
     };
   }
 
-  const sheet = getSpreadsheet().getSheetByName(TAB.TEACHERS);
+  const sheet = requireSheet_(TAB.TEACHERS);
   const teachers = readTeachers(sheet);
 
   if (teachers.some(t => t.name === name)) {
@@ -1397,7 +1394,7 @@ function addTeacher(teacherName, password) {
 }
 
 function deleteTeacher(teacherName) {
-  const sheet = getSpreadsheet().getSheetByName(TAB.TEACHERS);
+  const sheet = requireSheet_(TAB.TEACHERS);
   const row = findRowByTeacherName(sheet, teacherName);
 
   if (!row) {
@@ -1521,16 +1518,14 @@ function updateFeeStatus(studentId, feeStatus) {
 }
 
 function processPayment(studentId, packageSessions) {
-  initDatabase();
-
   const shiftCount = Number(packageSessions);
   if (![12, 24, 36].includes(shiftCount)) {
     return { status: 'error', message: 'Gói học không hợp lệ' };
   }
 
   const ss = getSpreadsheet();
-  const studentSheet = ss.getSheetByName(TAB.STUDENTS);
-  const attendanceSheet = ss.getSheetByName(TAB.ATTENDANCE);
+  const studentSheet = requireSheet_(TAB.STUDENTS);
+  const attendanceSheet = requireSheet_(TAB.ATTENDANCE);
   const studentRow = findRowById(studentSheet, studentId);
 
   if (!studentRow) {

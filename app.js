@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzM-2b7qRmgDG1iXBQ_TfTEs5Vpune5U8j-wivC9djnf2xGfYh6Q1msmS98xli8YAK3/exec'; 
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyyCuQ0AVzHCvRFVNarFY3Vy726AsFTI_DZzdo7EsPBv8hI08vKPAaJ44JobANA1ns/exec'; 
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -312,6 +312,7 @@
     }
 
     let assistantTeachers = [], currentUserRole = null, currentUserName = '', trackerManagerName = '', trackerManagerLoaded = false;
+    let teacherTrackerTasks = [];
     let studentsData = [], inactiveStudentsData = [];
     let currentReportStudent = null;
     let activeSessionEditor = null;
@@ -1334,8 +1335,129 @@
       const isAssistant = currentUserRole === 'teacher';
       const isManager = isAssistant && trackerManagerLoaded && currentUserName === trackerManagerName;
       if (nav) nav.classList.toggle('hidden', !isAssistant || !trackerManagerLoaded);
-      if (teacherLink) teacherLink.classList.toggle('hidden', !isAssistant || !trackerManagerLoaded || isManager);
+      if (teacherLink) teacherLink.classList.toggle('hidden', !isAssistant);
       if (managerLink) managerLink.classList.toggle('hidden', !isManager);
+      const taskPanel = document.getElementById('teacher-task-panel');
+      if (taskPanel) taskPanel.classList.toggle('hidden', !isAssistant);
+    }
+
+    function openTeacherTasks() {
+      const panel = document.getElementById('teacher-task-panel');
+      if (!panel) return;
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      loadTeacherTrackerTasks();
+    }
+
+    function teacherTaskStatus(task) {
+      if (task.status === 'COMPLETED') return 'Hoàn thành';
+      if (task.status === 'PENDING') return 'Chờ duyệt';
+      if (task.status === 'IN_PROGRESS') return 'Đang làm';
+      if (task.status === 'NEW') return 'Mới giao';
+      return task.status || 'Chưa rõ';
+    }
+
+    function teacherTaskIsOverdue(task) {
+      if (!task.deadline || ['COMPLETED', 'PENDING'].includes(task.status)) return false;
+      const deadline = new Date(`${String(task.deadline).slice(0, 10)}T${task.deadlineTime || '23:59'}:00`);
+      return !Number.isNaN(deadline.getTime()) && deadline < new Date();
+    }
+
+    function renderTeacherTrackerTasks() {
+      const list = document.getElementById('teacher-task-list');
+      const status = document.getElementById('teacher-task-status');
+      if (!list || !status) return;
+      const personalTasks = teacherTrackerTasks
+        .filter(task => Array.isArray(task.assignees) && task.assignees.includes(currentUserName))
+        .sort((a, b) => Number(a.priority) - Number(b.priority)
+          || String(a.deadline || '').localeCompare(String(b.deadline || '')));
+
+      status.textContent = personalTasks.length
+        ? `${personalTasks.length} nhiệm vụ được giao cho ${currentUserName}.`
+        : 'Hiện chưa có nhiệm vụ nào được giao cho bạn.';
+      list.innerHTML = personalTasks.map(task => {
+        const overdue = teacherTaskIsOverdue(task);
+        const statusText = overdue ? 'Quá hạn' : teacherTaskStatus(task);
+        const priority = Number(task.priority) || 4;
+        const deadline = task.deadline
+          ? `${escapeHtml(task.deadline)}${task.deadlineTime ? ` · ${escapeHtml(task.deadlineTime)}` : ''}`
+          : 'Chưa đặt hạn';
+        const actions = [];
+        if (task.status === 'NEW') {
+          actions.push(`<button type="button" data-teacher-task-action="accept" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">Nhận việc</button>`);
+        } else if (task.status === 'IN_PROGRESS') {
+          actions.push(`<button type="button" data-teacher-task-action="complete" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-[#8B1515] hover:bg-red-900 text-white text-xs font-bold">Yêu cầu hoàn thành</button>`);
+        }
+        if (['NEW', 'IN_PROGRESS'].includes(task.status)) {
+          actions.push(`<button type="button" data-teacher-task-action="save-note" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">Lưu ghi chú</button>`);
+        }
+        const statusClass = overdue ? 'bg-red-100 text-red-700' : task.status === 'COMPLETED'
+          ? 'bg-emerald-100 text-emerald-700'
+          : task.status === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700';
+        return `<article class="rounded-xl border border-slate-200 p-3 sm:p-4 bg-white">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2"><span class="px-2 py-1 rounded-full bg-[#8B1515]/10 text-[#8B1515] text-[10px] font-black">P${priority}</span><span class="px-2 py-1 rounded-full ${statusClass} text-[10px] font-bold">${statusText}</span></div>
+            <span class="text-[11px] text-slate-500">Hạn: ${deadline}</span>
+          </div>
+          <h3 class="mt-2 text-sm font-bold text-slate-800">${escapeHtml(task.title)}</h3>
+          <p class="mt-1 text-[11px] text-slate-500">Người giao: ${escapeHtml(task.createdBy || '—')}${task.punishment ? ` · Lưu ý: ${escapeHtml(task.punishment)}` : ''}</p>
+          ${task.reviewNote ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Phản hồi:</strong> ${escapeHtml(task.reviewNote)}</p>` : ''}
+          ${['NEW', 'IN_PROGRESS'].includes(task.status) ? `<label class="block mt-3 text-[10px] font-bold uppercase text-slate-500" for="teacher-task-note-${escapeHtml(task.id)}">Ghi chú tiến độ</label><textarea id="teacher-task-note-${escapeHtml(task.id)}" data-teacher-task-note="${escapeHtml(task.id)}" maxlength="2000" class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.note || '')}</textarea>` : task.note ? `<p class="mt-2 text-xs text-slate-600"><strong>Ghi chú:</strong> ${escapeHtml(task.note)}</p>` : ''}
+          ${actions.length ? `<div class="mt-3 flex flex-wrap gap-2">${actions.join('')}</div>` : ''}
+        </article>`;
+      }).join('');
+    }
+
+    async function loadTeacherTrackerTasks() {
+      const list = document.getElementById('teacher-task-list');
+      const status = document.getElementById('teacher-task-status');
+      if (!list || !status || currentUserRole !== 'teacher') return;
+      const token = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN');
+      if (!token) {
+        status.textContent = 'Phiên theo dõi chưa sẵn sàng. Vui lòng đăng xuất rồi đăng nhập lại.';
+        list.innerHTML = '';
+        return;
+      }
+
+      status.textContent = 'Đang tải nhiệm vụ...';
+      try {
+        const result = await apiCall('trackerBootstrap', { token });
+        if (result?.actor?.name !== currentUserName || !['teacher', 'manager'].includes(result?.actor?.role)) {
+          throw new Error('Phiên đăng nhập không khớp với tài khoản trợ giảng hiện tại. Vui lòng đăng nhập lại.');
+        }
+        teacherTrackerTasks = Array.isArray(result.tasks) ? result.tasks : [];
+        renderTeacherTrackerTasks();
+      } catch (error) {
+        status.textContent = `Không tải được nhiệm vụ: ${error.message}`;
+        list.innerHTML = '';
+      }
+    }
+
+    async function handleTeacherTrackerAction(event) {
+      const button = event.target.closest('[data-teacher-task-action]');
+      if (!button) return;
+      const token = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN');
+      const taskId = button.dataset.taskId;
+      const action = button.dataset.teacherTaskAction;
+      button.disabled = true;
+      try {
+        if (!token) throw new Error('Phiên theo dõi đã hết hạn. Vui lòng đăng xuất rồi đăng nhập lại.');
+        if (action === 'accept') {
+          await apiCall('trackerAcceptTask', { token, taskId });
+        } else if (action === 'complete') {
+          await apiCall('trackerRequestCompletion', { token, taskId });
+        } else if (action === 'save-note') {
+          const note = document.getElementById(`teacher-task-note-${taskId}`);
+          if (!note) throw new Error('Không tìm thấy ô ghi chú của nhiệm vụ.');
+          await apiCall('trackerSaveNote', { token, taskId, note: note.value });
+        } else {
+          throw new Error('Thao tác nhiệm vụ không hợp lệ.');
+        }
+        await loadTeacherTrackerTasks();
+        showToast(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'complete' ? 'Đã gửi yêu cầu hoàn thành.' : 'Đã lưu ghi chú.');
+      } catch (error) {
+        showToast(`Không thể cập nhật nhiệm vụ: ${error.message}`, 'error');
+        button.disabled = false;
+      }
     }
 
     function getAllLevels() {
@@ -2913,6 +3035,7 @@
         if (teacherClassName) teacherClassName.innerText = name;
         showPage(fromSession ? document.body.dataset.appPage : 'page-teacher-attendance');
       }
+      if (role === 'teacher') loadTeacherTrackerTasks();
     }
 
     function logout() {
@@ -2939,6 +3062,7 @@
     // Khởi chạy khi nạp xong trang
     window.onload = async function() {
       initializeAccessibility();
+      document.getElementById('teacher-task-list')?.addEventListener('click', handleTeacherTrackerAction);
       setupAllDateInputs();
       loadDataFromLocalStorage();
       initLoginTeacherList();

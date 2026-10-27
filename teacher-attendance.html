@@ -411,7 +411,7 @@
         
         <div class="flex items-center gap-2 w-full sm:w-auto overflow-hidden">
           <nav id="teacher-tracker-nav" class="hidden w-full sm:w-auto mobile-scroll-x items-center gap-2 pb-1 sm:pb-0 pt-1 sm:pt-0" aria-label="Theo dõi công việc">
-            <a id="teacher-tracker-link" href="executive-tracker.html?view=teacher" class="hidden shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">📌 Task của tôi</a>
+            <button id="teacher-tracker-link" type="button" onclick="openTeacherTasks()" class="hidden shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">📌 Task của tôi</button>
             <a id="manager-tracker-link" href="executive-tracker.html?view=manager" class="hidden shrink-0 bg-amber-400 hover:bg-amber-500 text-slate-900 text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">📈 Tracking Manager</a>
           </nav>
           <div id="admin-nav-buttons" class="hidden w-full sm:w-auto mobile-scroll-x flex items-center gap-2 pb-1 sm:pb-0 pt-1 sm:pt-0">
@@ -474,6 +474,17 @@
             <span class="flex-1 sm:flex-none text-center text-xs font-mono bg-emerald-900/60 px-3 py-2 rounded-xl border border-emerald-700 font-bold">Sĩ số: <strong id="teacher-student-count" class="text-amber-300">0</strong></span>
           </div>
         </div>
+        <section id="teacher-task-panel" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" aria-labelledby="teacher-task-heading">
+          <div class="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 id="teacher-task-heading" class="text-sm sm:text-base font-bold text-slate-800">📌 Nhiệm vụ của tôi</h2>
+              <p class="text-xs text-slate-500 mt-1">Các nhiệm vụ được giao cho bạn, cập nhật trực tiếp tại đây.</p>
+            </div>
+            <button type="button" onclick="loadTeacherTrackerTasks()" class="self-start sm:self-auto px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">🔄 Tải lại nhiệm vụ</button>
+          </div>
+          <div id="teacher-task-status" class="px-4 py-3 text-xs text-slate-500" role="status">Đang tải nhiệm vụ...</div>
+          <div id="teacher-task-list" class="p-3 sm:p-4 pt-0 grid grid-cols-1 lg:grid-cols-2 gap-3"></div>
+        </section>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-red-100 flex items-center justify-between">
             <div>
