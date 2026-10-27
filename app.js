@@ -750,8 +750,20 @@
       const student = studentsData.find(s => s.id === studentId);
       if (!student) return;
 
-      document.getElementById('payment-student-name').innerText = student.name;
-      document.getElementById('payment-class-type').innerText = student.level || 'Chưa xếp lớp';
+      const studentName = document.getElementById('payment-student-name');
+      const classType = document.getElementById('payment-class-type');
+      const currentPackageLabel = document.getElementById('payment-current-package');
+      const packageSelect = document.getElementById('payment-package');
+      const confirmButton = document.getElementById('btn-confirm-payment');
+      const errorMessage = document.getElementById('payment-error-message');
+      const paymentModal = document.getElementById('modal-payment');
+      if (!studentName || !classType || !currentPackageLabel || !packageSelect || !confirmButton || !errorMessage || !paymentModal) {
+        showToast('Không thể mở hộp thanh toán: giao diện chưa tải đầy đủ.', 'error');
+        return;
+      }
+
+      studentName.innerText = student.name;
+      classType.innerText = student.level || 'Chưa xếp lớp';
       const levelName = String(student.level || '').toLowerCase();
       const currentPackage = !levelName
         ? 'Chưa xếp lớp'
@@ -760,17 +772,15 @@
           : levelName.includes('full')
             ? 'Full'
             : 'Lớp thường';
-      document.getElementById('payment-current-package').innerText = currentPackage;
-      document.getElementById('payment-package').value = levelName.includes('combo') ? '36' : levelName.includes('full') ? '24' : '12';
+      currentPackageLabel.innerText = currentPackage;
+      packageSelect.value = levelName.includes('combo') ? '36' : levelName.includes('full') ? '24' : '12';
 
-      const confirmButton = document.getElementById('btn-confirm-payment');
-      const errorMessage = document.getElementById('payment-error-message');
       confirmButton.disabled = false;
       confirmButton.innerText = 'Xác nhận thanh toán';
       errorMessage.classList.add('hidden');
       errorMessage.innerText = '';
       confirmButton.onclick = () => processStudentPayment(studentId);
-      document.getElementById('modal-payment').classList.remove('hidden');
+      paymentModal.classList.remove('hidden');
     }
 
     function openFeeStatusPopup(studentId) {
