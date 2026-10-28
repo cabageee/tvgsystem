@@ -602,6 +602,7 @@
       let token = '';
       let session = null;
       let tasks = [];
+      let editingTaskId = '';
       let requests = [];
       let teachers = [];
       let manager = '';
@@ -751,6 +752,7 @@
         const personal = Number(task.priority) >= 3;
         const buttons = [];
         const canDelete = canDeleteTask(task);
+        if (canEditTask(task)) buttons.push(`<button class="small-button primary" data-task-action="edit" data-id="${escapeHtml(task.id)}">Chỉnh sửa</button>`);
         if (['director', 'manager'].includes(role)) {
           if (task.status === 'PENDING') {
             buttons.push(`<button class="small-button good" data-task-action="approve" data-id="${escapeHtml(task.id)}">Duyệt</button>`);
@@ -766,6 +768,15 @@
         if (assigned && role !== 'director' && task.status !== 'COMPLETED') buttons.push(`<button class="small-button" data-task-action="note" data-id="${escapeHtml(task.id)}">Cập nhật ghi chú</button>`);
         if (assigned && personal && task.status === 'COMPLETED' && !canDelete) return '<span class="muted">Đã hoàn thành cá nhân</span>';
         return buttons.length ? `<div class="task-actions">${buttons.join('')}</div>` : `<span class="muted">Không có thao tác</span>`;
+      }
+
+      function canEditTask(task) {
+        const role = actorRole();
+        const personal = [3, 4].includes(Number(task.priority));
+        const assignedToActor = (task.assignees || []).includes(session.actor.name);
+        return role === 'director'
+          || (role === 'manager' && task.createdBy === session.actor.name)
+          || (role === 'teacher' && personal && task.createdBy === session.actor.name && assignedToActor);
       }
 
       function canDeleteTask(task) {
@@ -1057,8 +1068,11 @@
       }
 
       function openTaskDialog() {
+        editingTaskId = '';
         $('task-form').reset();
         $('task-error').hidden = true;
+        $('task-dialog-title').textContent = 'Tạo task';
+        $('task-save').textContent = 'Tạo task';
         $('task-start').value = dateInputValue(new Date());
         $('task-deadline').value = dateInputValue(new Date());
         $('task-time').value = '17:00';
@@ -1081,6 +1095,34 @@
         $('task-dialog').showModal();
       }
 
+      function openEditTaskDialog(task) {
+        if (!canEditTask(task)) {
+          notify('Bạn không có quyền chỉnh sửa task này.');
+          return;
+        }
+        editingTaskId = task.id;
+        $('task-form').reset();
+        $('task-error').hidden = true;
+        $('task-title').value = task.title || '';
+        $('task-start').value = dateInputValue(localDate(task.startDate || task.deadline) || new Date());
+        $('task-deadline').value = dateInputValue(localDate(task.deadline) || new Date());
+        $('task-time').value = timeLabel(task.deadlineTime) || '17:00';
+        $('task-punishment').value = task.punishment || '';
+        $('task-note').value = task.note || '';
+        const role = actorRole();
+        const personal = Number(task.priority) >= 3;
+        $('assignee-field').hidden = personal && role !== 'director';
+        $('task-personal-priority-field').hidden = true;
+        const assignNames = role === 'manager' ? teachers.filter(name => name !== session.actor.name) : teachers;
+        $('assignee-options').innerHTML = assignNames.map(name => {
+          const checked = (task.assignees || []).includes(name) ? ' checked' : '';
+          return `<label class="assignee-option"><input type="checkbox" name="assignee" value="${escapeHtml(name)}"${checked}><span>${escapeHtml(name)}</span></label>`;
+        }).join('') || '<span class="muted">Chưa có trợ giảng trong hệ thống.</span>';
+        $('task-dialog-title').textContent = 'Chỉnh sửa task';
+        $('task-save').textContent = 'Lưu thay đổi';
+        $('task-dialog').showModal();
+      }
+
       function updatePersonalPriorityVisibility() {
         const role = actorRole();
         const hasAssignees = document.querySelectorAll('input[name="assignee"]:checked').length > 0;
@@ -1095,6 +1137,8 @@
 
       async function saveTask(event) {
         event.preventDefault();
+        $('task-error').hidden = true;
+        const isEditing = Boolean(editingTaskId);
         const startDate = $('task-start').value;
         const deadline = $('task-deadline').value;
         if (deadline < startDate) {
@@ -1102,24 +1146,36 @@
           $('task-error').hidden = false;
           return;
         }
-        const assignees = [...document.querySelectorAll('input[name="assignee"]:checked')].map(input => input.value);
+        const existingTask = isEditing ? tasks.find(item => item.id === editingTaskId) : null;
+        const lockedPersonalTask = existingTask
+          && [3, 4].includes(Number(existingTask.priority))
+          && ['manager', 'teacher'].includes(actorRole());
+        const assignees = lockedPersonalTask
+          ? (existingTask.assignees || [])
+          : [...document.querySelectorAll('input[name="assignee"]:checked')].map(input => input.value);
         try {
-          await apiCall('trackerCreateTask', {
-            token,
-            task: {
-              title: $('task-title').value.trim(),
-              assignees,
-              priority: Number($('task-personal-priority').value),
-              startDate,
-              deadline,
-              deadlineTime: $('task-time').value,
-              punishment: $('task-punishment').value.trim(),
-              note: $('task-note').value.trim()
-            }
-          });
+          const task = {
+            title: $('task-title').value.trim(),
+            assignees,
+            startDate,
+            deadline,
+            deadlineTime: $('task-time').value,
+            punishment: $('task-punishment').value.trim(),
+            note: $('task-note').value.trim()
+          };
+          if (editingTaskId) {
+            await apiCall('trackerUpdateTask', { token, taskId: editingTaskId, task });
+          } else {
+            await apiCall('trackerCreateTask', {
+              token,
+              task: { ...task, priority: Number($('task-personal-priority').value) }
+            });
+          }
           $('task-dialog').close();
+          editingTaskId = '';
+          $('task-save').textContent = 'Tạo task';
           await refresh();
-          notify('Đã lưu nhiệm vụ vào Google Sheet.');
+          notify(isEditing ? 'Đã cập nhật task.' : 'Đã lưu nhiệm vụ vào Google Sheet.');
         } catch (error) {
           $('task-error').textContent = error.message;
           $('task-error').hidden = false;
@@ -1132,6 +1188,10 @@
         const action = button.dataset.taskAction;
         const taskId = button.dataset.id;
         const selectedTask = tasks.find(item => item.id === taskId);
+        if (action === 'edit') {
+          if (selectedTask) openEditTaskDialog(selectedTask);
+          return;
+        }
         if (action === 'delete' && !window.confirm(`Xóa nhiệm vụ "${selectedTask?.title || ''}"? Thao tác này không thể hoàn tác.`)) return;
         button.disabled = true;
         try {

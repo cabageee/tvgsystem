@@ -348,6 +348,8 @@ function handleApiAction(payload) {
       return trackerSetManager_(payload.token, payload.manager);
     case 'trackerCreateTask':
       return trackerCreateTask_(payload.token, payload.task);
+    case 'trackerUpdateTask':
+      return trackerUpdateTask_(payload.token, payload.taskId, payload.task);
     case 'trackerAcceptTask':
       return trackerAcceptTask_(payload.token, payload.taskId);
     case 'trackerRequestCompletion':
@@ -675,6 +677,62 @@ function trackerCreateTask_(token, input) {
   ];
   requireSheet_(TAB.TRACKER_TASKS).appendRow(row);
   return { status: 'success', taskId: id };
+}
+
+function trackerUpdateTask_(token, taskId, input) {
+  const actor = trackerActor_(token);
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
+  const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
+  if (!task) throw new Error('Không tìm thấy nhiệm vụ cần chỉnh sửa.');
+  const updates = input || {};
+  const title = String(updates.title || '').trim();
+  const startDate = String(updates.startDate || '');
+  const deadline = String(updates.deadline || '');
+  const deadlineTime = String(updates.deadlineTime || '');
+  const priority = Number(task.priority);
+  const isPersonalTask = [3, 4].includes(priority);
+  const assignedToActor = task.assignees.indexOf(actor.name) !== -1;
+  const canEdit = actor.role === 'director'
+    || (actor.role === 'manager' && task.createdBy === actor.name)
+    || (actor.role === 'teacher' && isPersonalTask && task.createdBy === actor.name && assignedToActor);
+  if (!canEdit) {
+    throw new Error(actor.role === 'teacher'
+      ? 'Trợ giảng chỉ được chỉnh sửa việc cá nhân ưu tiên do mình tạo.'
+      : 'Chỉ Giám đốc hoặc Manager tạo task mới được chỉnh sửa task này.');
+  }
+
+  const assignees = actor.role === 'teacher' && isPersonalTask
+    ? [actor.name]
+    : Array.isArray(updates.assignees)
+    ? Array.from(new Set(updates.assignees.map(name => String(name || '').trim()).filter(Boolean)))
+    : [];
+  if (!title || title.length > 300) throw new Error('Tên nhiệm vụ không hợp lệ.');
+  if (!trackerValidDate_(startDate) || !trackerValidDate_(deadline) || deadline < startDate) {
+    throw new Error('Ngày bắt đầu hoặc hạn hoàn thành không hợp lệ.');
+  }
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(deadlineTime)) throw new Error('Vui lòng nhập giờ deadline hợp lệ.');
+  if (priority === 1 && actor.role !== 'director') throw new Error('Chỉ Giám đốc được chỉnh sửa nhiệm vụ tuần.');
+  if (isPersonalTask && (assignees.length !== 1 || assignees[0] !== task.createdBy)) {
+    throw new Error('Việc cá nhân phải tiếp tục được giao cho chính người tạo.');
+  }
+  if (priority === 2 && (!assignees.length || (actor.role === 'manager' && assignees.includes(actor.name)))) {
+    throw new Error('Nhiệm vụ của Manager phải được giao cho ít nhất một trợ giảng khác.');
+  }
+  const validTeachers = readTeachers(requireSheet_(TAB.TEACHERS)).map(teacher => teacher.name);
+  if (assignees.some(name => validTeachers.indexOf(name) === -1)) {
+    throw new Error('Danh sách người được giao có tài khoản không hợp lệ.');
+  }
+
+  const row = findRowById(sheet, task.id);
+  if (!row) throw new Error('Không tìm thấy dòng nhiệm vụ trong bảng dữ liệu.');
+  sheet.getRange(row, 2).setValue(title);
+  sheet.getRange(row, 5).setValue(JSON.stringify(assignees));
+  sheet.getRange(row, 6, 1, 3).setValues([[startDate, deadline, deadlineTime]]);
+  sheet.getRange(row, 10, 1, 2).setValues([
+    [String(updates.note || '').slice(0, 2000), String(updates.punishment || '').slice(0, 300)]
+  ]);
+  sheet.getRange(row, 15).setValue(new Date().toISOString());
+  return { status: 'success' };
 }
 
 function trackerUpdateTaskStatus_(token, taskId, nextAction) {
