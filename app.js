@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyyCuQ0AVzHCvRFVNarFY3Vy726AsFTI_DZzdo7EsPBv8hI08vKPAaJ44JobANA1ns/exec'; 
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzZk65ARa9qIP6nj43uCruxWAAAV660su_2T7lre7zvQBel2eoKxWpiJpMEnLk3Z573/exec'; 
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -3083,8 +3083,11 @@
           username,
           password: pwdInput.value
         });
-        if (identity?.status !== 'success' || !identity.token) {
+        if (identity?.status !== 'success') {
           throw new Error(identity?.message || 'Tài khoản hoặc mật khẩu không đúng.');
+        }
+        if (!identity.token) {
+          throw new Error('Apps Script chưa cấp quyền truy cập Tracker. Hãy cập nhật deployment bằng tracker-backend.gs.txt rồi thử lại.');
         }
         const identityName = String(identity.name || username).trim();
         sessionStorage.removeItem('TV_GLOBAL_TRACKER_TOKEN');
@@ -3098,36 +3101,6 @@
         if (!isDirector && teacherSelect) teacherSelect.value = identityName;
         pwdInput.value = '';
       } catch (error) {
-        if (isDirector && String(pwdInput.value ?? '').trim() === '123456') {
-          sessionStorage.removeItem('TV_GLOBAL_TRACKER_TOKEN');
-          sessionStorage.removeItem('TV_GLOBAL_ROLE');
-          sessionStorage.removeItem('TV_GLOBAL_USER');
-          sessionStorage.setItem('TV_GLOBAL_ROLE', 'director');
-          sessionStorage.setItem('TV_GLOBAL_USER', 'Giám Đốc');
-          teacherTrackerTasks = [];
-          loginAs('director', 'Giám Đốc');
-          pwdInput.value = '';
-          return;
-        }
-        if (!isDirector) {
-          try {
-            const passwordMatchesSheet = await verifyTeacherPasswordFromSheet(username, pwdInput.value);
-            if (passwordMatchesSheet) {
-              sessionStorage.removeItem('TV_GLOBAL_TRACKER_TOKEN');
-              sessionStorage.removeItem('TV_GLOBAL_ROLE');
-              sessionStorage.removeItem('TV_GLOBAL_USER');
-              sessionStorage.setItem('TV_GLOBAL_ROLE', 'teacher');
-              sessionStorage.setItem('TV_GLOBAL_USER', username);
-              teacherTrackerTasks = [];
-              loginAs('teacher', username);
-              teacherSelect.value = username;
-              pwdInput.value = '';
-              return;
-            }
-          } catch (sheetError) {
-            console.error('Không thể xác minh mật khẩu trợ giảng từ Sheet:', sheetError);
-          }
-        }
         errorMessage.textContent = error.message || 'Không thể xác minh tài khoản. Vui lòng thử lại.';
         errorMessage.classList.remove('hidden');
       } finally {
@@ -3180,6 +3153,12 @@
     function restoreSession() {
       const role = sessionStorage.getItem('TV_GLOBAL_ROLE');
       const name = sessionStorage.getItem('TV_GLOBAL_USER');
+      const token = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN');
+      if (role && name && !token) {
+        sessionStorage.removeItem('TV_GLOBAL_ROLE');
+        sessionStorage.removeItem('TV_GLOBAL_USER');
+        return;
+      }
       if (role && name) {
         loginAs(role, name, true);
       }

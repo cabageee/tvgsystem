@@ -9,55 +9,9 @@ app.use(cors({ origin: true, methods: ['GET', 'POST', 'DELETE', 'OPTIONS'] }));
 app.options(/.*/, cors());
 app.use(express.json({ limit: '100kb' }));
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyyCuQ0AVzHCvRFVNarFY3Vy726AsFTI_DZzdo7EsPBv8hI08vKPAaJ44JobANA1ns/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzZk65ARa9qIP6nj43uCruxWAAAV660su_2T7lre7zvQBel2eoKxWpiJpMEnLk3Z573/exec';
 
 app.get('/api/health', (req, res) => res.json({ status: 'success', service: 'tvgsystem-api' }));
-
-const TEACHER_SHEET_ID = '1vDz0Wmc2PeQy9KnEG-w3HZaQnk1bq7TYohjgwVfOM2M';
-
-app.post('/api/verify-teacher-sheet', async (req, res) => {
-  try {
-    const name = String(req.body?.username || '').trim();
-    const password = String(req.body?.password ?? '').trim();
-    if (!name || !password) {
-      return res.status(400).json({ status: 'error', message: 'Thiếu tài khoản hoặc mật khẩu.' });
-    }
-    const normalizeName = value => String(value || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'd').replace(/Đ/g, 'D')
-      .trim().toLowerCase();
-    const knownTeachers = ['Thanh Tâm', 'Triều Thi', 'Tú Anh'];
-    if (knownTeachers.includes(name) && password === '123456') {
-      return res.json({ status: 'success', name });
-    }
-
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${TEACHER_SHEET_ID}/gviz/tq?tqx=out:json&sheet=TroGiang&cache=${Date.now()}`;
-    const response = await fetch(sheetUrl, { cache: 'no-store' });
-    if (!response.ok) throw new Error('Không đọc được Sheet trợ giảng.');
-    const payload = await response.text();
-    const jsonStart = payload.indexOf('{');
-    const jsonEnd = payload.lastIndexOf('}');
-    if (jsonStart < 0 || jsonEnd < jsonStart) throw new Error('Phản hồi Sheet trợ giảng không hợp lệ.');
-    const sheetData = JSON.parse(payload.slice(jsonStart, jsonEnd + 1));
-    const rows = (sheetData.table?.rows || []).map(row => (row.c || []).map(cell => String(cell?.v ?? '').trim()));
-
-    const normalize = value => String(value || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[“”]/g, '')
-      .trim()
-      .toLowerCase();
-    const matchingRow = rows.find(row => normalize(row[0]) === normalize(name));
-    if (!matchingRow) return res.json({ status: 'error', message: 'Không tìm thấy tài khoản trợ giảng.' });
-
-    const sheetPassword = String(matchingRow[1] || '').trim() || '123456';
-    if (password !== sheetPassword) return res.json({ status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' });
-    return res.json({ status: 'success', name });
-  } catch (error) {
-    return res.status(502).json({ status: 'error', message: error.message || 'Không xác minh được Sheet trợ giảng.' });
-  }
-});
 
 app.post('/api/google-script', async (req, res) => {
   let lastError;

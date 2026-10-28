@@ -1,4 +1,4 @@
-const CACHE_NAME = 'thien-vy-global-v27';
+const CACHE_NAME = 'thien-vy-global-v29';
 const APP_FILES = [
   './',
   './index.html',

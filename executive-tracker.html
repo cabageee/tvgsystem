@@ -101,6 +101,9 @@
     .small-button.primary { color: white; background: var(--wine); }
     .small-button.good { color: white; background: #087451; }
     .small-button.danger { color: #a52835; background: #fff0f1; }
+    .completion-control { display: inline-flex; align-items: center; gap: 7px; color: #334052; font-size: 10px; font-weight: 850; white-space: nowrap; }
+    .completion-control input { width: 17px; height: 17px; margin: 0; accent-color: #087451; }
+    .completion-control input:disabled { cursor: not-allowed; }
     .empty-state { padding: 40px 18px; color: var(--muted); text-align: center; }
     .empty-state strong { display: block; margin-bottom: 5px; color: #364255; }
     dialog { width: min(720px, calc(100vw - 24px)); max-height: min(90vh, 780px); padding: 0; border: 0; border-radius: 16px; box-shadow: 0 20px 70px #0005; }
@@ -213,7 +216,7 @@
       </div>
       <section class="table-wrap" aria-label="Bảng theo dõi task trợ giảng đã nhận">
         <table>
-          <thead><tr><th>Task</th><th>Trợ giảng nhận việc</th><th>Người giao</th><th>Deadline</th><th>Trạng thái</th><th>Ghi chú tiến độ</th></tr></thead>
+          <thead><tr><th>Task</th><th>Trợ giảng nhận việc</th><th>Người giao</th><th>Deadline</th><th>Trạng thái</th><th>Ghi chú tiến độ</th><th>Hoàn thành</th></tr></thead>
           <tbody id="accepted-task-body"></tbody>
         </table>
       </section>
@@ -252,7 +255,7 @@
 
   <script>
     (() => {
-      const API_URL = 'https://script.google.com/macros/s/AKfycbyyCuQ0AVzHCvRFVNarFY3Vy726AsFTI_DZzdo7EsPBv8hI08vKPAaJ44JobANA1ns/exec';
+      const API_URL = 'https://script.google.com/macros/s/AKfycbzZk65ARa9qIP6nj43uCruxWAAAV660su_2T7lre7zvQBel2eoKxWpiJpMEnLk3Z573/exec';
       const TOKEN_KEY = 'TV_GLOBAL_TRACKER_TOKEN';
       const entryMode = new URLSearchParams(window.location.search).get('view') || '';
       const entryRoles = { director: 'director', manager: 'manager', teacher: 'teacher' };
@@ -385,10 +388,6 @@
         if (assigned && role !== 'director' && task.status === 'NEW') buttons.push(`<button class="small-button primary" data-task-action="accept" data-id="${escapeHtml(task.id)}">Nhận việc</button>`);
         if (assigned && role !== 'director' && task.status === 'IN_PROGRESS') buttons.push(`<button class="small-button good" data-task-action="submit" data-id="${escapeHtml(task.id)}">Yêu cầu hoàn thành</button>`);
         if (assigned && role !== 'director' && ['NEW', 'IN_PROGRESS'].includes(task.status)) buttons.push(`<button class="small-button" data-task-action="note" data-id="${escapeHtml(task.id)}">Cập nhật ghi chú</button>`);
-        if (['director', 'manager'].includes(role) && task.status === 'PENDING') {
-          buttons.push(`<button class="small-button good" data-task-action="approve" data-id="${escapeHtml(task.id)}">Duyệt</button>`);
-          buttons.push(`<button class="small-button danger" data-task-action="reject" data-id="${escapeHtml(task.id)}">Từ chối</button>`);
-        }
         return buttons.length ? `<div class="task-actions">${buttons.join('')}</div>` : `<span class="muted">Không có thao tác</span>`;
       }
 
@@ -464,8 +463,11 @@
             <td><strong>${dateLabel(task.deadline)} ${escapeHtml(task.deadlineTime || '')}</strong></td>
             <td><span class="status-pill status-${status}">${statusLabel(status)}</span></td>
             <td>${escapeHtml(task.reviewNote || task.note || '—')}</td>
+            <td>${['director', 'manager'].includes(role)
+              ? `<label class="completion-control"><input type="checkbox" data-complete-task="${escapeHtml(task.id)}" aria-label="Đánh dấu hoàn thành: ${escapeHtml(task.title)}" ${task.status === 'COMPLETED' ? 'checked disabled' : task.status !== 'PENDING' ? 'disabled' : ''}><span>${task.status === 'COMPLETED' ? 'Đã xong' : task.status === 'PENDING' ? 'Duyệt hoàn thành' : 'Chờ trợ giảng gửi yêu cầu'}</span></label>${task.status === 'PENDING' ? `<button class="small-button danger" data-task-action="reject" data-id="${escapeHtml(task.id)}">Trả lại</button>` : ''}`
+              : `<span class="muted">${task.status === 'PENDING' ? 'Chờ Giám đốc / Manager duyệt' : task.status === 'COMPLETED' ? 'Đã hoàn thành' : 'Chỉ quản lý đánh dấu hoàn thành'}</span>`}</td>
           </tr>`;
-        }).join('') : '<tr><td colspan="6"><div class="empty-state"><strong>Chưa có task được tiếp nhận</strong>Các task sẽ xuất hiện tại đây sau khi trợ giảng nhận việc.</div></td></tr>';
+        }).join('') : '<tr><td colspan="7"><div class="empty-state"><strong>Chưa có task được tiếp nhận</strong>Các task sẽ xuất hiện tại đây sau khi trợ giảng nhận việc.</div></td></tr>';
       }
 
       async function refresh() {
@@ -570,26 +572,38 @@
             const note = window.prompt('Cập nhật ghi chú cho nhiệm vụ:', task?.note || '');
             if (note === null) return;
             await apiCall('trackerSaveNote', { token, taskId, note });
-          } else {
-            let note = '';
-            let stars = 0;
-            if (action === 'reject') {
-              note = window.prompt('Nhập lý do từ chối để trợ giảng cập nhật:', '');
-              if (!note || !note.trim()) { notify('Cần nhập lý do từ chối.'); return; }
-            } else {
-              const rating = window.prompt('Chấm sao cho nhiệm vụ (1–5):', '5');
-              if (rating === null) return;
-              stars = Number(rating);
-              if (!Number.isInteger(stars) || stars < 1 || stars > 5) { notify('Số sao cần nằm trong khoảng 1–5.'); return; }
-            }
-            await apiCall('trackerReviewTask', { token, taskId, decision: action, note, stars });
+          } else if (action === 'reject') {
+            const note = window.prompt('Nhập lý do trả lại để trợ giảng cập nhật:', '');
+            if (!note || !note.trim()) { notify('Cần nhập lý do trả lại.'); return; }
+            await apiCall('trackerReviewTask', { token, taskId, decision: action, note, stars: 0 });
           }
           await refresh();
-          notify(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'submit' ? 'Đã gửi yêu cầu hoàn thành để duyệt.' : action === 'approve' ? 'Đã duyệt hoàn thành.' : action === 'reject' ? 'Đã từ chối và gửi phản hồi.' : 'Đã cập nhật ghi chú.');
+          notify(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'submit' ? 'Đã gửi yêu cầu hoàn thành để duyệt.' : action === 'reject' ? 'Đã trả task để trợ giảng cập nhật.' : 'Đã cập nhật ghi chú.');
         } catch (error) {
           notify(error.message);
         } finally {
           button.disabled = false;
+        }
+      }
+
+      async function completeTask(event) {
+        const checkbox = event.target.closest('[data-complete-task]');
+        if (!checkbox) return;
+        const taskId = checkbox.dataset.completeTask;
+        checkbox.disabled = true;
+        if (!checkbox.checked) {
+          checkbox.checked = true;
+          checkbox.disabled = false;
+          return;
+        }
+        try {
+          await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '', stars: 0 });
+          await refresh();
+          notify('Đã xác nhận task hoàn thành.');
+        } catch (error) {
+          checkbox.checked = false;
+          checkbox.disabled = false;
+          notify(error.message);
         }
       }
 
@@ -698,6 +712,8 @@
         taskAction(event);
         scheduleAction(event);
       });
+      $('accepted-task-body').addEventListener('click', taskAction);
+      $('accepted-task-body').addEventListener('change', completeTask);
       $('export-schedules').addEventListener('click', exportSchedules);
       document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => $(button.dataset.close).close()));
       ['filter-priority', 'filter-teacher', 'filter-status'].forEach(id => $(id).addEventListener('change', render));
@@ -715,7 +731,7 @@
       } else if (!token) {
         showTrackerError(
           'Chưa có phiên Tracker',
-          'Bạn đã vào hệ thống nhưng lần đăng nhập này chưa tạo phiên Tracker. Hãy quay lại hệ thống và đăng nhập lại khi kết nối Apps Script ổn định.'
+          'Đăng nhập hệ thống chưa nhận được quyền truy cập Tracker. Hãy đăng nhập lại; nếu vẫn gặp lỗi, quản trị viên cần cập nhật Apps Script bằng tracker-backend.gs.txt. Tracker không yêu cầu đăng nhập riêng.'
         );
       } else {
         refresh();
