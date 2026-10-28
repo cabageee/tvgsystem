@@ -58,7 +58,8 @@
       '🎴': 'report', '🖼️': 'image', '📄': 'file', '➕': 'add', '✏️': 'edit',
       '🔑': 'key', '📊': 'chart', '📁': 'folder', '✅': 'check', '📅': 'calendar',
       '🚪': 'door', '👥': 'users', '🚨': 'siren', '🔍': 'search', '🔄': 'refresh',
-      '📝': 'note', '📷': 'camera', '👤': 'user', '📚': 'book', '⚙': 'gear',
+      '📝': 'note', '📷': 'camera', '👤': 'user', '📚': 'book', '📈': 'chart',
+      '📌': 'clipboard', '➔': 'restore', '⚙': 'gear',
       '⚡': 'lightning', '⏳': 'spinner', '❌': 'error', '🟢': 'check', '🔴': 'alert'
     };
 
@@ -252,27 +253,30 @@
       if (!root?.querySelectorAll) return;
       const emojiKeys = Object.keys(UI_EMOJI_ICONS).sort((a, b) => b.length - a.length);
       const targets = [];
-      if (root.matches?.('button, h1, h2, h3, h4, h5, h6, label, #login-error-msg')) targets.push(root);
-      targets.push(...root.querySelectorAll('button, h1, h2, h3, h4, h5, h6, label, #login-error-msg'));
+      const uiTextSelectors = 'button, a, h1, h2, h3, h4, h5, h6, label, #login-error-msg, #user-info-text, [role="alert"], div.text-3xl';
+      if (root.matches?.(uiTextSelectors)) targets.push(root);
+      targets.push(...root.querySelectorAll(uiTextSelectors));
 
-      targets.forEach(target => {
-        [...target.childNodes].forEach(node => {
+      targets.forEach(element => {
+        [...element.childNodes].forEach(node => {
           if (node.nodeType !== Node.TEXT_NODE) return;
-          const leadingWhitespace = node.nodeValue.match(/^\s*/)[0];
-          const remainingText = node.nodeValue.slice(leadingWhitespace.length);
-          const emoji = emojiKeys.find(key => remainingText.startsWith(key)
-            && (remainingText.length === key.length || /\s/.test(remainingText[key.length])));
+          const value = node.nodeValue || '';
+          const leadingWhitespace = value.match(/^\s*/)?.[0] || '';
+          const remainingText = value.slice(leadingWhitespace.length);
+          const emoji = emojiKeys.find(key => remainingText.startsWith(key));
           if (!emoji) return;
+
           const icon = document.createElement('span');
           icon.className = 'ui-icon-wrap';
+          icon.setAttribute('aria-hidden', 'true');
           icon.innerHTML = renderUiIcon(UI_EMOJI_ICONS[emoji]);
-          target.insertBefore(icon, node);
-          node.nodeValue = `${leadingWhitespace}${remainingText.slice(emoji.length).trimStart()}`;
+          element.insertBefore(icon, node);
+          node.nodeValue = `${leadingWhitespace}${remainingText.slice(emoji.length).replace(/^\s+/, '')}`;
         });
       });
 
-      [...(root.matches?.('body *') ? [root] : []), ...root.querySelectorAll('body *')].forEach(element => {
-        if (element.children.length || element.childNodes.length !== 1 || element.firstChild.nodeType !== Node.TEXT_NODE) return;
+      [...root.querySelectorAll('span')].forEach(element => {
+        if (element.closest('table, script, style, svg, .ui-icon-wrap')) return;
         const emoji = emojiKeys.find(key => element.textContent.trim() === key);
         if (!emoji) return;
         element.replaceChildren();
@@ -809,17 +813,17 @@
         ? { status: 'edit-upload-status', value: 'edit_avatar', preview: 'edit-avatar-preview' }
         : { status: 'upload-status', value: 'add_avatar', preview: 'avatar-preview' };
       const statusEl = document.getElementById(targetIds.status);
-      if (statusEl) statusEl.innerText = "⏳ Đang tải ảnh lên Google Drive...";
+      if (statusEl) statusEl.innerText = "Đang tải ảnh lên Google Drive...";
 
       try {
         const avatarUrl = await uploadAvatarFile(file);
         document.getElementById(targetIds.value).value = avatarUrl;
         setAvatarImage(document.getElementById(targetIds.preview), avatarUrl);
-        if (statusEl) statusEl.innerText = "✅ Upload ảnh thành công!";
+        if (statusEl) statusEl.innerText = "Upload ảnh thành công.";
       } catch (err) {
         console.error("Google Drive Upload Error:", err);
         const errorText = err?.message || err?.error_description || String(err);
-        if (statusEl) statusEl.innerText = `❌ Upload thất bại: ${errorText}`;
+        if (statusEl) statusEl.innerText = `Upload thất bại: ${errorText}`;
       }
     }
 
@@ -2027,7 +2031,7 @@
     // Xuất Excel 40 buổi
     async function exportAttendanceExcel() {
       const filteredStudents = getMasterFilteredStudents();
-      if (!filteredStudents.length) return alert("⚠️ Không có học viên nào phù hợp với bộ lọc để xuất Excel!");
+      if (!filteredStudents.length) return alert("Không có học viên nào phù hợp với bộ lọc để xuất Excel!");
       try {
         await loadOptionalLibrary('xlsx');
         const exportData = filteredStudents.map((s, idx) => {
@@ -2186,7 +2190,7 @@
       }
 
       if (studentsData.some(s => s.id === customId)) {
-        return alert("⚠️ Mã học viên này đã tồn tại!");
+        return alert("Mã học viên này đã tồn tại!");
       }
 
       const newStudent = {
@@ -2875,7 +2879,7 @@
       const input = document.getElementById('new_level_name_input');
       const val = input.value.trim();
       if (!val) return;
-      if (getAllLevels().includes(val)) return alert("⚠️ Loại lớp này đã tồn tại!");
+      if (getAllLevels().includes(val)) return alert("Loại lớp này đã tồn tại!");
 
       try {
         await apiCall('addLevel', { level: val });
@@ -2918,7 +2922,7 @@
       const name = document.getElementById('teacher_name_input').value.trim();
       const pwd = document.getElementById('teacher_pwd_input').value.trim() || '123456';
       if (!name) return;
-      if (assistantTeachers.includes(name)) return alert("⚠️ Trợ Giảng này đã tồn tại!");
+      if (assistantTeachers.includes(name)) return alert("Trợ Giảng này đã tồn tại!");
 
       assistantTeachers.push(name);
       saveAllDataToLocalStorage();
@@ -2957,7 +2961,7 @@
       const confirmPwd = document.getElementById('pwd_confirm').value;
 
       if (newPwd !== confirmPwd) {
-        return alert("⚠️ Mật khẩu mới và xác nhận mật khẩu không khớp!");
+        return alert("Mật khẩu mới và xác nhận mật khẩu không khớp!");
       }
 
       const accountName = currentUserRole === 'director' ? 'director' : currentUserName;

@@ -1444,3 +1444,121 @@
       #app-container .master-mobile-session { min-height: 48px; }
       .master-mobile-student-name { font-size: 13px; }
     }
+
+    :root {
+      --brand: #71313a;
+      --brand-dark: #51242b;
+      --brand-soft: #f3e9eb;
+      --brand-gold: #b99a66;
+      --brand-gold-soft: #f8f3e8;
+      --canvas: #f3f5f7;
+      --ink: #263241;
+      --muted: #687587;
+      --line: #e2e7ed;
+      --surface: #fff;
+      --shadow-card: 0 2px 6px rgba(27, 39, 54, .04), 0 10px 24px rgba(27, 39, 54, .045);
+      --shadow-card-hover: 0 8px 22px rgba(27, 39, 54, .09);
+    }
+
+    body { background: var(--canvas); color: var(--ink); }
+    #screen-login {
+      background:
+        radial-gradient(ellipse at 86% 12%, rgba(185, 154, 102, .11), transparent 34%),
+        #242c38;
+    }
+    #screen-login > div > div:first-child {
+      background: linear-gradient(135deg, #51242b, #71313a) !important;
+    }
+    #app-container header {
+      background: linear-gradient(105deg, #51242b, #71313a);
+      box-shadow: 0 3px 14px rgba(39, 26, 29, .14);
+    }
+    #app-container header img { border-color: rgba(235, 219, 190, .8); }
+    #user-info-text { color: #eadcc3; }
+    #app-container main .bg-white,
+    #app-container main .bg-white.rounded-2xl {
+      border-color: var(--line);
+      box-shadow: var(--shadow-card);
+    }
+    #app-container .bg-white.rounded-2xl.shadow-sm.border,
+    #app-container .bg-white.rounded-xl.shadow-sm.border,
+    #app-container [id$="-cards-container"] > article,
+    #app-container [id$="-cards-container"] > .bg-white,
+    #app-container #teacher-cards-container > div {
+      border-color: var(--line) !important;
+      background-color: var(--surface);
+      box-shadow: var(--shadow-card);
+    }
+    #app-container .grid > .bg-white.rounded-2xl.shadow-sm.border {
+      background-image: none;
+    }
+    #app-container .dashboard-toolbar {
+      border-color: var(--line);
+      background: rgba(255, 255, 255, .96);
+    }
+    #app-container input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    #app-container select,
+    #app-container textarea {
+      border-color: #dce2e9;
+      background-color: #fff;
+    }
+    #app-container main .bg-white.rounded-2xl:hover {
+      box-shadow: var(--shadow-card-hover);
+    }
+    #app-container input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+    #app-container select:focus,
+    #app-container textarea:focus,
+    #screen-login input:focus,
+    #screen-login select:focus {
+      border-color: #9c646b;
+      box-shadow: 0 0 0 3px rgba(113, 49, 58, .11);
+    }
+    #app-container table thead { background: #f6f7f9; }
+    #app-container table thead th {
+      color: #596678;
+      border-bottom-color: var(--line);
+    }
+    .sticky-col-1,
+    .sticky-col-2 { background-color: #fff; }
+    thead .sticky-col-1,
+    thead .sticky-col-2 { background-color: #f6f7f9; }
+    #app-container table tbody tr:hover { background-color: #faf8f8; }
+    #app-container .action-button--primary {
+      border-color: var(--brand-dark);
+      background: var(--brand);
+      box-shadow: 0 2px 6px rgba(81, 36, 43, .14);
+    }
+    #app-container .action-button--primary:hover { background: var(--brand-dark); }
+    #app-container .action-button--neutral {
+      color: #536071;
+      border-color: var(--line);
+      background: #fff;
+    }
+    #app-container .action-button--neutral:hover {
+      color: var(--ink);
+      border-color: #cbd3dd;
+      background: #f6f7f9;
+    }
+    #app-container button:not(.action-button):not(:disabled):focus-visible {
+      outline-color: rgba(113, 49, 58, .48);
+    }
+    #app-container .master-mobile-student,
+    #app-container .master-mobile-empty {
+      border-color: var(--line);
+      background: #fff;
+      box-shadow: var(--shadow-card);
+    }
+    .master-mobile-student-heading,
+    .master-mobile-session-heading { border-color: var(--line); }
+    .master-mobile-avatar { border-color: #d5c19a; background: #f8f3e8; }
+    #app-container .master-mobile-session {
+      border-color: var(--line);
+      color: #687587;
+    }
+    #app-container [id^="modal-"] > div {
+      border: 1px solid rgba(226, 231, 237, .9);
+    }
+    #app-container [id^="modal-"] > div > div:first-child {
+      border-bottom: 1px solid rgba(255, 255, 255, .1);
+    }
+    #toast-container > div { box-shadow: 0 8px 22px rgba(27, 39, 54, .15); }

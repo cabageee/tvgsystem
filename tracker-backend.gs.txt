@@ -352,6 +352,8 @@ function handleApiAction(payload) {
       return trackerAcceptTask_(payload.token, payload.taskId);
     case 'trackerRequestCompletion':
       return trackerRequestCompletion_(payload.token, payload.taskId);
+    case 'trackerCompletePersonalTask':
+      return trackerCompletePersonalTask_(payload.token, payload.taskId);
     case 'trackerReviewTask':
       return trackerReviewTask_(payload.token, payload.taskId, payload.decision, payload.note, payload.stars);
     case 'trackerSaveNote':
@@ -617,6 +619,7 @@ function trackerCreateTask_(token, input) {
   const startDate = String(task.startDate || '');
   const deadline = String(task.deadline || '');
   const deadlineTime = String(task.deadlineTime || '');
+  const personalPriority = Number(task.priority || (actor.role === 'manager' ? 3 : 4));
   if (!title || title.length > 300) throw new Error('Tên nhiệm vụ không hợp lệ.');
   if (!trackerValidDate_(startDate) || !trackerValidDate_(deadline) || deadline < startDate) {
     throw new Error('Ngày bắt đầu hoặc hạn hoàn thành không hợp lệ.');
@@ -635,11 +638,13 @@ function trackerCreateTask_(token, input) {
       priority = 2;
       if (assignees.indexOf(actor.name) !== -1) throw new Error('Manager chỉ giao Priority 2 cho trợ giảng khác.');
     } else {
-      priority = 3;
+      if (personalPriority !== 3 && personalPriority !== 4) throw new Error('Task cá nhân chỉ được chọn Priority 3 hoặc 4.');
+      priority = personalPriority;
       assignees.push(actor.name);
     }
   } else {
-    priority = 4;
+    if (personalPriority !== 3 && personalPriority !== 4) throw new Error('Task cá nhân chỉ được chọn Priority 3 hoặc 4.');
+    priority = personalPriority;
     assignees.splice(0, assignees.length, actor.name);
   }
   if (assignees.some(name => validTeachers.indexOf(name) === -1)) {
@@ -685,6 +690,22 @@ function trackerAcceptTask_(token, taskId) {
 
 function trackerRequestCompletion_(token, taskId) {
   return trackerUpdateTaskStatus_(token, taskId, 'complete');
+}
+
+function trackerCompletePersonalTask_(token, taskId) {
+  const actor = trackerActor_(token);
+  if (actor.role === 'director') throw new Error('Task cá nhân chỉ có thể được hoàn thành bởi người tạo task.');
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
+  const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
+  if (!task || ![3, 4].includes(Number(task.priority)) || task.assignees.indexOf(actor.name) === -1) {
+    throw new Error('Bạn không có quyền cập nhật task cá nhân này.');
+  }
+  if (task.status === 'COMPLETED') throw new Error('Task cá nhân này đã hoàn thành.');
+  const row = findRowById(sheet, task.id);
+  sheet.getRange(row, 9).setValue('COMPLETED');
+  sheet.getRange(row, 12).setValue(0);
+  sheet.getRange(row, 15).setValue(new Date().toISOString());
+  return { status: 'success' };
 }
 
 function trackerReviewTask_(token, taskId, decision, note, stars) {
