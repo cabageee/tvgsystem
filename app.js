@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby3VdTXeb3hRg1vY6SuTWIq-LwW85_G_ZZsRawy1Dcg4C8WZEqeOprjyoEHcoWLoKb9/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyc799rCPxztmFyUXirjtAiHMZ0lRGV4UPNz5mC2tY1P0muX3LtAnvrJGhXtzzuWoxA/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -556,30 +556,27 @@
         try {
           const proxyBase = window.location.protocol === 'http:' ? 'http://127.0.0.1:3002' : '';
           if (proxyBase) {
-            let lastError;
-            for (let attempt = 0; attempt < 2; attempt++) {
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 12000);
-              try {
-                const response = await fetch(`${proxyBase}/api/google-script`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(request),
-                  signal: controller.signal,
-                  cache: 'no-store'
-                });
-                clearTimeout(timeoutId);
-                const result = await response.json();
-                if (!response.ok || result?.status === 'error') throw new Error(result?.message || 'Google Apps Script bị lỗi.');
-                return result;
-              } catch (error) {
-                clearTimeout(timeoutId);
-                lastError = error;
-                if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 450));
-              }
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            try {
+              const response = await fetch(`${proxyBase}/api/google-script`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request),
+                signal: controller.signal,
+                cache: 'no-store'
+              });
+              const result = await response.json();
+              if (!response.ok || result?.status === 'error') throw new Error(result?.message || 'Google Apps Script bị lỗi.');
+              return result;
+            } catch (error) {
+              if (error?.name === 'AbortError') throw new Error('Kết nối quá chậm hoặc bị gián đoạn. Vui lòng thử lại.');
+              if (!(error instanceof TypeError)) throw error;
+              // Máy chủ proxy đang tắt: dùng JSONP trực tiếp thay vì để người dùng bị kẹt.
+              return await callJsonp();
+            } finally {
+              clearTimeout(timeoutId);
             }
-            // Máy chủ proxy đang tắt: chuyển sang JSONP trực tiếp thay vì để người dùng bị kẹt.
-            return await callJsonp();
           }
           return await callJsonp();
         } catch (error) {
@@ -1562,8 +1559,13 @@
           ${gantt}
           <h3 class="mt-2 text-sm font-bold text-slate-800">${escapeHtml(task.title)}</h3>
           <p class="mt-1 text-[11px] text-slate-500">Người giao: ${escapeHtml(task.createdBy || '—')}${task.punishment ? ` · Lưu ý: ${escapeHtml(task.punishment)}` : ''}</p>
+          ${task.output ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Output:</strong> ${escapeHtml(task.output)}</p>` : ''}
           ${task.reviewNote ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Phản hồi:</strong> ${escapeHtml(task.reviewNote)}</p>` : ''}
-          ${['NEW', 'IN_PROGRESS'].includes(task.status) ? `<label class="block mt-3 text-[10px] font-bold uppercase text-slate-500" for="teacher-task-note-${escapeHtml(task.id)}">Ghi chú tiến độ</label><textarea id="teacher-task-note-${escapeHtml(task.id)}" data-teacher-task-note="${escapeHtml(task.id)}" maxlength="2000" class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.note || '')}</textarea>` : task.note ? `<p class="mt-2 text-xs text-slate-600"><strong>Ghi chú:</strong> ${escapeHtml(task.note)}</p>` : ''}
+          ${['NEW', 'IN_PROGRESS'].includes(task.status) ? `<div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="${task.status === 'NEW' ? 'sm:col-span-2' : ''}"><label class="block text-[10px] font-bold uppercase text-slate-500" for="teacher-task-note-${escapeHtml(task.id)}">Ghi chú tiến độ</label><textarea id="teacher-task-note-${escapeHtml(task.id)}" data-teacher-task-note="${escapeHtml(task.id)}" maxlength="2000" class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.note || '')}</textarea></div>
+            ${task.status === 'IN_PROGRESS' ? `<div><label class="block text-[10px] font-bold uppercase text-slate-500" for="teacher-task-completion-note-${escapeHtml(task.id)}">Nội dung hoàn thành <span class="text-red-600">*</span></label><textarea id="teacher-task-completion-note-${escapeHtml(task.id)}" data-teacher-task-completion-note="${escapeHtml(task.id)}" maxlength="2000" required placeholder="Ghi rõ phần đã hoàn thành..." class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.completionNote || '')}</textarea></div>` : ''}
+          </div>` : task.note ? `<p class="mt-2 text-xs text-slate-600"><strong>Ghi chú tiến độ:</strong> ${escapeHtml(task.note)}</p>` : ''}
+          ${task.completionNote ? `<p class="mt-2 text-xs text-slate-600"><strong>Đã hoàn thành:</strong> ${escapeHtml(task.completionNote)}</p>` : ''}
           ${actions.length ? `<div class="mt-3 flex flex-wrap gap-2">${actions.join('')}</div>` : ''}
         </article>`;
       }).join('');
@@ -1603,10 +1605,18 @@
       button.disabled = true;
       try {
         if (!token) throw new Error('Phiên theo dõi đã hết hạn. Vui lòng đăng xuất rồi đăng nhập lại.');
+        const task = teacherTrackerTasks.find(item => item.id === taskId);
+        if (!task) throw new Error('Không tìm thấy nhiệm vụ cần cập nhật.');
         if (action === 'accept') {
           await apiCall('trackerAcceptTask', { token, taskId });
+          task.status = 'IN_PROGRESS';
         } else if (action === 'complete') {
-          await apiCall('trackerRequestCompletion', { token, taskId });
+          const completionNote = document.getElementById(`teacher-task-completion-note-${taskId}`);
+          const note = completionNote?.value.trim() || '';
+          if (!note) throw new Error('Vui lòng ghi rõ những việc đã hoàn thành.');
+          await apiCall('trackerRequestCompletion', { token, taskId, note });
+          task.status = 'PENDING';
+          task.completionNote = note;
         } else if (action === 'delete') {
           const task = teacherTrackerTasks.find(item => item.id === taskId);
           if (!task || !canDeleteTeacherPersonalTask(task)) {
@@ -1618,14 +1628,16 @@
             return;
           }
           await apiCall('trackerDeleteTask', { token, taskId });
+          teacherTrackerTasks = teacherTrackerTasks.filter(item => item.id !== taskId);
         } else if (action === 'save-note') {
           const note = document.getElementById(`teacher-task-note-${taskId}`);
           if (!note) throw new Error('Không tìm thấy ô ghi chú của nhiệm vụ.');
           await apiCall('trackerSaveNote', { token, taskId, note: note.value });
+          task.note = note.value;
         } else {
           throw new Error('Thao tác nhiệm vụ không hợp lệ.');
         }
-        await loadTeacherTrackerTasks();
+        renderTeacherTrackerTasks();
         showToast(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'complete' ? 'Đã gửi yêu cầu hoàn thành.' : action === 'delete' ? 'Đã xóa việc cá nhân.' : 'Đã lưu ghi chú.');
       } catch (error) {
         showToast(`Không thể cập nhật nhiệm vụ: ${error.message}`, 'error');

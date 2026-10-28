@@ -9,50 +9,44 @@ app.use(cors({ origin: true, methods: ['GET', 'POST', 'DELETE', 'OPTIONS'] }));
 app.options(/.*/, cors());
 app.use(express.json({ limit: '100kb' }));
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby3VdTXeb3hRg1vY6SuTWIq-LwW85_G_ZZsRawy1Dcg4C8WZEqeOprjyoEHcoWLoKb9/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyc799rCPxztmFyUXirjtAiHMZ0lRGV4UPNz5mC2tY1P0muX3LtAnvrJGhXtzzuWoxA/exec';
 
 app.get('/api/health', (req, res) => res.json({ status: 'success', service: 'tvgsystem-api' }));
 
 app.post('/api/google-script', async (req, res) => {
-  let lastError;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    let response;
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
-      let response;
-      try {
-        response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(req.body),
-          signal: controller.signal
-        });
-      } finally {
-        clearTimeout(timeoutId);
-      }
-      const text = await response.text();
-
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch {
-        result = {
-          status: 'error',
-          message: text.replace(/<[^>]*>/g, '').trim() || 'Google Apps Script trả về phản hồi không hợp lệ.'
-        };
-      }
-
-      return res.status(response.ok ? 200 : response.status).json(result);
-    } catch (error) {
-      lastError = error;
-      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)));
+      response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(req.body),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
     }
-  }
+    const text = await response.text();
 
-  return res.status(502).json({
-    status: 'error',
-    message: `Không kết nối được Google Apps Script sau 3 lần thử: ${lastError?.message || 'Kết nối bị gián đoạn'}`
-  });
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch {
+      result = {
+        status: 'error',
+        message: text.replace(/<[^>]*>/g, '').trim() || 'Google Apps Script trả về phản hồi không hợp lệ.'
+      };
+    }
+
+    return res.status(response.ok ? 200 : response.status).json(result);
+  } catch (error) {
+    return res.status(502).json({
+      status: 'error',
+      message: `Không kết nối được Google Apps Script: ${error?.message || 'Kết nối bị gián đoạn'}`
+    });
+  }
 });
 
 // Cho phép truy cập công khai thư mục uploads để xem ảnh

@@ -177,6 +177,9 @@
     .teacher-task-title { min-width: 0; font-size: 13px; font-weight: 850; line-height: 1.4; overflow-wrap: anywhere; }
     .teacher-task-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; color: #536071; font-size: 10px; }
     .teacher-task-note { padding: 8px 9px; border-radius: 8px; color: #536071; background: #f6f7f9; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+    .task-note-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 10px; }
+    .task-note-pair label { display: grid; gap: 5px; color: #5a6678; font-size: 10px; font-weight: 850; text-transform: uppercase; }
+    .task-note-pair textarea { width: 100%; min-height: 68px; resize: vertical; padding: 9px; border: 1px solid #dce2e9; border-radius: 9px; font-size: 11px; }
     .gantt-inline { display: grid; gap: 5px; width: min(100%, 300px); margin-top: 7px; }
     .gantt-dates { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 9px; }
     .gantt-dates span:last-child { text-align: right; }
@@ -255,6 +258,7 @@
       .manager-box { display: none; }
       .top-link { padding: 8px; font-size: 9px; }
       .filters { grid-template-columns: 1fr 1fr; }
+      .task-note-pair { grid-template-columns: 1fr; }
       .toolbar { align-items: stretch; }
       .toolbar-actions > .button { flex: 1; }
       .dialog-form { grid-template-columns: 1fr; padding: 14px; }
@@ -521,7 +525,7 @@
       </div>
       <section class="table-wrap" aria-label="Bảng theo dõi task trợ giảng đã nhận">
         <table>
-          <thead><tr><th>Task</th><th>Trợ giảng nhận việc</th><th>Người giao</th><th>Deadline</th><th>Trạng thái</th><th>Ghi chú tiến độ</th><th>Hoàn thành</th></tr></thead>
+          <thead><tr><th>Task</th><th>Trợ giảng nhận việc</th><th>Người giao</th><th>Deadline</th><th>Trạng thái</th><th>Báo cáo / phản hồi</th><th>Hoàn thành</th></tr></thead>
           <tbody id="accepted-task-body"></tbody>
         </table>
       </section>
@@ -595,7 +599,7 @@
 
   <script>
     (() => {
-      const API_URL = 'https://script.google.com/macros/s/AKfycby3VdTXeb3hRg1vY6SuTWIq-LwW85_G_ZZsRawy1Dcg4C8WZEqeOprjyoEHcoWLoKb9/exec';
+      const API_URL = 'https://script.google.com/macros/s/AKfycbyc799rCPxztmFyUXirjtAiHMZ0lRGV4UPNz5mC2tY1P0muX3LtAnvrJGhXtzzuWoxA/exec';
       const TOKEN_KEY = 'TV_GLOBAL_TRACKER_TOKEN';
       const entryMode = new URLSearchParams(window.location.search).get('view') || '';
       const entryRoles = { director: 'director', manager: 'manager', teacher: 'teacher' };
@@ -690,7 +694,7 @@
       async function apiCall(action, payload = {}) {
         if (window.location.protocol === 'http:') {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 80000);
+          const timeout = setTimeout(() => controller.abort(), 30000);
           try {
             const response = await fetch('http://127.0.0.1:3002/api/google-script', {
               method: 'POST',
@@ -706,7 +710,7 @@
             return result;
           } catch (error) {
             if (error?.name === 'AbortError') {
-              throw new Error('Máy chủ kết nối Tracker không phản hồi sau 80 giây. Hãy thử lại.');
+              throw new Error('Máy chủ kết nối Tracker không phản hồi sau 30 giây. Hãy thử lại.');
             }
             if (!(error instanceof TypeError)) throw error;
           } finally {
@@ -937,7 +941,7 @@
           const status = getStatus(task);
           return `<tr>
             <td data-label="Loại"><span class="priority priority-${Number(task.priority)}">${Number(task.priority) <= 2 ? 'Nhiệm vụ tuần' : `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}`}</span></td>
-            <td data-label="Công việc"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy)} giao${task.note ? ` · ${escapeHtml(task.note)}` : ''}</div>${task.output ? `<div class="muted">Output: ${escapeHtml(task.output)}</div>` : ''}${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
+            <td data-label="Công việc"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy)} giao${task.note ? ` · ${escapeHtml(task.note)}` : ''}</div>${task.output ? `<div class="muted">Output: ${escapeHtml(task.output)}</div>` : ''}${task.completionNote ? `<div class="muted">Đã hoàn thành: ${escapeHtml(task.completionNote)}</div>` : ''}${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
             <td data-label="Trợ giảng"><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || 'Việc cá nhân')}</div></td>
             <td data-label="Hạn">${taskTimelineMarkup(task)}<div class="muted">${escapeHtml(task.punishment || (Number(task.stars) ? `Đánh giá ${task.stars}/5` : ''))}</div></td>
             <td data-label="Trạng thái"><span class="status-pill status-${status}">${statusLabel(status)}</span></td>
@@ -984,7 +988,7 @@
             <td data-label="Người giao">${escapeHtml(task.createdBy)}</td>
             <td data-label="Deadline">${taskTimelineMarkup(task)}</td>
             <td data-label="Trạng thái"><span class="status-pill status-${status}">${statusLabel(status)}</span></td>
-            <td data-label="Ghi chú tiến độ">${escapeHtml(task.reviewNote || task.note || '—')}</td>
+            <td data-label="Báo cáo / phản hồi">${escapeHtml(task.completionNote || task.reviewNote || task.note || '—')}</td>
             <td data-label="Hoàn thành">${['director', 'manager'].includes(role)
               ? `<div class="completion-actions"><label class="completion-control"><input type="checkbox" data-complete-task="${escapeHtml(task.id)}" aria-label="Đánh dấu hoàn thành: ${escapeHtml(task.title)}" ${task.status === 'COMPLETED' ? 'checked disabled' : task.status !== 'PENDING' ? 'disabled' : ''}><span>${task.status === 'COMPLETED' ? 'Đã xong' : task.status === 'PENDING' ? 'Duyệt hoàn thành' : 'Chờ trợ giảng gửi yêu cầu'}</span></label></div>`
               : `<span class="muted">${task.status === 'PENDING' ? 'Chờ Giám đốc / Manager duyệt' : task.status === 'COMPLETED' ? 'Đã hoàn thành' : 'Chỉ quản lý đánh dấu hoàn thành'}</span>`}</td>
@@ -1001,6 +1005,7 @@
             <div class="teacher-task-meta"><span>Tạo bởi: ${escapeHtml(task.createdBy)}</span></div>
             ${taskTimelineMarkup(task)}
             ${task.output ? `<div class="teacher-task-note">Output: ${escapeHtml(task.output)}</div>` : ''}
+            ${task.completionNote ? `<div class="teacher-task-note">Đã hoàn thành: ${escapeHtml(task.completionNote)}</div>` : ''}
             ${task.note ? `<div class="teacher-task-note">${escapeHtml(task.note)}</div>` : ''}
             ${task.reviewNote ? `<div class="teacher-task-note">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}
             <div>${taskActionMarkup(task)}</div>
@@ -1015,7 +1020,9 @@
             <div class="teacher-task-meta"><span>${personal ? 'Việc cá nhân nội bộ' : `Giao bởi: ${escapeHtml(task.createdBy)}`}</span><span>${escapeHtml(task.punishment || '')}</span></div>
             ${taskTimelineMarkup(task)}
             ${task.output ? `<div class="teacher-task-note">Output: ${escapeHtml(task.output)}</div>` : ''}
+            ${task.completionNote ? `<div class="teacher-task-note">Đã hoàn thành: ${escapeHtml(task.completionNote)}</div>` : ''}
             ${task.note ? `<div class="teacher-task-note">${escapeHtml(task.note)}</div>` : ''}
+            ${role === 'teacher' && task.status === 'IN_PROGRESS' ? `<div class="task-note-pair"><label class="field"><span>Ghi chú tiến độ</span><textarea id="tracker-progress-note-${escapeHtml(task.id)}" maxlength="2000">${escapeHtml(task.note || '')}</textarea></label><label class="field"><span>Nội dung hoàn thành <b aria-hidden="true">*</b></span><textarea id="tracker-completion-note-${escapeHtml(task.id)}" maxlength="2000" placeholder="Ghi rõ phần đã hoàn thành...">${escapeHtml(task.completionNote || '')}</textarea></label></div>` : ''}
             ${task.reviewNote ? `<div class="teacher-task-note">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}
             <div>${taskActionMarkup(task)}</div>
           </article>`;
@@ -1170,16 +1177,29 @@
           };
           if (editingTaskId) {
             await apiCall('trackerUpdateTask', { token, taskId: editingTaskId, task });
+            if (existingTask) Object.assign(existingTask, task);
           } else {
-            await apiCall('trackerCreateTask', {
+            const result = await apiCall('trackerCreateTask', {
               token,
               task: { ...task, priority: Number($('task-personal-priority').value) }
+            });
+            const role = actorRole();
+            tasks.push({
+              ...task,
+              id: result.taskId,
+              createdBy: session.actor.name,
+              priority: role === 'director' ? 1 : role === 'manager' && assignees.length ? 2 : Number($('task-personal-priority').value),
+              status: 'NEW',
+              stars: 0,
+              reviewNote: '',
+              completionNote: '',
+              createdAt: new Date().toISOString()
             });
           }
           $('task-dialog').close();
           editingTaskId = '';
           $('task-save').textContent = 'Tạo task';
-          await refresh();
+          render();
           notify(isEditing ? 'Đã cập nhật task.' : 'Đã lưu nhiệm vụ vào Google Sheet.');
         } catch (error) {
           $('task-error').textContent = error.message;
@@ -1198,33 +1218,60 @@
           return;
         }
         if (action === 'delete' && !window.confirm(`Xóa nhiệm vụ "${selectedTask?.title || ''}"? Thao tác này không thể hoàn tác.`)) return;
+        if (action === 'submit') {
+          const field = document.getElementById(`tracker-completion-note-${taskId}`);
+          const note = field?.value.trim() || '';
+          if (!note) {
+            notify('Cần ghi rõ những việc đã hoàn thành trước khi gửi yêu cầu.');
+            field?.focus();
+            return;
+          }
+          button.disabled = true;
+          try {
+            await apiCall('trackerRequestCompletion', { token, taskId, note });
+            selectedTask.status = 'PENDING';
+            selectedTask.completionNote = note;
+            render();
+            notify('Đã gửi yêu cầu hoàn thành để duyệt.');
+          } catch (error) {
+            notify(error.message);
+          } finally {
+            button.disabled = false;
+          }
+          return;
+        }
         button.disabled = true;
         try {
-          if (action === 'accept') await apiCall('trackerAcceptTask', { token, taskId });
-          else if (action === 'submit') {
-            const note = window.prompt('Ghi rõ những việc đã hoàn thành:', '');
-            if (note === null) return;
-            if (!note.trim()) {
-              notify('Cần ghi rõ những việc đã hoàn thành trước khi gửi yêu cầu.');
-              return;
-            }
-            await apiCall('trackerRequestCompletion', { token, taskId, note: note.trim() });
+          if (action === 'accept') {
+            await apiCall('trackerAcceptTask', { token, taskId });
+            selectedTask.status = 'IN_PROGRESS';
+          } else if (action === 'complete-personal') {
+            await apiCall('trackerCompletePersonalTask', { token, taskId });
+            selectedTask.status = 'COMPLETED';
+          } else if (action === 'approve') {
+            await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '', stars: 0 });
+            selectedTask.status = 'COMPLETED';
+          } else if (action === 'delete') {
+            await apiCall('trackerDeleteTask', { token, taskId });
+            tasks = tasks.filter(task => task.id !== taskId);
           }
-          else if (action === 'complete-personal') await apiCall('trackerCompletePersonalTask', { token, taskId });
-          else if (action === 'approve') await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '', stars: 0 });
-          else if (action === 'delete') await apiCall('trackerDeleteTask', { token, taskId });
           else if (action === 'note') {
-            const task = tasks.find(item => item.id === taskId);
-            const note = window.prompt('Cập nhật ghi chú cho nhiệm vụ:', task?.note || '');
+            const progressField = document.getElementById(`tracker-progress-note-${taskId}`);
+            const note = progressField
+              ? progressField.value
+              : window.prompt('Cập nhật ghi chú cho nhiệm vụ:', selectedTask?.note || '');
             if (note === null) return;
             await apiCall('trackerSaveNote', { token, taskId, note });
+            selectedTask.note = note;
           } else if (action === 'reject') {
             const note = window.prompt('Nhập lý do trả lại để trợ giảng cập nhật:', '');
             if (!note || !note.trim()) { notify('Cần nhập lý do trả lại.'); return; }
             await apiCall('trackerReviewTask', { token, taskId, decision: action, note, stars: 0 });
+            selectedTask.status = 'IN_PROGRESS';
+            selectedTask.reviewNote = note;
           }
-          await refresh();
-          notify(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'submit' ? 'Đã gửi yêu cầu hoàn thành để duyệt.' : action === 'complete-personal' ? 'Đã hoàn thành task cá nhân.' : action === 'approve' ? 'Đã duyệt task hoàn thành.' : action === 'delete' ? 'Đã xóa nhiệm vụ.' : action === 'reject' ? 'Đã trả task để trợ giảng cập nhật.' : 'Đã cập nhật ghi chú.');
+          render();
+          notify(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'complete-personal' ? 'Đã hoàn thành task cá nhân.' : action === 'approve' ? 'Đã duyệt task hoàn thành.' : action === 'delete' ? 'Đã xóa nhiệm vụ.' : action === 'reject' ? 'Đã trả task để trợ giảng cập nhật.' : 'Đã cập nhật ghi chú.');
         } catch (error) {
           notify(error.message);
         } finally {
@@ -1244,7 +1291,9 @@
         }
         try {
           await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '', stars: 0 });
-          await refresh();
+          const task = tasks.find(item => item.id === taskId);
+          if (task) task.status = 'COMPLETED';
+          render();
           notify('Đã xác nhận task hoàn thành.');
         } catch (error) {
           checkbox.checked = false;

@@ -285,7 +285,7 @@ function initDatabase() {
       headers: [
         'ID', 'Nhiệm vụ', 'Người giao', 'Priority', 'Người được giao (JSON)',
         'Ngày bắt đầu', 'Deadline', 'Giờ deadline', 'Trạng thái', 'Ghi chú',
-        'Hình thức phạt', 'Số sao', 'Ghi chú duyệt', 'Ngày tạo', 'Cập nhật lần cuối', 'Output'
+        'Hình thức phạt', 'Số sao', 'Ghi chú duyệt', 'Ngày tạo', 'Cập nhật lần cuối', 'Output', 'Ghi chú hoàn thành'
       ]
     },
     {
@@ -532,16 +532,20 @@ function trackerTaskTime_(value, timezone) {
 }
 
 function trackerEnsureOutputColumn_(sheet) {
-  if (sheet.getMaxColumns() < 16) sheet.insertColumnsAfter(sheet.getMaxColumns(), 16 - sheet.getMaxColumns());
-  const header = String(sheet.getRange(1, 16).getValue() || '').trim();
-  if (!header) {
-    const lastRow = sheet.getLastRow();
-    const hasExistingData = lastRow > 1
-      && sheet.getRange(2, 16, lastRow - 1, 1).getValues().some(row => String(row[0] || '').trim());
-    if (hasExistingData) throw new Error('Không thể thêm cột Output: cột P của TrackerTasks đã có dữ liệu.');
-    sheet.getRange(1, 16).setValue('Output');
-  }
-  else if (header !== 'Output') throw new Error('Không thể thêm cột Output: cột P của TrackerTasks đã được sử dụng.');
+  trackerEnsureTaskColumn_(sheet, 16, 'Output');
+  trackerEnsureTaskColumn_(sheet, 17, 'Ghi chú hoàn thành');
+}
+
+function trackerEnsureTaskColumn_(sheet, column, label) {
+  if (sheet.getMaxColumns() < column) sheet.insertColumnsAfter(sheet.getMaxColumns(), column - sheet.getMaxColumns());
+  const header = String(sheet.getRange(1, column).getValue() || '').trim();
+  if (header === label) return;
+  if (header) throw new Error(`Không thể thêm cột ${label}: cột ${column} của TrackerTasks đã được sử dụng.`);
+  const lastRow = sheet.getLastRow();
+  const hasExistingData = lastRow > 1
+    && sheet.getRange(2, column, lastRow - 1, 1).getValues().some(row => String(row[0] || '').trim());
+  if (hasExistingData) throw new Error(`Không thể thêm cột ${label}: cột ${column} của TrackerTasks đã có dữ liệu.`);
+  sheet.getRange(1, column).setValue(label);
 }
 
 function trackerTaskRecords_() {
@@ -549,7 +553,7 @@ function trackerTaskRecords_() {
   trackerEnsureOutputColumn_(sheet);
   if (sheet.getLastRow() < 2) return [];
   const timezone = getSpreadsheet().getSpreadsheetTimeZone();
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 16).getValues()
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 17).getValues()
     .filter(row => String(row[0] || '').trim())
     .map(row => {
       let assignees = [];
@@ -572,7 +576,8 @@ function trackerTaskRecords_() {
         reviewNote: String(row[12] || ''),
         createdAt: String(row[13] || ''),
         updatedAt: String(row[14] || ''),
-        output: String(row[15] || '')
+        output: String(row[15] || ''),
+        completionNote: String(row[16] || '')
       };
     });
 }
@@ -690,7 +695,7 @@ function trackerCreateTask_(token, input) {
   const row = [
     id, title, creator, priority, JSON.stringify(assignees), startDate, deadline,
     deadlineTime, 'NEW', String(task.note || '').slice(0, 2000),
-    String(task.punishment || '').slice(0, 300), 0, '', now, now, output
+    String(task.punishment || '').slice(0, 300), 0, '', now, now, output, ''
   ];
   const sheet = requireSheet_(TAB.TRACKER_TASKS);
   trackerEnsureOutputColumn_(sheet);
@@ -777,7 +782,9 @@ function trackerUpdateTaskStatus_(token, taskId, nextAction, note) {
     const completionNote = String(note || '').trim();
     if (!completionNote) throw new Error('Vui lòng ghi rõ những việc đã hoàn thành trước khi gửi yêu cầu.');
     if (completionNote.length > 2000) throw new Error('Ghi chú hoàn thành không được vượt quá 2000 ký tự.');
-    sheet.getRange(row, 9, 1, 2).setValues([['PENDING', completionNote]]);
+    trackerEnsureOutputColumn_(sheet);
+    sheet.getRange(row, 9).setValue('PENDING');
+    sheet.getRange(row, 17).setValue(completionNote);
   }
   sheet.getRange(row, 15).setValue(new Date().toISOString());
   return { status: 'success' };
