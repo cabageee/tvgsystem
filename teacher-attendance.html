@@ -481,8 +481,13 @@
             </div>
             <button type="button" onclick="loadTeacherTrackerTasks()" class="self-start sm:self-auto px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">🔄 Tải lại nhiệm vụ</button>
           </div>
-          <div id="teacher-task-status" class="px-4 py-3 text-xs text-slate-500" role="status">Đang tải nhiệm vụ...</div>
-          <div id="teacher-task-list" class="p-3 sm:p-4 pt-0 grid grid-cols-1 lg:grid-cols-2 gap-3"></div>
+          <button id="teacher-task-toggle" type="button" aria-expanded="false" aria-controls="teacher-task-content" class="w-full px-4 py-3 flex items-center justify-between gap-3 text-left text-xs text-slate-500 hover:bg-slate-50 transition">
+            <span id="teacher-task-status" role="status">Đang tải nhiệm vụ...</span>
+            <span id="teacher-task-chevron" aria-hidden="true" class="shrink-0 transition-transform">⌄</span>
+          </button>
+          <div id="teacher-task-content" hidden>
+            <div id="teacher-task-list" class="p-3 sm:p-4 pt-0 grid grid-cols-1 lg:grid-cols-2 gap-3"></div>
+          </div>
         </section>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-red-100 flex items-center justify-between">

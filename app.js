@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwmcE_BQDDpQyQMeAv_7CNR3lFW56RPGNTRKPLvSvUy6xduSOzpoEZE1PRQphayMgM0/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby3VdTXeb3hRg1vY6SuTWIq-LwW85_G_ZZsRawy1Dcg4C8WZEqeOprjyoEHcoWLoKb9/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -3343,6 +3343,16 @@
     window.onload = async function() {
       initializeAccessibility();
       document.getElementById('teacher-task-list')?.addEventListener('click', handleTeacherTrackerAction);
+      document.getElementById('teacher-task-toggle')?.addEventListener('click', event => {
+        const toggle = event.currentTarget;
+        const content = document.getElementById('teacher-task-content');
+        const chevron = document.getElementById('teacher-task-chevron');
+        if (!content) return;
+        const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+        toggle.setAttribute('aria-expanded', String(expanded));
+        content.hidden = !expanded;
+        chevron?.classList.toggle('rotate-180', expanded);
+      });
       setupAllDateInputs();
       loadDataFromLocalStorage();
       initLoginTeacherList();

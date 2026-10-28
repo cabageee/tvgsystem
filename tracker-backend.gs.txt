@@ -285,7 +285,7 @@ function initDatabase() {
       headers: [
         'ID', 'Nhiệm vụ', 'Người giao', 'Priority', 'Người được giao (JSON)',
         'Ngày bắt đầu', 'Deadline', 'Giờ deadline', 'Trạng thái', 'Ghi chú',
-        'Hình thức phạt', 'Số sao', 'Ghi chú duyệt', 'Ngày tạo', 'Cập nhật lần cuối'
+        'Hình thức phạt', 'Số sao', 'Ghi chú duyệt', 'Ngày tạo', 'Cập nhật lần cuối', 'Output'
       ]
     },
     {
@@ -353,7 +353,7 @@ function handleApiAction(payload) {
     case 'trackerAcceptTask':
       return trackerAcceptTask_(payload.token, payload.taskId);
     case 'trackerRequestCompletion':
-      return trackerRequestCompletion_(payload.token, payload.taskId);
+      return trackerRequestCompletion_(payload.token, payload.taskId, payload.note);
     case 'trackerCompletePersonalTask':
       return trackerCompletePersonalTask_(payload.token, payload.taskId);
     case 'trackerReviewTask':
@@ -531,11 +531,25 @@ function trackerTaskTime_(value, timezone) {
     : String(value || '');
 }
 
+function trackerEnsureOutputColumn_(sheet) {
+  if (sheet.getMaxColumns() < 16) sheet.insertColumnsAfter(sheet.getMaxColumns(), 16 - sheet.getMaxColumns());
+  const header = String(sheet.getRange(1, 16).getValue() || '').trim();
+  if (!header) {
+    const lastRow = sheet.getLastRow();
+    const hasExistingData = lastRow > 1
+      && sheet.getRange(2, 16, lastRow - 1, 1).getValues().some(row => String(row[0] || '').trim());
+    if (hasExistingData) throw new Error('Không thể thêm cột Output: cột P của TrackerTasks đã có dữ liệu.');
+    sheet.getRange(1, 16).setValue('Output');
+  }
+  else if (header !== 'Output') throw new Error('Không thể thêm cột Output: cột P của TrackerTasks đã được sử dụng.');
+}
+
 function trackerTaskRecords_() {
   const sheet = requireSheet_(TAB.TRACKER_TASKS);
+  trackerEnsureOutputColumn_(sheet);
   if (sheet.getLastRow() < 2) return [];
   const timezone = getSpreadsheet().getSpreadsheetTimeZone();
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 15).getValues()
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 16).getValues()
     .filter(row => String(row[0] || '').trim())
     .map(row => {
       let assignees = [];
@@ -557,7 +571,8 @@ function trackerTaskRecords_() {
         stars: Number(row[11]) || 0,
         reviewNote: String(row[12] || ''),
         createdAt: String(row[13] || ''),
-        updatedAt: String(row[14] || '')
+        updatedAt: String(row[14] || ''),
+        output: String(row[15] || '')
       };
     });
 }
@@ -636,12 +651,14 @@ function trackerCreateTask_(token, input) {
   const startDate = String(task.startDate || '');
   const deadline = String(task.deadline || '');
   const deadlineTime = String(task.deadlineTime || '');
+  const output = String(task.output || '').trim();
   const personalPriority = Number(task.priority || (actor.role === 'manager' ? 3 : 4));
   if (!title || title.length > 300) throw new Error('Tên nhiệm vụ không hợp lệ.');
   if (!trackerValidDate_(startDate) || !trackerValidDate_(deadline) || deadline < startDate) {
     throw new Error('Ngày bắt đầu hoặc hạn hoàn thành không hợp lệ.');
   }
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(deadlineTime)) throw new Error('Vui lòng nhập giờ deadline hợp lệ.');
+  if (output.length > 2000) throw new Error('Output không được vượt quá 2000 ký tự.');
 
   const teacherSheet = requireSheet_(TAB.TEACHERS);
   const validTeachers = readTeachers(teacherSheet).map(teacher => teacher.name);
@@ -673,9 +690,11 @@ function trackerCreateTask_(token, input) {
   const row = [
     id, title, creator, priority, JSON.stringify(assignees), startDate, deadline,
     deadlineTime, 'NEW', String(task.note || '').slice(0, 2000),
-    String(task.punishment || '').slice(0, 300), 0, '', now, now
+    String(task.punishment || '').slice(0, 300), 0, '', now, now, output
   ];
-  requireSheet_(TAB.TRACKER_TASKS).appendRow(row);
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
+  trackerEnsureOutputColumn_(sheet);
+  sheet.appendRow(row);
   return { status: 'success', taskId: id };
 }
 
@@ -689,6 +708,7 @@ function trackerUpdateTask_(token, taskId, input) {
   const startDate = String(updates.startDate || '');
   const deadline = String(updates.deadline || '');
   const deadlineTime = String(updates.deadlineTime || '');
+  const output = String(updates.output || '').trim();
   const priority = Number(task.priority);
   const isPersonalTask = [3, 4].includes(priority);
   const assignedToActor = task.assignees.indexOf(actor.name) !== -1;
@@ -711,6 +731,7 @@ function trackerUpdateTask_(token, taskId, input) {
     throw new Error('Ngày bắt đầu hoặc hạn hoàn thành không hợp lệ.');
   }
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(deadlineTime)) throw new Error('Vui lòng nhập giờ deadline hợp lệ.');
+  if (output.length > 2000) throw new Error('Output không được vượt quá 2000 ký tự.');
   if (priority === 1 && actor.role !== 'director') throw new Error('Chỉ Giám đốc được chỉnh sửa nhiệm vụ tuần.');
   if (isPersonalTask && (assignees.length !== 1 || assignees[0] !== task.createdBy)) {
     throw new Error('Việc cá nhân phải tiếp tục được giao cho chính người tạo.');
@@ -732,10 +753,12 @@ function trackerUpdateTask_(token, taskId, input) {
     [String(updates.note || '').slice(0, 2000), String(updates.punishment || '').slice(0, 300)]
   ]);
   sheet.getRange(row, 15).setValue(new Date().toISOString());
+  trackerEnsureOutputColumn_(sheet);
+  sheet.getRange(row, 16).setValue(output);
   return { status: 'success' };
 }
 
-function trackerUpdateTaskStatus_(token, taskId, nextAction) {
+function trackerUpdateTaskStatus_(token, taskId, nextAction, note) {
   const actor = trackerActor_(token);
   const sheet = requireSheet_(TAB.TRACKER_TASKS);
   const tasks = trackerTaskRecords_();
@@ -751,7 +774,10 @@ function trackerUpdateTaskStatus_(token, taskId, nextAction) {
     sheet.getRange(row, 9).setValue('IN_PROGRESS');
   } else {
     if (actor.role === 'director' || task.status !== 'IN_PROGRESS') throw new Error('Chỉ có thể yêu cầu hoàn thành khi nhiệm vụ đang thực hiện.');
-    sheet.getRange(row, 9).setValue('PENDING');
+    const completionNote = String(note || '').trim();
+    if (!completionNote) throw new Error('Vui lòng ghi rõ những việc đã hoàn thành trước khi gửi yêu cầu.');
+    if (completionNote.length > 2000) throw new Error('Ghi chú hoàn thành không được vượt quá 2000 ký tự.');
+    sheet.getRange(row, 9, 1, 2).setValues([['PENDING', completionNote]]);
   }
   sheet.getRange(row, 15).setValue(new Date().toISOString());
   return { status: 'success' };
@@ -761,8 +787,8 @@ function trackerAcceptTask_(token, taskId) {
   return trackerUpdateTaskStatus_(token, taskId, 'accept');
 }
 
-function trackerRequestCompletion_(token, taskId) {
-  return trackerUpdateTaskStatus_(token, taskId, 'complete');
+function trackerRequestCompletion_(token, taskId, note) {
+  return trackerUpdateTaskStatus_(token, taskId, 'complete', note);
 }
 
 function trackerCompletePersonalTask_(token, taskId) {

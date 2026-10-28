@@ -546,6 +546,7 @@
       <div class="field"><label for="task-deadline">Deadline</label><input id="task-deadline" type="date" required></div>
       <div class="field"><label for="task-time">Giờ deadline</label><input id="task-time" type="time" required></div>
       <div class="field"><label for="task-punishment">Phạt khi vi phạm</label><input id="task-punishment" maxlength="300" placeholder="Cảnh cáo, trừ điểm KPI..."></div>
+      <div class="field full"><label for="task-output">Output</label><textarea id="task-output" maxlength="2000" placeholder="At least đạt được"></textarea></div>
       <div class="field full"><label for="task-note">Chi tiết / ghi chú</label><textarea id="task-note" maxlength="2000"></textarea></div>
       <p id="task-error" class="form-error full" hidden></p>
       <div class="dialog-actions"><button class="button button-light" type="button" data-close="task-dialog">Hủy</button><button id="task-save" class="button button-primary" type="submit">Tạo task</button></div>
@@ -594,7 +595,7 @@
 
   <script>
     (() => {
-      const API_URL = 'https://script.google.com/macros/s/AKfycbwmcE_BQDDpQyQMeAv_7CNR3lFW56RPGNTRKPLvSvUy6xduSOzpoEZE1PRQphayMgM0/exec';
+      const API_URL = 'https://script.google.com/macros/s/AKfycby3VdTXeb3hRg1vY6SuTWIq-LwW85_G_ZZsRawy1Dcg4C8WZEqeOprjyoEHcoWLoKb9/exec';
       const TOKEN_KEY = 'TV_GLOBAL_TRACKER_TOKEN';
       const entryMode = new URLSearchParams(window.location.search).get('view') || '';
       const entryRoles = { director: 'director', manager: 'manager', teacher: 'teacher' };
@@ -936,7 +937,7 @@
           const status = getStatus(task);
           return `<tr>
             <td data-label="Loại"><span class="priority priority-${Number(task.priority)}">${Number(task.priority) <= 2 ? 'Nhiệm vụ tuần' : `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}`}</span></td>
-            <td data-label="Công việc"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy)} giao${task.note ? ` · ${escapeHtml(task.note)}` : ''}</div>${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
+            <td data-label="Công việc"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy)} giao${task.note ? ` · ${escapeHtml(task.note)}` : ''}</div>${task.output ? `<div class="muted">Output: ${escapeHtml(task.output)}</div>` : ''}${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
             <td data-label="Trợ giảng"><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || 'Việc cá nhân')}</div></td>
             <td data-label="Hạn">${taskTimelineMarkup(task)}<div class="muted">${escapeHtml(task.punishment || (Number(task.stars) ? `Đánh giá ${task.stars}/5` : ''))}</div></td>
             <td data-label="Trạng thái"><span class="status-pill status-${status}">${statusLabel(status)}</span></td>
@@ -978,7 +979,7 @@
         $('accepted-task-body').innerHTML = acceptedTasks.length ? acceptedTasks.map(task => {
           const status = getStatus(task);
           return `<tr>
-            <td data-label="Task"><div class="task-title">${escapeHtml(task.title)}</div></td>
+            <td data-label="Task"><div class="task-title">${escapeHtml(task.title)}</div>${task.output ? `<div class="muted">Output: ${escapeHtml(task.output)}</div>` : ''}</td>
             <td data-label="Trợ giảng nhận việc"><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || '—')}</div></td>
             <td data-label="Người giao">${escapeHtml(task.createdBy)}</td>
             <td data-label="Deadline">${taskTimelineMarkup(task)}</td>
@@ -999,6 +1000,7 @@
             <div class="teacher-task-top"><div class="teacher-task-title">${escapeHtml(task.title)}</div><span class="priority priority-${Number(task.priority)}">Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}</span><span class="status-pill status-${status}">${statusLabel(status)}</span></div>
             <div class="teacher-task-meta"><span>Tạo bởi: ${escapeHtml(task.createdBy)}</span></div>
             ${taskTimelineMarkup(task)}
+            ${task.output ? `<div class="teacher-task-note">Output: ${escapeHtml(task.output)}</div>` : ''}
             ${task.note ? `<div class="teacher-task-note">${escapeHtml(task.note)}</div>` : ''}
             ${task.reviewNote ? `<div class="teacher-task-note">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}
             <div>${taskActionMarkup(task)}</div>
@@ -1012,6 +1014,7 @@
             <div class="teacher-task-top"><div class="teacher-task-title">${escapeHtml(task.title)}</div><span class="priority priority-${Number(task.priority)}">${personal ? `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}` : 'Nhiệm vụ tuần'}</span><span class="status-pill status-${status}">${statusLabel(status)}</span></div>
             <div class="teacher-task-meta"><span>${personal ? 'Việc cá nhân nội bộ' : `Giao bởi: ${escapeHtml(task.createdBy)}`}</span><span>${escapeHtml(task.punishment || '')}</span></div>
             ${taskTimelineMarkup(task)}
+            ${task.output ? `<div class="teacher-task-note">Output: ${escapeHtml(task.output)}</div>` : ''}
             ${task.note ? `<div class="teacher-task-note">${escapeHtml(task.note)}</div>` : ''}
             ${task.reviewNote ? `<div class="teacher-task-note">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}
             <div>${taskActionMarkup(task)}</div>
@@ -1108,6 +1111,7 @@
         $('task-deadline').value = dateInputValue(localDate(task.deadline) || new Date());
         $('task-time').value = timeLabel(task.deadlineTime) || '17:00';
         $('task-punishment').value = task.punishment || '';
+        $('task-output').value = task.output || '';
         $('task-note').value = task.note || '';
         const role = actorRole();
         const personal = Number(task.priority) >= 3;
@@ -1161,6 +1165,7 @@
             deadline,
             deadlineTime: $('task-time').value,
             punishment: $('task-punishment').value.trim(),
+            output: $('task-output').value.trim(),
             note: $('task-note').value.trim()
           };
           if (editingTaskId) {
@@ -1196,7 +1201,15 @@
         button.disabled = true;
         try {
           if (action === 'accept') await apiCall('trackerAcceptTask', { token, taskId });
-          else if (action === 'submit') await apiCall('trackerRequestCompletion', { token, taskId });
+          else if (action === 'submit') {
+            const note = window.prompt('Ghi rõ những việc đã hoàn thành:', '');
+            if (note === null) return;
+            if (!note.trim()) {
+              notify('Cần ghi rõ những việc đã hoàn thành trước khi gửi yêu cầu.');
+              return;
+            }
+            await apiCall('trackerRequestCompletion', { token, taskId, note: note.trim() });
+          }
           else if (action === 'complete-personal') await apiCall('trackerCompletePersonalTask', { token, taskId });
           else if (action === 'approve') await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '', stars: 0 });
           else if (action === 'delete') await apiCall('trackerDeleteTask', { token, taskId });
