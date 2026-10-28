@@ -291,7 +291,7 @@ function initDatabase() {
     {
       name: TAB.TRACKER_REQUESTS,
       headers: [
-        'ID', 'Trợ giảng', 'Loại đơn', 'Ngày', 'Giờ bắt đầu', 'Giờ kết thúc',
+        'ID', 'Trợ Giảng', 'Loại đơn', 'Ngày', 'Giờ bắt đầu', 'Giờ kết thúc',
         'Lý do / nội dung', 'Trạng thái', 'Người duyệt', 'Ghi chú duyệt', 'Ngày tạo'
       ]
     }
@@ -342,8 +342,6 @@ function handleApiAction(payload) {
   switch (action) {
     case 'verifyLogin':
       return verifyLogin_(payload.username, payload.password);
-    case 'trackerLogin':
-      return trackerLogin_(payload.username, payload.password);
     case 'trackerBootstrap':
       return trackerBootstrap_(payload.token);
     case 'trackerSetManager':
@@ -450,9 +448,7 @@ function handleApiAction(payload) {
 // TRACKER GANTT: AUTH, TASKS, SCHEDULE REQUESTS
 // =====================================================
 
-function trackerLogin_(username, password) {
-  const identity = verifyLogin_(username, password);
-  if (identity.status !== 'success') return identity;
+function issueTrackerSession_(identity) {
   const ss = getSpreadsheet();
   if (!ss.getSheetByName(TAB.TRACKER_TASKS) || !ss.getSheetByName(TAB.TRACKER_REQUESTS)) {
     initDatabase();
@@ -462,26 +458,31 @@ function trackerLogin_(username, password) {
     name: identity.name,
     role: identity.role
   }), 21600);
-  return { status: 'success', token: token, name: identity.name, role: identity.role };
+  return token;
 }
 
 function verifyLogin_(username, password) {
   const name = String(username || '').trim();
   const secret = String(password || '');
+  let identity;
   if (name === 'director' || name === 'Giám Đốc') {
     const config = readConfig(requireSheet_(TAB.CONFIG));
     if (secret === config.directorPassword) {
-      return { status: 'success', name: 'Giám Đốc', role: 'director' };
+      identity = { status: 'success', name: 'Giám Đốc', role: 'director' };
+    } else {
+      return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
     }
-    return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
+  } else {
+    const teacherSheet = requireSheet_(TAB.TEACHERS);
+    const row = findRowByTeacherName(teacherSheet, name);
+    if (!row || secret !== String(teacherSheet.getRange(row, 2).getValue() || DEFAULT_DIRECTOR_PASSWORD)) {
+      return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
+    }
+    identity = { status: 'success', name: name, role: 'teacher' };
   }
 
-  const teacherSheet = requireSheet_(TAB.TEACHERS);
-  const row = findRowByTeacherName(teacherSheet, name);
-  if (row && secret === String(teacherSheet.getRange(row, 2).getValue() || DEFAULT_DIRECTOR_PASSWORD)) {
-    return { status: 'success', name: name, role: 'teacher' };
-  }
-  return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
+  identity.token = issueTrackerSession_(identity);
+  return identity;
 }
 
 function trackerActor_(token) {
@@ -1381,7 +1382,7 @@ function addTeacher(teacherName, password) {
   if (teachers.some(t => t.name === name)) {
     return {
       status: 'error',
-      message: 'Trợ giảng đã tồn tại'
+      message: 'Trợ Giảng đã tồn tại'
     };
   }
 

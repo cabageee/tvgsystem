@@ -186,15 +186,11 @@
   <main>
     <section id="login-screen" class="login-screen">
       <div class="login-card">
-        <span class="role-pill">ĐĂNG NHẬP TRACKER</span>
-        <h2 id="login-title" style="margin-top:12px">Bảng theo dõi công việc</h2>
-        <p id="login-description">Đăng nhập từ lối vào dành riêng cho vai trò của bạn.</p>
-        <form id="login-form" class="login-form">
-          <div class="field"><label for="login-name">Tài khoản</label><input id="login-name" required autocomplete="username" placeholder="Tên trợ giảng hoặc director"></div>
-          <div class="field"><label for="login-password">Mật khẩu</label><input id="login-password" type="password" required autocomplete="current-password"></div>
-          <p id="login-error" class="form-error" hidden></p>
-          <button id="login-submit" class="button button-primary" type="submit">Đăng nhập</button>
-        </form>
+        <span class="role-pill" id="login-title">Phiên Tracking</span>
+        <h2 style="margin-top:12px">Chưa có phiên truy cập</h2>
+        <p id="login-description">Tracking sử dụng cùng phiên đăng nhập với hệ thống. Quay lại trang chính để đăng nhập hoặc mở lại đúng giao diện Tracking.</p>
+        <p id="login-error" class="form-error" hidden></p>
+        <a class="button button-primary" href="index.html" style="display:inline-block;margin-top:8px;text-decoration:none">Quay về hệ thống</a>
       </div>
     </section>
 
@@ -492,6 +488,10 @@
           if (!entryRoles[entryMode] || actorRole() !== entryRoles[entryMode]) {
             throw new Error('Vai trò này không thể mở trang theo dõi hiện tại. Hãy quay lại giao diện đúng vai trò.');
           }
+          const appName = sessionStorage.getItem('TV_GLOBAL_USER') || '';
+          if (appName && String(session.actor?.name || '').trim() !== appName) {
+            throw new Error('Phiên Tracking không khớp tài khoản đang đăng nhập. Hãy đăng nhập lại hệ thống.');
+          }
           tasks = Array.isArray(session.tasks) ? session.tasks : [];
           requests = Array.isArray(session.requests) ? session.requests : [];
           teachers = Array.isArray(session.teachers) ? session.teachers : [];
@@ -512,30 +512,6 @@
           $('login-screen').hidden = false;
           $('login-error').textContent = error.message;
           $('login-error').hidden = false;
-        }
-      }
-
-      async function login(event) {
-        event.preventDefault();
-        const button = $('login-submit');
-        button.disabled = true;
-        button.textContent = 'Đang đăng nhập...';
-        $('login-error').hidden = true;
-        try {
-          const result = await apiCall('trackerLogin', {
-            username: $('login-name').value.trim(),
-            password: $('login-password').value
-          });
-          token = result.token;
-          sessionStorage.setItem(TOKEN_KEY, token);
-          $('login-password').value = '';
-          await refresh();
-        } catch (error) {
-          $('login-error').textContent = error.message;
-          $('login-error').hidden = false;
-        } finally {
-          button.disabled = false;
-          button.textContent = 'Đăng nhập';
         }
       }
 
@@ -733,15 +709,9 @@
 
       function logout() {
         sessionStorage.removeItem(TOKEN_KEY);
-        token = '';
-        session = null;
-        tasks = [];
-        requests = [];
-        $('tracker-screen').hidden = true;
-        $('login-screen').hidden = false;
+        window.location.href = 'index.html';
       }
 
-      $('login-form').addEventListener('submit', login);
       $('task-form').addEventListener('submit', saveTask);
       $('schedule-form').addEventListener('submit', submitSchedule);
       $('create-task').addEventListener('click', openTaskDialog);
@@ -771,19 +741,19 @@
       $('previous-week').addEventListener('click', () => { const date = localDate($('week-start').value); date.setDate(date.getDate() - 7); $('week-start').value = dateInputValue(date); render(); });
       $('next-week').addEventListener('click', () => { const date = localDate($('week-start').value); date.setDate(date.getDate() + 7); $('week-start').value = dateInputValue(date); render(); });
       $('this-week').addEventListener('click', () => { $('week-start').value = dateInputValue(weekMonday(new Date())); render(); });
-      $('login-name').addEventListener('input', () => {
-        const input = $('login-name');
-        if (input.value.trim().toLowerCase() === 'director') input.value = 'director';
-      });
       if (entryTitles[entryMode]) {
         $('login-title').textContent = entryTitles[entryMode];
       } else {
         $('login-title').textContent = 'Chưa chọn giao diện Tracking';
         $('login-description').textContent = 'Hãy mở Tracking từ nút tương ứng trong giao diện Giám đốc, Trợ giảng hoặc Manager.';
-        $('login-form').hidden = true;
       }
       token = sessionStorage.getItem(TOKEN_KEY) || '';
-      if (token && entryRoles[entryMode]) refresh();
+      if (token && entryRoles[entryMode]) {
+        refresh();
+      } else {
+        $('login-error').textContent = 'Phiên đăng nhập hệ thống chưa được tìm thấy.';
+        $('login-error').hidden = false;
+      }
     })();
   </script>
 </body>

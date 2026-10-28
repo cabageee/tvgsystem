@@ -11,32 +11,48 @@ app.use(express.json({ limit: '100kb' }));
 
 const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyyCuQ0AVzHCvRFVNarFY3Vy726AsFTI_DZzdo7EsPBv8hI08vKPAaJ44JobANA1ns/exec';
 
+app.get('/api/health', (req, res) => res.json({ status: 'success', service: 'tvgsystem-api' }));
+
 app.post('/api/google-script', async (req, res) => {
-  try {
-    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(req.body)
-    });
-    const text = await response.text();
-
-    let result;
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      result = JSON.parse(text);
-    } catch {
-      result = {
-        status: 'error',
-        message: text.replace(/<[^>]*>/g, '').trim() || 'Google Apps Script trả về phản hồi không hợp lệ.'
-      };
-    }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      let response;
+      try {
+        response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(req.body),
+          signal: controller.signal
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+      const text = await response.text();
 
-    res.status(response.ok ? 200 : response.status).json(result);
-  } catch (error) {
-    res.status(502).json({
-      status: 'error',
-      message: `Không kết nối được Google Apps Script: ${error.message}`
-    });
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        result = {
+          status: 'error',
+          message: text.replace(/<[^>]*>/g, '').trim() || 'Google Apps Script trả về phản hồi không hợp lệ.'
+        };
+      }
+
+      return res.status(response.ok ? 200 : response.status).json(result);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)));
+    }
   }
+
+  return res.status(502).json({
+    status: 'error',
+    message: `Không kết nối được Google Apps Script sau 3 lần thử: ${lastError?.message || 'Kết nối bị gián đoạn'}`
+  });
 });
 
 // Cho phép truy cập công khai thư mục uploads để xem ảnh

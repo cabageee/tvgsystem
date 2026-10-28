@@ -1,4 +1,4 @@
-const CACHE_NAME = 'thien-vy-global-v12';
+const CACHE_NAME = 'thien-vy-global-v14';
 const APP_FILES = [
   './',
   './index.html',
@@ -74,8 +74,15 @@ self.addEventListener('fetch', event => {
   }
 
   if (APP_FILE_URLS.has(request.url)) {
-    event.respondWith(
-      caches.match(request).then(response => response || fetch(request))
-    );
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const response = await fetch(request);
+        if (response.ok) await cache.put(request, response.clone());
+        return response;
+      } catch (error) {
+        return await cache.match(request) || Response.error();
+      }
+    })());
   }
 });

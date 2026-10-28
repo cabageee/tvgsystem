@@ -513,75 +513,85 @@
     async function apiCall(action, payload = {}) {
       const request = { action, ...payload };
 
-      const isGitHubPages = window.location.hostname.endsWith('github.io');
-
-      if (!isGitHubPages && window.google?.script?.run) {
-        return new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler((result) => {
-              try {
-                const parsed = typeof result === 'string' ? JSON.parse(result) : result;
-                if (parsed?.status === 'error') {
-                  reject(new Error(parsed.message || 'Google Apps Script bị lỗi.'));
-                  return;
-                }
-                resolve(parsed);
-              } catch (error) {
-                reject(new Error('Phản hồi từ Apps Script không hợp lệ.'));
-              }
-            })
-            .withFailureHandler((error) => {
-              reject(new Error(error?.message || 'Google Apps Script bị lỗi.'));
-            })
-            .handleApiAction(request);
-        });
-      }
-
-      if (isGitHubPages) {
-        return new Promise((resolve, reject) => {
-          const callbackName = `tvgApi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-          const script = document.createElement('script');
-          let timeoutId;
-          const cleanup = () => {
-            clearTimeout(timeoutId);
-            delete window[callbackName];
-            script.remove();
-          };
-
-          window[callbackName] = (result) => {
-            cleanup();
-            if (result?.status === 'error') reject(new Error(result.message || 'Google Apps Script bị lỗi.'));
-            else resolve(result);
-          };
-          script.onerror = () => {
-            cleanup();
-            reject(new Error(`Không nhận được phản hồi từ Apps Script cho thao tác "${action}". Có thể Web app bị lỗi khi chạy, deployment chưa cho phép truy cập công khai, hoặc URL /exec chưa phải bản mới nhất.`));
-          };
-          script.async = true;
-          const query = new URLSearchParams({
-            callback: callbackName,
-            data: JSON.stringify(request),
-            _: String(Date.now())
-          });
-          script.src = `${GOOGLE_APPS_SCRIPT_URL}?${query.toString()}`;
-          timeoutId = setTimeout(() => {
-            cleanup();
-            reject(new Error(`Apps Script không phản hồi thao tác "${action}" sau 15 giây. Kiểm tra Executed as: Me, Who has access: Anyone và quyền truy cập Google Sheet.`));
-          }, 15000);
-          document.head.appendChild(script);
-        });
-      }
-
-      const response = await fetch('http://127.0.0.1:3002/api/google-script', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request)
+      const callJsonp = () => new Promise((resolve, reject) => {
+        const callbackName = `tvgApi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const script = document.createElement('script');
+        let timeoutId;
+        const cleanup = () => {
+          clearTimeout(timeoutId);
+          delete window[callbackName];
+          script.remove();
+        };
+        window[callbackName] = result => {
+          cleanup();
+          if (result?.status === 'error') reject(new Error(result.message || 'Google Apps Script bị lỗi.'));
+          else resolve(result);
+        };
+        script.onerror = () => {
+          cleanup();
+          reject(new Error(`Không nhận được phản hồi Apps Script cho thao tác "${action}".`));
+        };
+        script.async = true;
+        const query = new URLSearchParams({ callback: callbackName, data: JSON.stringify(request), _: String(Date.now()) });
+        script.src = `${GOOGLE_APPS_SCRIPT_URL}?${query.toString()}`;
+        timeoutId = setTimeout(() => {
+          cleanup();
+          reject(new Error(`Apps Script không phản hồi thao tác "${action}" sau 15 giây.`));
+        }, 15000);
+        document.head.appendChild(script);
       });
-      const result = await response.json();
-      if (!response.ok || result?.status === 'error') {
-        throw new Error(result?.message || 'Google Apps Script bị lỗi.');
+
+      if (!window.google?.script?.run) {
+        try {
+          const proxyBase = window.location.protocol === 'http:' ? 'http://127.0.0.1:3002' : '';
+          if (proxyBase) {
+            let lastError;
+            for (let attempt = 0; attempt < 2; attempt++) {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 12000);
+              try {
+                const response = await fetch(`${proxyBase}/api/google-script`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(request),
+                  signal: controller.signal,
+                  cache: 'no-store'
+                });
+                clearTimeout(timeoutId);
+                const result = await response.json();
+                if (!response.ok || result?.status === 'error') throw new Error(result?.message || 'Google Apps Script bị lỗi.');
+                return result;
+              } catch (error) {
+                clearTimeout(timeoutId);
+                lastError = error;
+                if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 450));
+              }
+            }
+            // Máy chủ proxy đang tắt: chuyển sang JSONP trực tiếp thay vì để người dùng bị kẹt.
+            return await callJsonp();
+          }
+          return await callJsonp();
+        } catch (error) {
+          throw error?.name === 'AbortError'
+            ? new Error('Kết nối quá chậm hoặc bị gián đoạn. Vui lòng thử lại.')
+            : error;
+        }
       }
-      return result;
+
+      return new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(result => {
+            try {
+              const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+              if (parsed?.status === 'error') reject(new Error(parsed.message || 'Google Apps Script bị lỗi.'));
+              else resolve(parsed);
+            } catch {
+              reject(new Error('Phản hồi từ Apps Script không hợp lệ.'));
+            }
+          })
+          .withFailureHandler(error => reject(new Error(error?.message || 'Google Apps Script bị lỗi.')))
+          .handleApiAction(request);
+      });
     }
 
     // Tải dữ liệu từ Google Sheet
@@ -1549,7 +1559,7 @@
         const select = document.getElementById(id);
         if (!select) return;
         const currentVal = select.value;
-        select.innerHTML = `<option value="">-- Tất cả Trợ giảng --</option><option value="__UNASSIGNED__" ${currentVal === '__UNASSIGNED__' ? 'selected' : ''}>-- Chưa phân công --</option>` + assistantTeachers.map(t => `<option value="${t}" ${currentVal === t ? 'selected' : ''}>${t}</option>`).join('');
+        select.innerHTML = `<option value="">-- Tất cả Trợ Giảng --</option><option value="__UNASSIGNED__" ${currentVal === '__UNASSIGNED__' ? 'selected' : ''}>-- Chưa phân công --</option>` + assistantTeachers.map(t => `<option value="${t}" ${currentVal === t ? 'selected' : ''}>${t}</option>`).join('');
       });
     }
 
@@ -2444,7 +2454,7 @@
             <div class="space-y-1.5 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
               <div class="flex justify-between"><span>Phụ huynh:</span><strong class="text-slate-800">${s.parentName || '---'}</strong></div>
               <div class="flex justify-between"><span>Số điện thoại:</span><strong class="text-slate-800 font-mono">${s.parentPhone || s.phone || '---'}</strong></div>
-              <div class="flex justify-between"><span>Trợ giảng:</span><span class="font-semibold text-red-800">${(s.assistants || []).join(', ') || 'Chưa phân'}</span></div>
+              <div class="flex justify-between"><span>Trợ Giảng:</span><span class="font-semibold text-red-800">${(s.assistants || []).join(', ') || 'Chưa phân'}</span></div>
               <div class="flex justify-between items-center pt-1 border-t"><span>Đã học:</span><span class="font-bold font-mono px-2 py-0.5 rounded ${warn.bg} ${warn.text}">${s.completedSessions || 0} / 40 buổi</span></div>
             </div>
 
@@ -2908,7 +2918,7 @@
       const name = document.getElementById('teacher_name_input').value.trim();
       const pwd = document.getElementById('teacher_pwd_input').value.trim() || '123456';
       if (!name) return;
-      if (assistantTeachers.includes(name)) return alert("⚠️ Trợ giảng này đã tồn tại!");
+      if (assistantTeachers.includes(name)) return alert("⚠️ Trợ Giảng này đã tồn tại!");
 
       assistantTeachers.push(name);
       saveAllDataToLocalStorage();
@@ -2969,10 +2979,17 @@
     // Xác thực & Khởi tạo
     function initLoginTeacherList() {
       const select = document.getElementById('login-teacher-select');
-      if (select) {
-        select.innerHTML = assistantTeachers.length 
-          ? assistantTeachers.map(t => `<option value="${t}">${t}</option>`).join('') 
-          : `<option value="">-- Chưa có trợ giảng --</option>`;
+      if (!select) return;
+
+      const previousName = String(select.value || '').trim();
+      const sessionName = String(sessionStorage.getItem('TV_GLOBAL_USER') || '').trim();
+      const desiredName = previousName || sessionName;
+      select.innerHTML = assistantTeachers.length
+        ? assistantTeachers.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')
+        : `<option value="">-- Chưa có trợ giảng --</option>`;
+
+      if (desiredName && assistantTeachers.includes(desiredName)) {
+        select.value = desiredName;
       }
     }
 
@@ -2980,28 +2997,53 @@
       const errorMessage = document.getElementById('login-error-msg');
       errorMessage.classList.add('hidden');
       const isDirector = role === 'director';
-      const username = isDirector ? 'director' : document.getElementById('login-teacher-select').value;
+      const teacherSelect = document.getElementById('login-teacher-select');
+      const username = isDirector ? 'director' : String(teacherSelect?.value || '').trim();
       const pwdInput = isDirector ? document.getElementById('login-pwd-director') : document.getElementById('login-pwd-teacher');
+      if (!username) {
+        errorMessage.textContent = 'Hãy chọn tài khoản trợ giảng trước khi đăng nhập.';
+        errorMessage.classList.remove('hidden');
+        return;
+      }
+      if (!pwdInput?.value) {
+        errorMessage.textContent = isDirector
+          ? 'Hãy nhập mật khẩu quản trị viên.'
+          : `Hãy nhập mật khẩu của ${username}.`;
+        errorMessage.classList.remove('hidden');
+        pwdInput?.focus();
+        return;
+      }
       const loginButtons = document.querySelectorAll(
         `button[onclick="handleLoginSubmit('${role}')"]`
       );
-      loginButtons.forEach(button => { button.disabled = true; });
+      loginButtons.forEach(button => { button.disabled = true; button.dataset.originalText = button.textContent; button.textContent = 'Đang đăng nhập...'; });
       try {
-        const identity = await apiCall('trackerLogin', {
+        const identity = await apiCall('verifyLogin', {
           username,
           password: pwdInput.value
         });
         if (identity?.status !== 'success' || !identity.token) {
           throw new Error(identity?.message || 'Tài khoản hoặc mật khẩu không đúng.');
         }
+        const identityName = String(identity.name || username).trim();
+        sessionStorage.removeItem('TV_GLOBAL_TRACKER_TOKEN');
+        sessionStorage.removeItem('TV_GLOBAL_ROLE');
+        sessionStorage.removeItem('TV_GLOBAL_USER');
         sessionStorage.setItem('TV_GLOBAL_TRACKER_TOKEN', identity.token);
-        loginAs(identity.role, identity.name);
+        sessionStorage.setItem('TV_GLOBAL_ROLE', identity.role);
+        sessionStorage.setItem('TV_GLOBAL_USER', identityName);
+        teacherTrackerTasks = [];
+        loginAs(identity.role, identityName);
+        if (!isDirector && teacherSelect) teacherSelect.value = identityName;
         pwdInput.value = '';
       } catch (error) {
         errorMessage.textContent = error.message || 'Không thể xác minh tài khoản. Vui lòng thử lại.';
         errorMessage.classList.remove('hidden');
       } finally {
-        loginButtons.forEach(button => { button.disabled = false; });
+        loginButtons.forEach(button => {
+          button.disabled = false;
+          if (button.dataset.originalText) button.textContent = button.dataset.originalText;
+        });
       }
     }
 
@@ -3035,6 +3077,7 @@
         if (teacherClassName) teacherClassName.innerText = name;
         showPage(fromSession ? document.body.dataset.appPage : 'page-teacher-attendance');
       }
+      updateAllViews();
       if (role === 'teacher') loadTeacherTrackerTasks();
     }
 
