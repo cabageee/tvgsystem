@@ -356,6 +356,8 @@ function handleApiAction(payload) {
       return trackerCompletePersonalTask_(payload.token, payload.taskId);
     case 'trackerReviewTask':
       return trackerReviewTask_(payload.token, payload.taskId, payload.decision, payload.note, payload.stars);
+    case 'trackerDeleteTask':
+      return trackerDeleteTask_(payload.token, payload.taskId);
     case 'trackerSaveNote':
       return trackerSaveNote_(payload.token, payload.taskId, payload.note);
     case 'trackerSubmitSchedule':
@@ -515,9 +517,22 @@ function trackerManager_() {
   return row ? String(row[1] || '').trim() : '';
 }
 
+function trackerTaskDate_(value, timezone) {
+  return value instanceof Date && !isNaN(value.getTime())
+    ? Utilities.formatDate(value, timezone, 'yyyy-MM-dd')
+    : String(value || '');
+}
+
+function trackerTaskTime_(value, timezone) {
+  return value instanceof Date && !isNaN(value.getTime())
+    ? Utilities.formatDate(value, timezone, 'HH:mm')
+    : String(value || '');
+}
+
 function trackerTaskRecords_() {
   const sheet = requireSheet_(TAB.TRACKER_TASKS);
   if (sheet.getLastRow() < 2) return [];
+  const timezone = getSpreadsheet().getSpreadsheetTimeZone();
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, 15).getValues()
     .filter(row => String(row[0] || '').trim())
     .map(row => {
@@ -531,9 +546,9 @@ function trackerTaskRecords_() {
         createdBy: String(row[2] || ''),
         priority: Number(row[3]) || 4,
         assignees: Array.isArray(assignees) ? assignees : [],
-        startDate: String(row[5] || ''),
-        deadline: String(row[6] || ''),
-        deadlineTime: String(row[7] || ''),
+        startDate: trackerTaskDate_(row[5], timezone),
+        deadline: trackerTaskDate_(row[6], timezone),
+        deadlineTime: trackerTaskTime_(row[7], timezone),
         status: String(row[8] || 'NEW'),
         note: String(row[9] || ''),
         punishment: String(row[10] || ''),
@@ -728,6 +743,28 @@ function trackerReviewTask_(token, taskId, decision, note, stars) {
   sheet.getRange(row, 12).setValue(decision === 'approve' ? rating : 0);
   sheet.getRange(row, 13).setValue(String(note || '').slice(0, 1000));
   sheet.getRange(row, 15).setValue(new Date().toISOString());
+  return { status: 'success' };
+}
+
+function trackerDeleteTask_(token, taskId) {
+  const actor = trackerActor_(token);
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
+  const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
+  if (!task) throw new Error('Không tìm thấy nhiệm vụ cần xóa.');
+  const priority = Number(task.priority);
+  const isPersonalTask = priority === 3 || priority === 4;
+  const assignedToActor = task.assignees.indexOf(actor.name) !== -1;
+  const canDelete = actor.role === 'director'
+    || (actor.role === 'manager' && task.createdBy === actor.name && priority >= 2)
+    || (actor.role === 'teacher' && isPersonalTask && assignedToActor && task.createdBy === actor.name);
+  if (!canDelete) {
+    throw new Error(actor.role === 'teacher'
+      ? 'Trợ giảng chỉ được xóa việc cá nhân ưu tiên do mình tạo.'
+      : 'Manager chỉ được xóa nhiệm vụ do mình tạo.');
+  }
+  const row = findRowById(sheet, task.id);
+  if (!row) throw new Error('Không tìm thấy dòng nhiệm vụ trong bảng dữ liệu.');
+  sheet.deleteRow(row);
   return { status: 'success' };
 }
 

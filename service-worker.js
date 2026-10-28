@@ -1,4 +1,4 @@
-const CACHE_NAME = 'thien-vy-global-v37';
+const CACHE_NAME = 'thien-vy-global-v48';
 const APP_FILES = [
   './',
   './index.html',
@@ -14,6 +14,8 @@ const APP_FILES = [
   './change-password.html',
   './app.js',
   './app.css',
+  './assets/fontawesome/css/all.min.css',
+  './assets/fontawesome/webfonts/fa-solid-900.woff2',
   './tailwind.css',
   './manifest.webmanifest',
   './app-icon.svg',

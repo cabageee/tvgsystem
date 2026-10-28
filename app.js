@@ -21,37 +21,37 @@
     };
     const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23f1f5f9'/%3E%3Ccircle cx='32' cy='24' r='12' fill='%2394a3b8'/%3E%3Cpath d='M10 58c2-12 10-18 22-18s20 6 22 18' fill='%2394a3b8'/%3E%3C/svg%3E";
 
-    const UI_ICON_PATHS = {
-      alert: '<path d="m10.3 3.9-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3.1l-8-14a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 4h.01"/>',
-      announcement: '<path d="m3 11 18-5v12L3 13v-2Z"/><path d="M11.6 15.5 13 21l-4-1-2-7m14-5v10"/>',
-      payment: '<rect x="2" y="5" width="20" height="15" rx="2"/><path d="M2 10h20M6 15h4"/>',
-      clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 10h6m-6 4h6m-6 4h3"/>',
-      report: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4V2m8 2V2M3 9h18m-13 4h3m-3 3h7"/>',
-      image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
-      file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6m-12 5h8m-8 4h8"/>',
-      add: '<path d="M12 5v14m-7-7h14"/>',
-      edit: '<path d="m16 4 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16l-1 4Z"/>',
-      key: '<circle cx="8" cy="15" r="5"/><path d="m11.5 11.5 8-8L22 6l-2 2 2 2-3 3-2-2-2 2"/>',
-      chart: '<path d="M3 3v18h18"/><path d="m8 14 4-4 4 3 5-7"/>',
-      folder: '<path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 9h18"/>',
-      check: '<path d="m5 12 4 4L19 6"/>',
-      calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18m-13 4h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',
-      door: '<path d="M4 21h16M6 21V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M14 12h.01"/>',
-      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
-      siren: '<path d="M3 18h18l-2-3V9a7 7 0 0 0-14 0v6l-2 3Z"/><path d="M10 22h4M12 2V1M4.2 4.2 3 3m17 1.2L21 3M2 11H1m22 0h-1"/>',
-      search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
-      refresh: '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9A7 7 0 0 1 18 6l2 2M4 16l2 2a7 7 0 0 0 12.5-3"/>',
-      note: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>',
-      camera: '<path d="M14 5h-4L8 7H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
-      user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
-      book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
-      warning: '<path d="m10.3 3.9-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3.1l-8-14a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 4h.01"/>',
-      spinner: '<path d="M12 2v4m0 12v4m10-10h-4M6 12H2m17.1 7.1-2.8-2.8M7.7 7.7 4.9 4.9m14.2 0-2.8 2.8M7.7 16.3l-2.8 2.8"/>',
-      error: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6m0-6 6 6"/>',
-      lightning: '<path d="m13 2-3 8h7l-6 12 2-9H6z"/>',
-      gear: '<circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4 1.4-1.1a8 8 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1a8 8 0 0 1 0 2Z"/>',
-      trash: '<path d="M3 6h18m-2 0-.9 14H5.9L5 6m4 0V4h6v2m-5 4v6m4-6v6"/>',
-      restore: '<path d="M3 11a9 9 0 1 1 2.6 6.4"/><path d="M3 4v7h7m2-4v5l3 2"/>'
+    const UI_ICON_CLASSES = {
+      alert: 'triangle-exclamation',
+      announcement: 'bullhorn',
+      payment: 'credit-card',
+      clipboard: 'clipboard-list',
+      report: 'calendar-check',
+      image: 'image',
+      file: 'file-lines',
+      add: 'plus',
+      edit: 'pen-to-square',
+      key: 'key',
+      chart: 'chart-line',
+      folder: 'folder-open',
+      check: 'check',
+      calendar: 'calendar-days',
+      door: 'right-from-bracket',
+      users: 'users',
+      siren: 'bell',
+      search: 'magnifying-glass',
+      refresh: 'arrows-rotate',
+      note: 'note-sticky',
+      camera: 'camera',
+      user: 'user',
+      book: 'book-open',
+      warning: 'triangle-exclamation',
+      spinner: 'spinner',
+      error: 'circle-xmark',
+      lightning: 'bolt',
+      gear: 'gear',
+      trash: 'trash',
+      restore: 'arrow-rotate-left'
     };
     const UI_EMOJI_ICONS = {
       '⚠️': 'alert', '📢': 'announcement', '💰': 'payment', '📋': 'clipboard',
@@ -64,9 +64,9 @@
     };
 
     function renderUiIcon(name, extraClass = '') {
-      const path = UI_ICON_PATHS[name];
-      if (!path) return '';
-      return `<svg class="ui-icon ${extraClass}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${path}</svg>`;
+      const iconClass = UI_ICON_CLASSES[name];
+      if (!iconClass) return '';
+      return `<i class="ui-icon ui-icon--${name} fa-solid fa-${iconClass} ${extraClass}" aria-hidden="true"></i>`;
     }
 
     function loadOptionalLibrary(name) {
@@ -267,7 +267,7 @@
           if (!emoji) return;
 
           const icon = document.createElement('span');
-          icon.className = 'ui-icon-wrap';
+          icon.className = `ui-icon-wrap ui-icon-wrap--${UI_EMOJI_ICONS[emoji]}`;
           icon.setAttribute('aria-hidden', 'true');
           icon.innerHTML = renderUiIcon(UI_EMOJI_ICONS[emoji]);
           element.insertBefore(icon, node);
@@ -276,7 +276,7 @@
       });
 
       [...root.querySelectorAll('span')].forEach(element => {
-        if (element.closest('table, script, style, svg, .ui-icon-wrap')) return;
+        if (element.closest('table, script, style, .ui-icon-wrap')) return;
         const emoji = emojiKeys.find(key => element.textContent.trim() === key);
         if (!emoji) return;
         element.replaceChildren();
@@ -487,7 +487,14 @@
       });
 
       const mobileActions = headerContent.querySelector('.sm\\:hidden');
-      headerContent.insertBefore(button, mobileActions || null);
+      const desktopActions = headerContent.nextElementSibling?.lastElementChild;
+      const notificationActionMedia = window.matchMedia('(min-width: 640px)');
+      const placeNotificationButton = () => {
+        const target = notificationActionMedia.matches ? desktopActions : mobileActions;
+        if (target && button.parentElement !== target) target.append(button);
+      };
+      placeNotificationButton();
+      notificationActionMedia.addEventListener('change', placeNotificationButton);
       document.body.append(dialog);
       updateNotificationButton();
     }
@@ -832,6 +839,85 @@
       input.dataset.studentIndex = String(studentIdx);
       input.value = '';
       input.click();
+    }
+
+    function openDirectAvatarOptions(studentIdx) {
+      const student = studentsData[studentIdx];
+      if (!student) {
+        showToast('Không tìm thấy học viên cần cập nhật avatar.', 'error');
+        return;
+      }
+
+      let modal = document.getElementById('modal-direct-avatar-options');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-direct-avatar-options';
+        modal.className = 'hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm';
+        modal.innerHTML = `
+          <div class="w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <h3 class="text-sm font-bold text-slate-800">Ảnh đại diện học viên</h3>
+              <button type="button" data-avatar-action="close" aria-label="Đóng" class="flex h-9 w-9 items-center justify-center rounded-lg text-2xl text-slate-500 hover:bg-slate-100">&times;</button>
+            </div>
+            <div class="space-y-2 p-4">
+              <button type="button" data-avatar-action="change" class="flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-slate-200 px-4 text-left text-sm font-semibold text-slate-700 hover:border-amber-300 hover:bg-amber-50">
+                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-800">${renderUiIcon('image')}</span>
+                Đổi ảnh đại diện
+              </button>
+              <button type="button" data-avatar-action="remove" class="flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-slate-200 px-4 text-left text-sm font-semibold text-red-700 hover:border-red-200 hover:bg-red-50">
+                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-red-700">${renderUiIcon('trash')}</span>
+                Xóa ảnh đại diện
+              </button>
+            </div>
+          </div>`;
+        modal.addEventListener('click', event => {
+          if (event.target === modal) closeModal(modal.id);
+        });
+        modal.querySelector('[data-avatar-action="close"]').addEventListener('click', () => closeModal(modal.id));
+        document.body.appendChild(modal);
+        configureAccessibleDialog(modal);
+      }
+
+      const hasCustomAvatar = Boolean(student.avatar && student.avatar !== DEFAULT_AVATAR);
+      const removeButton = modal.querySelector('[data-avatar-action="remove"]');
+      removeButton.disabled = !hasCustomAvatar;
+      removeButton.title = hasCustomAvatar ? '' : 'Học viên chưa có ảnh đại diện tùy chỉnh';
+      removeButton.classList.toggle('opacity-50', !hasCustomAvatar);
+      modal.querySelector('[data-avatar-action="change"]').onclick = () => {
+        closeModal(modal.id);
+        openDirectAvatarUpload(studentIdx);
+      };
+      removeButton.onclick = () => {
+        closeModal(modal.id);
+        removeDirectAvatar(studentIdx);
+      };
+      modal.classList.remove('hidden');
+    }
+
+    async function removeDirectAvatar(studentIdx) {
+      const student = studentsData[studentIdx];
+      if (!student || !student.avatar || student.avatar === DEFAULT_AVATAR) return;
+      const confirmed = await showConfirmModal(`Xóa ảnh đại diện của học viên "${student.name}"?`);
+      if (!confirmed) return;
+
+      const previousAvatar = student.avatar;
+      try {
+        const result = await apiCall('updateStudentInfo', {
+          student: { ...student, avatar: DEFAULT_AVATAR }
+        });
+        if (!result || result.status !== 'success') {
+          throw new Error(result?.message || 'Google Sheet không xác nhận xóa avatar.');
+        }
+        student.avatar = DEFAULT_AVATAR;
+        updateAllViews();
+        await refreshDataAfterMutation();
+        showToast(`Đã xóa ảnh đại diện của ${student.name}`);
+      } catch (error) {
+        student.avatar = previousAvatar;
+        updateAllViews();
+        console.error('Lỗi xóa avatar học viên:', error);
+        showToast(`Không xóa được ảnh đại diện: ${error.message}`, 'error');
+      }
     }
 
     async function handleDirectAvatarUpload(input) {
@@ -1370,9 +1456,67 @@
       return task.status || 'Chưa rõ';
     }
 
+    function trackerDateValue(value) {
+      if (value instanceof Date && Number.isFinite(value.getTime())) {
+        return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+      }
+      const raw = String(value || '').trim();
+      let match = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+      if (match) return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+      match = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+      if (match) return `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+      const parsed = new Date(raw);
+      return Number.isFinite(parsed.getTime())
+        ? `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`
+        : '';
+    }
+
+    function trackerTimeValue(value) {
+      if (value instanceof Date && Number.isFinite(value.getTime())) {
+        return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
+      }
+      const raw = String(value || '').trim();
+      const match = raw.match(/(?:^|[\sT])(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(?=\s|Z|[+-]|$)/);
+      return match ? `${match[1].padStart(2, '0')}:${match[2]}` : '';
+    }
+
+    function trackerTaskGantt(task, status) {
+      const startDate = trackerDateValue(task.startDate || task.deadline);
+      const endDate = trackerDateValue(task.deadline);
+      if (!startDate || !endDate) return '<div class="mt-2 text-xs text-slate-500">Chưa đặt hạn</div>';
+      const startParts = startDate.split('-').map(Number);
+      const endParts = endDate.split('-').map(Number);
+      const startOrdinal = Date.UTC(startParts[0], startParts[1] - 1, startParts[2]) / 86400000;
+      const endOrdinal = Date.UTC(endParts[0], endParts[1] - 1, endParts[2]) / 86400000;
+      const duration = Math.max(1, endOrdinal - startOrdinal + 1);
+      const firstWeekday = (new Date(startOrdinal * 86400000).getUTCDay() + 6) % 7;
+      const labels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+      const activeClass = status === 'COMPLETED' ? 'bg-emerald-600'
+        : status === 'PENDING' ? 'bg-amber-500'
+          : status === 'OVERDUE' ? 'bg-red-500' : 'bg-[#8B1515]';
+      const days = labels.map((_, index) => {
+        const offset = (index - firstWeekday + 7) % 7;
+        const active = offset < Math.min(duration, 7);
+        return `<span class="tracker-gantt-day ${active ? activeClass : 'bg-slate-200'}"></span>`;
+      }).join('');
+      const [startYear, startMonth, startDay] = startDate.split('-');
+      const [endYear, endMonth, endDay] = endDate.split('-');
+      const deadlineTime = trackerTimeValue(task.deadlineTime);
+      const startLabel = `${startDay}/${startMonth}/${startYear}`;
+      const endLabel = `${endDay}/${endMonth}/${endYear}${deadlineTime ? ` · ${deadlineTime}` : ''}`;
+      return `<div class="tracker-gantt mt-2" aria-label="Thời gian thực hiện: ${startLabel} đến ${endLabel}">
+        <div class="flex justify-between gap-2 text-[10px] text-slate-500"><span>Bắt đầu ${startLabel}</span><span>Hạn ${endLabel}</span></div>
+        <div class="tracker-gantt-labels" aria-hidden="true">${labels.map(day => `<span>${day}</span>`).join('')}</div>
+        <div class="tracker-gantt-days" aria-hidden="true">${days}</div>
+      </div>`;
+    }
+
     function teacherTaskIsOverdue(task) {
       if (!task.deadline || ['COMPLETED', 'PENDING'].includes(task.status)) return false;
-      const deadline = new Date(`${String(task.deadline).slice(0, 10)}T${task.deadlineTime || '23:59'}:00`);
+      const date = trackerDateValue(task.deadline);
+      if (!date) return false;
+      const time = trackerTimeValue(task.deadlineTime) || '23:59';
+      const deadline = new Date(`${date}T${time}:00`);
       return !Number.isNaN(deadline.getTime()) && deadline < new Date();
     }
 
@@ -1392,9 +1536,10 @@
         const overdue = teacherTaskIsOverdue(task);
         const statusText = overdue ? 'Quá hạn' : teacherTaskStatus(task);
         const priority = Number(task.priority) || 4;
-        const deadline = task.deadline
-          ? `${escapeHtml(task.deadline)}${task.deadlineTime ? ` · ${escapeHtml(task.deadlineTime)}` : ''}`
-          : 'Chưa đặt hạn';
+        const personal = priority >= 3 && priority <= 4;
+        const canDelete = personal && task.createdBy === currentUserName
+          && Array.isArray(task.assignees) && task.assignees.includes(currentUserName);
+        const gantt = trackerTaskGantt(task, overdue ? 'OVERDUE' : task.status);
         const actions = [];
         if (task.status === 'NEW') {
           actions.push(`<button type="button" data-teacher-task-action="accept" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">Nhận việc</button>`);
@@ -1404,14 +1549,17 @@
         if (['NEW', 'IN_PROGRESS'].includes(task.status)) {
           actions.push(`<button type="button" data-teacher-task-action="save-note" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">Lưu ghi chú</button>`);
         }
+        if (canDelete) {
+          actions.push(`<button type="button" data-teacher-task-action="delete" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold">Xóa việc cá nhân</button>`);
+        }
         const statusClass = overdue ? 'bg-red-100 text-red-700' : task.status === 'COMPLETED'
           ? 'bg-emerald-100 text-emerald-700'
           : task.status === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700';
         return `<article class="rounded-xl border border-slate-200 p-3 sm:p-4 bg-white">
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2"><span class="px-2 py-1 rounded-full bg-[#8B1515]/10 text-[#8B1515] text-[10px] font-black">P${priority}</span><span class="px-2 py-1 rounded-full ${statusClass} text-[10px] font-bold">${statusText}</span></div>
-            <span class="text-[11px] text-slate-500">Hạn: ${deadline}</span>
+            <div class="flex items-center gap-2"><span class="px-2 py-1 rounded-full bg-[#8B1515]/10 text-[#8B1515] text-[10px] font-bold">${personal ? `Việc cá nhân · ưu tiên ${priority === 3 ? 'trước' : 'sau'}` : 'Nhiệm vụ tuần'}</span><span class="px-2 py-1 rounded-full ${statusClass} text-[10px] font-bold">${statusText}</span></div>
           </div>
+          ${gantt}
           <h3 class="mt-2 text-sm font-bold text-slate-800">${escapeHtml(task.title)}</h3>
           <p class="mt-1 text-[11px] text-slate-500">Người giao: ${escapeHtml(task.createdBy || '—')}${task.punishment ? ` · Lưu ý: ${escapeHtml(task.punishment)}` : ''}</p>
           ${task.reviewNote ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Phản hồi:</strong> ${escapeHtml(task.reviewNote)}</p>` : ''}
@@ -1459,6 +1607,17 @@
           await apiCall('trackerAcceptTask', { token, taskId });
         } else if (action === 'complete') {
           await apiCall('trackerRequestCompletion', { token, taskId });
+        } else if (action === 'delete') {
+          const task = teacherTrackerTasks.find(item => item.id === taskId);
+          if (!task || !canDeleteTeacherPersonalTask(task)) {
+            throw new Error('Bạn chỉ có thể xóa việc cá nhân ưu tiên do mình tạo.');
+          }
+          const confirmed = await showConfirmModal(`Xóa việc cá nhân "${task.title}"? Thao tác này không thể hoàn tác.`);
+          if (!confirmed) {
+            button.disabled = false;
+            return;
+          }
+          await apiCall('trackerDeleteTask', { token, taskId });
         } else if (action === 'save-note') {
           const note = document.getElementById(`teacher-task-note-${taskId}`);
           if (!note) throw new Error('Không tìm thấy ô ghi chú của nhiệm vụ.');
@@ -1467,11 +1626,19 @@
           throw new Error('Thao tác nhiệm vụ không hợp lệ.');
         }
         await loadTeacherTrackerTasks();
-        showToast(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'complete' ? 'Đã gửi yêu cầu hoàn thành.' : 'Đã lưu ghi chú.');
+        showToast(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'complete' ? 'Đã gửi yêu cầu hoàn thành.' : action === 'delete' ? 'Đã xóa việc cá nhân.' : 'Đã lưu ghi chú.');
       } catch (error) {
         showToast(`Không thể cập nhật nhiệm vụ: ${error.message}`, 'error');
         button.disabled = false;
       }
+    }
+
+    function canDeleteTeacherPersonalTask(task) {
+      const priority = Number(task.priority);
+      return priority >= 3 && priority <= 4
+        && task.createdBy === currentUserName
+        && Array.isArray(task.assignees)
+        && task.assignees.includes(currentUserName);
     }
 
     function getAllLevels() {
@@ -1896,10 +2063,9 @@
             <td class="p-2 text-center font-bold text-[#8B1515] font-mono sticky-col-1 border-r border-slate-200">${s.id}</td>
             <td class="p-2 sticky-col-2 border-r border-slate-200">
               <div class="flex items-center gap-2">
-                <div class="relative shrink-0">
-                  <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${s.name}" class="w-24 h-24 rounded-full object-cover border-2 border-amber-300 shadow-sm">
-                  <button type="button" onclick="openDirectAvatarUpload(${globalIdx})" aria-label="Đổi avatar ${s.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-7 h-7 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-xs hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">${renderUiIcon('camera')}</button>
-                </div>
+                <button type="button" onclick="openDirectAvatarOptions(${globalIdx})" aria-label="Tùy chọn ảnh đại diện ${escapeHtml(s.name)}" title="Tùy chọn ảnh đại diện" class="student-avatar-trigger shrink-0">
+                  <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="" class="w-12 h-12 rounded-full object-cover border-2 border-amber-300 shadow-sm">
+                </button>
                 <div class="truncate">
                   <div class="font-bold text-slate-800 text-xs truncate" title="${s.name}">${s.name}</div>
                   ${warn.badge ? `<div class="mt-0.5">${warn.badge}</div>` : ''}
@@ -1973,12 +2139,9 @@
       return `
         <article class="master-mobile-student">
           <div class="master-mobile-student-heading">
-            <div class="master-mobile-avatar">
-              <img src="${getAvatarDisplayUrl(student.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${escapeHtml(student.name)}">
-              <button type="button" onclick="openDirectAvatarUpload(${globalIdx})" aria-label="Đổi avatar ${escapeHtml(student.name)}" title="Đổi avatar">
-                ${renderUiIcon('camera')}
-              </button>
-            </div>
+            <button type="button" onclick="openDirectAvatarOptions(${globalIdx})" class="master-mobile-avatar" aria-label="Tùy chọn ảnh đại diện ${escapeHtml(student.name)}" title="Tùy chọn ảnh đại diện">
+              <img src="${getAvatarDisplayUrl(student.avatar)}" onerror="handleAvatarImageError(this)" alt="">
+            </button>
             <div class="master-mobile-student-identity">
               <div class="master-mobile-student-name">${escapeHtml(student.name || 'Chưa có tên')}</div>
               <div class="master-mobile-student-id">Mã ${escapeHtml(student.id)}</div>
@@ -1991,7 +2154,7 @@
               <span>Lớp</span>
               ${renderLevelSelectHtml(student.level, `updateStudentLevel(${globalIdx}, this.value)`)}
             </label>
-            <div><span>Ngày đăng ký</span><strong>${escapeHtml(student.regDate || '---')}</strong></div>
+            <div><span>Ngày đăng ký</span><strong class="master-mobile-meta-value">${escapeHtml(student.regDate || '---')}</strong></div>
           </div>
           <div class="master-mobile-session-heading">
             <strong>Tiến độ 40 buổi</strong>
@@ -2333,15 +2496,16 @@
         return `
           <tr class="hover:bg-slate-50 border-b">
             <td class="p-3 text-center font-mono font-bold text-[#8B1515] border-r">${student.id}</td>
-            <td class="p-3 border-r min-w-[380px]">
+            <td class="assignment-student-cell p-3 border-r">
               <div class="flex items-center gap-2.5">
                 <div class="relative shrink-0">
-                  <img src="${getAvatarDisplayUrl(student.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${student.name}" class="w-24 h-24 rounded-full object-cover border-2 border-amber-300 shadow-sm">
-                  <button type="button" onclick="openDirectAvatarUpload(${idx})" aria-label="Đổi avatar ${student.name}" title="Đổi avatar" class="absolute -right-1 -bottom-1 w-7 h-7 rounded-full bg-white border border-slate-200 text-[#8B1515] shadow flex items-center justify-center text-xs hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-[#8B1515]">${renderUiIcon('camera')}</button>
+                  <button type="button" onclick="openDirectAvatarOptions(${idx})" aria-label="Tùy chọn ảnh đại diện ${student.name}" title="Tùy chọn ảnh đại diện" class="student-avatar-trigger">
+                    <img src="${getAvatarDisplayUrl(student.avatar)}" onerror="handleAvatarImageError(this)" alt="" class="w-12 h-12 rounded-full object-cover border-2 border-amber-300 shadow-sm">
+                  </button>
                 </div>
                 <div class="min-w-0">
-                  <h4 class="font-bold text-slate-800 text-xs">${student.name}</h4>
-                  <p class="text-[10px] text-slate-400 truncate">PH: ${student.parentName || '---'} · SĐT: ${student.parentPhone || student.phone || '---'}</p>
+                  <h4 class="assignment-student-name font-bold text-slate-800 text-xs">${student.name}</h4>
+                  <p class="assignment-student-contact text-[10px] text-slate-400">PH: ${student.parentName || '---'} · SĐT: ${student.parentPhone || student.phone || '---'}</p>
                 </div>
               </div>
             </td>
@@ -2443,10 +2607,9 @@
           <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3 relative overflow-hidden flex flex-col justify-between">
             <div class="flex items-start justify-between gap-3 border-b pb-3">
               <div class="flex items-center gap-3">
-                <div class="shrink-0 text-center">
-                  <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${s.name}" class="w-12 h-12 rounded-full object-cover border-2 border-amber-300">
-                  <button onclick="openDirectAvatarUpload(${globalIdx})" class="mt-1 text-[10px] font-bold text-[#8B1515] hover:underline" title="Tải ảnh avatar mới lên">${renderUiIcon('camera')} Đổi avatar</button>
-                </div>
+                <button type="button" onclick="openDirectAvatarOptions(${globalIdx})" aria-label="Tùy chọn ảnh đại diện ${escapeHtml(s.name)}" title="Tùy chọn ảnh đại diện" class="student-avatar-trigger shrink-0">
+                  <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="" class="w-12 h-12 rounded-full object-cover border-2 border-amber-300">
+                </button>
                 <div>
                   <span class="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded">${s.id}</span>
                   <h3 class="font-bold text-slate-800 text-sm mt-0.5">${s.name}</h3>

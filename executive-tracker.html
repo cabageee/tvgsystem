@@ -106,7 +106,9 @@
     .completion-control input:disabled { cursor: not-allowed; }
     .empty-state { padding: 40px 18px; color: var(--muted); text-align: center; }
     .empty-state strong { display: block; margin-bottom: 5px; color: #364255; }
-    dialog { width: min(720px, calc(100vw - 24px)); max-height: min(90vh, 780px); padding: 0; border: 0; border-radius: 16px; box-shadow: 0 20px 70px #0005; }
+    dialog { width: min(720px, calc(100vw - 24px)); max-height: min(90vh, 780px); max-height: min(90svh, 780px); padding: 0; border: 0; border-radius: 16px; box-shadow: 0 20px 70px #0005; }
+    #task-dialog[open] { display: flex; flex-direction: column; overflow: hidden; }
+    #task-dialog .dialog-form { flex: 1 1 auto; min-height: 0; align-content: start; }
     dialog.wide { width: min(1080px, calc(100vw - 20px)); }
     dialog::backdrop { background: #101723a8; backdrop-filter: blur(3px); }
     .dialog-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; color: white; background: var(--wine); }
@@ -116,7 +118,9 @@
     .dialog-form .full { grid-column: 1 / -1; }
     .dialog-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
     .assignee-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-height: 140px; overflow: auto; padding: 8px; border: 1px solid var(--line); border-radius: 9px; }
-    .assignee-option { display: flex; align-items: center; gap: 7px; font-size: 11px; }
+    .assignee-option { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 7px 9px; border: 1px solid #e8ebf1; border-radius: 8px; background: #fff; font-size: 12px; line-height: 1.35; cursor: pointer; }
+    #assignee-options .assignee-option > input[type="checkbox"] { width: 16px; min-width: 16px; height: 16px; flex: 0 0 16px; margin: 0; padding: 0; accent-color: var(--wine); }
+    .assignee-option span { min-width: 0; overflow-wrap: anywhere; }
     .schedule-form { padding: 18px; }
     .schedule-form .dialog-form { padding: 0; }
     .schedule-table-wrap { max-height: 65vh; overflow: auto; }
@@ -176,11 +180,18 @@
     .gantt-inline { display: grid; gap: 5px; width: min(100%, 300px); margin-top: 7px; }
     .gantt-dates { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 9px; }
     .gantt-dates span:last-child { text-align: right; }
-    .gantt-track { position: relative; height: 12px; overflow: hidden; border: 1px solid #e3e8ef; border-radius: 99px; background-color: #f5f7f9; background-image: linear-gradient(90deg, transparent calc(25% - 1px), #e2e7ed 25%, transparent calc(25% + 1px)), linear-gradient(90deg, transparent calc(50% - 1px), #e2e7ed 50%, transparent calc(50% + 1px)), linear-gradient(90deg, transparent calc(75% - 1px), #e2e7ed 75%, transparent calc(75% + 1px)); }
-    .gantt-bar { position: absolute; top: 1px; bottom: 1px; min-width: 4px; border-radius: 99px; background: linear-gradient(90deg, #9b7379, var(--wine)); }
-    .gantt-bar.is-complete { background: linear-gradient(90deg, #87a897, #527b69); }
-    .gantt-bar.is-pending { background: linear-gradient(90deg, #d6bd8b, #98743d); }
-    .gantt-bar.is-overdue { background: linear-gradient(90deg, #d68d91, #a95057); }
+    .gantt-day-labels, .gantt-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; width: 100%; }
+    .gantt-day-labels { color: var(--muted); font-size: 8px; font-weight: 750; text-align: center; }
+    .gantt-days span { height: 9px; border-radius: 2px; background: #e8ebf0; }
+    .gantt-days .is-active { background: var(--wine); }
+    .gantt-days.is-complete .is-active { background: #527b69; }
+    .gantt-days.is-pending .is-active { background: #98743d; }
+    .gantt-days.is-overdue .is-active { background: #a95057; }
+    .task-actions .delete-task-button { color: #a52835; background: #fff0f1; }
+    .task-actions .delete-task-button:hover { background: #ffe1e5; }
+    .completion-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+    .completion-actions .completion-control { flex: 0 1 auto; }
+    .completion-actions .small-button { padding: 6px 8px; }
     .teacher-task-card .gantt-inline { width: 100%; max-width: 520px; }
     .teacher-request-card { display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 9px; }
     .teacher-request-content { min-width: 0; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
@@ -223,6 +234,8 @@
       }
       .table-wrap tbody td[colspan] { display: block; }
       .table-wrap tbody td[colspan]::before { content: none; }
+      .table-wrap tbody td[data-label="Hạn"] .gantt-inline,
+      .table-wrap tbody td[data-label="Deadline"] .gantt-inline { grid-column: 1 / -1; width: 100%; max-width: none; margin-top: 2px; }
       .task-actions { min-width: 0; }
       .small-button { font-size: 10px; }
       .calendar-grid { display: none; }
@@ -248,7 +261,12 @@
       .dialog-form .full, .dialog-actions { grid-column: auto; }
       .manager-config { align-items: stretch; flex-direction: column; }
       .manager-config .field { max-width: none; }
-      .assignee-options { grid-template-columns: 1fr; }
+      .assignee-options { grid-template-columns: minmax(0, 1fr); gap: 5px; max-height: 132px; padding: 7px; }
+      .assignee-option { min-height: 38px; padding: 7px 9px; font-size: 12px; }
+      #task-dialog[open] { width: calc(100vw - 20px); max-height: calc(100vh - 20px); max-height: calc(100svh - 20px); }
+      #task-dialog .dialog-head { flex: 0 0 auto; padding: 12px 15px; }
+      #task-dialog .dialog-form { gap: 10px; padding: 12px; }
+      #task-dialog .dialog-actions { position: sticky; bottom: -12px; z-index: 1; padding: 10px 0 2px; background: #fff; }
       .section-heading { align-items: flex-start; }
       .section-actions { width: 100%; }
       .section-actions .button { flex: 1 1 130px; }
@@ -257,6 +275,123 @@
       .teacher-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .teacher-request-card { grid-template-columns: auto 1fr; }
       .teacher-request-status { grid-column: 2; justify-self: start; }
+    }
+    :root {
+      --wine: #812d49;
+      --wine-dark: #4b203f;
+      --ink: #252b3b;
+      --muted: #68758a;
+      --line: #e4e6ef;
+      --canvas: #f5f6fa;
+      --green: #238a75;
+      --amber: #d9972f;
+      --red: #cf5962;
+      --blue: #5879c8;
+      --coral: #e77968;
+    }
+    body {
+      background:
+        radial-gradient(ellipse at 2% 0%, #e7796812, transparent 30rem),
+        radial-gradient(ellipse at 98% 8%, #5879c80f, transparent 28rem),
+        var(--canvas);
+    }
+    .topbar { background: linear-gradient(108deg, #432039, #702943 54%, #943d50); }
+    .brand-mark { border-color: #f0c974; box-shadow: 0 3px 12px #1f122d40; }
+    .manager-avatar { color: #4b203f; background: linear-gradient(135deg, #f8d98d, #f0b955); }
+    .top-link { border: 1px solid #ffffff30; background: #ffffff19; }
+    .top-link:hover { background: #ffffff2e; }
+    .button, .top-link {
+      display: inline-flex;
+      min-height: 38px;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border-radius: 10px;
+      line-height: 1.25;
+      transition: transform .16s ease, box-shadow .16s ease, filter .16s ease, background-color .16s ease;
+    }
+    .button:not(:disabled):hover { filter: brightness(.97); box-shadow: 0 4px 11px #3a233a1f; }
+    .button:active:not(:disabled) { transform: translateY(1px); }
+    .button-primary, .small-button.primary {
+      background: linear-gradient(135deg, #8b354b, #612342);
+      box-shadow: 0 3px 8px #61234226;
+    }
+    .button-primary:hover, .small-button.primary:hover { background: linear-gradient(135deg, #762b43, #4b203f); }
+    .button-green, .small-button.good { background: linear-gradient(135deg, #2d9a83, #1d7667); }
+    .button-green:hover { background: #1b6d60; }
+    .button-light { border: 1px solid #e1e3ec; background: #fff; }
+    .button-light:hover { background: #f7f3f8; }
+    .button-danger, .small-button.danger { color: #a82f42; background: #fff0f2; }
+    .page-heading h2, .section-heading h3 { color: #30243d; }
+    .role-intro {
+      border-color: #e8e1eb;
+      border-left-color: var(--coral);
+      border-radius: 15px;
+      background: linear-gradient(115deg, #fff 0%, #fff8f4 100%);
+      box-shadow: 0 5px 16px #39283f0d;
+    }
+    #tracker-screen[data-role="director"] .role-intro { border-left-color: #e2a840; }
+    #tracker-screen[data-role="manager"] .role-intro { border-left-color: #5879c8; }
+    #tracker-screen[data-role="teacher"] .role-intro { border-left-color: #208b7d; }
+    .role-pill { color: #752c49; background: #f9eaf0; }
+    .kpi, .teacher-summary-card, .calendar-stat {
+      border-color: #e5e3ed;
+      border-radius: 14px;
+      box-shadow: 0 3px 10px #3829440b;
+    }
+    .kpi { border-top: 3px solid var(--coral); background: linear-gradient(145deg, #fff, #fff9f7); }
+    .kpi:nth-child(4n + 2) { border-top-color: #e2a840; background: linear-gradient(145deg, #fff, #fffaf0); }
+    .kpi:nth-child(4n + 3) { border-top-color: #208b7d; background: linear-gradient(145deg, #fff, #f5fcf9); }
+    .kpi:nth-child(4n + 4) { border-top-color: #5879c8; background: linear-gradient(145deg, #fff, #f6f8ff); }
+    .kpi-label, .teacher-summary-label, .calendar-stat-label { color: #68758a; }
+    .kpi-value, .teacher-summary-value { color: #30243d; }
+    .toolbar, .manager-config {
+      border-color: #e5e3ed;
+      border-radius: 15px;
+      box-shadow: 0 3px 10px #3829440b;
+    }
+    .table-wrap {
+      border-color: #e4e2eb;
+      border-radius: 15px;
+      box-shadow: 0 5px 16px #39283f0d;
+    }
+    th { color: #51465d; background: #f6f1f7; border-bottom-color: #e8e0ec; }
+    tbody tr:nth-child(even) { background: #fdfbfe; }
+    tbody tr:hover { background: #fff4f1; }
+    .teacher-panel {
+      border-color: #e5e3ed;
+      border-radius: 16px;
+      box-shadow: 0 5px 16px #39283f0d;
+    }
+    .teacher-panel-heading { background: linear-gradient(100deg, #fff8f5, #fff); }
+    .dialog-head { background: linear-gradient(112deg, #55213f, #87364c 68%, #a34a55); }
+    dialog {
+      border: 1px solid #ffffffc7;
+      border-radius: 19px;
+      box-shadow: 0 28px 80px #231b2b55;
+    }
+    dialog::backdrop { background: #231b2b99; backdrop-filter: blur(7px); }
+    .field input, .field select, .field textarea {
+      border-color: #dce0ea;
+      border-radius: 10px;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: #b96c79;
+      box-shadow: 0 0 0 4px #e779681f;
+    }
+    .calendar-stat { border-top: 3px solid #e77968; background: #fffafa; }
+    .calendar-stat.is-leave { border-top-color: #5879c8; background: #f8faff; }
+    .calendar-stat.is-overtime { border-top-color: #e2a840; background: #fffaf0; }
+    .calendar-stat.is-total { border-top-color: #208b7d; background: #f4fbf8; }
+    .calendar-stat.is-leave .calendar-stat-value { color: #5879c8; }
+    .calendar-stat.is-overtime .calendar-stat-value { color: #a16d17; }
+    .calendar-stat.is-total .calendar-stat-value { color: #208b7d; }
+    .calendar-grid { border-color: #e4e2eb; border-radius: 14px; }
+    .toast { border: 1px solid #ffffff80; border-radius: 13px; box-shadow: 0 12px 30px #2f1f3355; }
+    @media (max-width: 700px) {
+      .kpi { padding: 11px 12px; }
+      .kpi-value { font-size: 21px; }
+      .button { min-height: 40px; }
     }
   </style>
 </head>
@@ -305,7 +440,7 @@
 
       <section class="toolbar" aria-label="Bộ lọc và thao tác">
         <div class="filters">
-          <div id="priority-filter-field" class="field"><label for="filter-priority">Loại nhiệm vụ</label><select id="filter-priority"><option value="">Tất cả</option><option value="1">Nhiệm vụ tuần · P1</option><option value="2">Nhiệm vụ tuần · P2</option><option value="3">Việc cá nhân · P3, ưu tiên trước</option><option value="4">Việc cá nhân · P4, ưu tiên sau</option></select></div>
+          <div id="priority-filter-field" class="field"><label for="filter-priority">Loại nhiệm vụ</label><select id="filter-priority"><option value="">Tất cả</option><option value="1">Nhiệm vụ tuần · Giám đốc giao</option><option value="2">Nhiệm vụ tuần · Manager giao</option><option value="3">Việc cá nhân · ưu tiên trước</option><option value="4">Việc cá nhân · có thể làm sau</option></select></div>
           <div id="teacher-filter-field" class="field"><label for="filter-teacher">Trợ giảng</label><select id="filter-teacher"><option value="">Tất cả</option></select></div>
           <div class="field"><label for="filter-status">Trạng thái</label><select id="filter-status"><option value="">Tất cả</option><option value="NEW">Mới giao</option><option value="IN_PROGRESS">Đang làm</option><option value="PENDING">Chờ duyệt</option><option value="COMPLETED">Hoàn thành</option><option value="OVERDUE">Quá hạn</option></select></div>
           <div class="field"><label for="task-search">Tìm nhiệm vụ</label><input id="task-search" placeholder="Tên việc, người giao..."></div>
@@ -339,7 +474,7 @@
 
       <section id="management-section">
       <div class="section-heading">
-      <div><h3 id="management-heading">Điều phối công việc &amp; duyệt đơn</h3><p id="management-description">Giao việc, xử lý yêu cầu hoàn thành và duyệt đơn nghỉ / tăng ca.</p><p class="muted">P1/P2 là nhiệm vụ tuần; P3/P4 là việc cá nhân.</p></div>
+      <div><h3 id="management-heading">Điều phối công việc &amp; duyệt đơn</h3><p id="management-description">Giao việc, xử lý yêu cầu hoàn thành và duyệt đơn nghỉ / tăng ca.</p></div>
         <div id="director-schedule-actions" class="section-actions">
           <button id="show-approved-calendar" class="button button-light" type="button">Lịch nghỉ / tăng ca đã duyệt</button>
           <button id="export-schedules" class="button button-light" type="button">Xuất tất cả đơn</button>
@@ -375,7 +510,7 @@
       <section id="manager-personal-section" class="teacher-panel" hidden>
         <div class="teacher-panel-heading">
           <h3>Việc cá nhân</h3>
-          <p>Việc cá nhân P3 cần ưu tiên trước; P4 có thể làm sau. Tự đánh dấu hoàn thành, không cần duyệt.</p>
+          <p>Việc cần ưu tiên trước sẽ được thực hiện trước; các việc còn lại có thể làm sau. Tự đánh dấu hoàn thành, không cần duyệt.</p>
         </div>
         <div id="manager-personal-tasks" class="teacher-card-list"></div>
       </section>
@@ -402,8 +537,8 @@
       <div id="task-personal-priority-field" class="field full" hidden>
         <label for="task-personal-priority">Mức ưu tiên việc cá nhân</label>
         <select id="task-personal-priority">
-          <option value="3">P3 · Việc cá nhân, cần làm trước</option>
-          <option value="4">P4 · Việc cá nhân, có thể làm sau</option>
+          <option value="3">Việc cá nhân · cần làm trước</option>
+          <option value="4">Việc cá nhân · có thể làm sau</option>
         </select>
         <span class="muted">Việc cá nhân vẫn là công việc nội bộ; bạn tự chọn thứ tự ưu tiên.</span>
       </div>
@@ -474,13 +609,33 @@
       let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
       const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
       const localDate = value => {
-        const parts = String(value || '').slice(0, 10).split('-').map(Number);
-        return parts.length === 3 && parts[0] && parts[1] && parts[2] ? new Date(parts[0], parts[1] - 1, parts[2]) : null;
+        if (value instanceof Date && Number.isFinite(value.getTime())) {
+          return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+        }
+        const raw = String(value || '').trim();
+        const parts = raw.slice(0, 10).split('-').map(Number);
+        if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+          return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+        const parsed = new Date(raw);
+        return Number.isFinite(parsed.getTime()) ? new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()) : null;
       };
       const dateInputValue = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const dateLabel = value => {
         const date = localDate(value);
         return date ? date.toLocaleDateString('vi-VN') : '—';
+      };
+      const timeLabel = value => {
+        if (value instanceof Date && Number.isFinite(value.getTime())) {
+          return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
+        }
+        const raw = String(value || '').trim();
+        const timeOnly = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+        if (timeOnly) return `${timeOnly[1].padStart(2, '0')}:${timeOnly[2]}`;
+        const parsed = new Date(raw);
+        return Number.isFinite(parsed.getTime())
+          ? `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`
+          : '';
       };
       const requestTypeLabel = type => type === 'LEAVE' ? 'Nghỉ' : 'Tăng ca';
       const approvedRequests = () => requests
@@ -563,8 +718,8 @@
         if (task.status !== 'COMPLETED') {
           const deadline = localDate(task.deadline);
           if (deadline) {
-            const [hour, minute] = String(task.deadlineTime || '23:59').split(':').map(Number);
-            deadline.setHours(hour || 0, minute || 0, 0, 0);
+            const [hour, minute] = (timeLabel(task.deadlineTime) || '23:59').split(':').map(Number);
+            deadline.setHours(hour, minute, 0, 0);
             if (deadline < new Date() && task.status !== 'PENDING') return 'OVERDUE';
           }
         }
@@ -595,35 +750,57 @@
         const assigned = (task.assignees || []).includes(session.actor.name);
         const personal = Number(task.priority) >= 3;
         const buttons = [];
+        const canDelete = canDeleteTask(task);
+        if (['director', 'manager'].includes(role)) {
+          if (task.status === 'PENDING') {
+            buttons.push(`<button class="small-button good" data-task-action="approve" data-id="${escapeHtml(task.id)}">Duyệt</button>`);
+            buttons.push(`<button class="small-button danger" data-task-action="reject" data-id="${escapeHtml(task.id)}">Trả lại</button>`);
+          } else {
+            buttons.push(`<span class="muted">${task.status === 'NEW' ? 'Chờ trợ giảng nhận việc' : task.status === 'IN_PROGRESS' ? 'Trợ giảng đang thực hiện' : task.status === 'COMPLETED' ? 'Đã hoàn thành' : 'Không có thao tác'}</span>`);
+          }
+        }
+        if (canDelete) buttons.push(`<button class="small-button delete-task-button" data-task-action="delete" data-id="${escapeHtml(task.id)}">Xóa task</button>`);
         if (assigned && role !== 'director' && personal && task.status !== 'COMPLETED') buttons.push(`<button class="small-button good" data-task-action="complete-personal" data-id="${escapeHtml(task.id)}">Đánh dấu hoàn thành</button>`);
         if (assigned && role !== 'director' && !personal && task.status === 'NEW') buttons.push(`<button class="small-button primary" data-task-action="accept" data-id="${escapeHtml(task.id)}">Nhận việc</button>`);
         if (assigned && role !== 'director' && !personal && task.status === 'IN_PROGRESS') buttons.push(`<button class="small-button good" data-task-action="submit" data-id="${escapeHtml(task.id)}">Yêu cầu hoàn thành</button>`);
         if (assigned && role !== 'director' && task.status !== 'COMPLETED') buttons.push(`<button class="small-button" data-task-action="note" data-id="${escapeHtml(task.id)}">Cập nhật ghi chú</button>`);
-        if (assigned && personal && task.status === 'COMPLETED') return '<span class="muted">Đã hoàn thành cá nhân</span>';
+        if (assigned && personal && task.status === 'COMPLETED' && !canDelete) return '<span class="muted">Đã hoàn thành cá nhân</span>';
         return buttons.length ? `<div class="task-actions">${buttons.join('')}</div>` : `<span class="muted">Không có thao tác</span>`;
       }
 
-      function dayOrdinal(value) {
-        const parts = String(value || '').slice(0, 10).split('-').map(Number);
-        if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return null;
-        return Date.UTC(parts[0], parts[1] - 1, parts[2]) / 86400000;
+      function canDeleteTask(task) {
+        const role = actorRole();
+        const isPersonalTask = Number(task.priority) >= 3 && Number(task.priority) <= 4;
+        const assignedToActor = (task.assignees || []).includes(session.actor.name);
+        return role === 'director'
+          || (role === 'manager' && Number(task.priority) >= 2 && task.createdBy === session.actor.name)
+          || (role === 'teacher' && isPersonalTask && assignedToActor && task.createdBy === session.actor.name);
       }
 
-      function taskTimelineMarkup(task, taskList) {
-        const range = taskList.flatMap(item => [dayOrdinal(item.startDate || item.deadline), dayOrdinal(item.deadline)]).filter(Number.isFinite);
+      function dayOrdinal(value) {
+        const date = localDate(value);
+        return date ? Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000 : null;
+      }
+
+      function taskTimelineMarkup(task) {
         const start = dayOrdinal(task.startDate || task.deadline);
         const end = dayOrdinal(task.deadline);
-        if (start === null || end === null || !range.length) return '';
-        const min = Math.min(...range);
-        const max = Math.max(...range);
-        const total = Math.max(1, max - min + 1);
-        const left = Math.max(0, Math.min(100, ((start - min) / total) * 100));
-        const width = Math.max(2, Math.min(100 - left, ((Math.max(start, end) - start + 1) / total) * 100));
+        if (start === null || end === null) return '';
+        const duration = Math.max(1, end - start + 1);
+        const firstWeekday = (new Date(start * 86400000).getUTCDay() + 6) % 7;
         const status = getStatus(task);
         const barClass = status === 'COMPLETED' ? 'is-complete' : status === 'PENDING' ? 'is-pending' : status === 'OVERDUE' ? 'is-overdue' : '';
-        return `<div class="gantt-inline" aria-label="Thời gian thực hiện: ${dateLabel(task.startDate || task.deadline)} đến ${dateLabel(task.deadline)}">
-          <div class="gantt-dates"><span>Bắt đầu ${dateLabel(task.startDate || task.deadline)}</span><span>Hạn ${dateLabel(task.deadline)}</span></div>
-          <div class="gantt-track" aria-hidden="true"><span class="gantt-bar ${barClass}" style="left:${left}%;width:${width}%"></span></div>
+        const weekdayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+        const days = weekdayLabels.map((_, index) => {
+          const offset = (index - firstWeekday + 7) % 7;
+          const active = offset < Math.min(duration, 7);
+          return `<span class="${active ? 'is-active' : ''}"></span>`;
+        }).join('');
+        const deadlineTime = timeLabel(task.deadlineTime);
+        return `<div class="gantt-inline" aria-label="Thời gian thực hiện: ${dateLabel(task.startDate || task.deadline)} đến ${dateLabel(task.deadline)}${deadlineTime ? ` ${deadlineTime}` : ''}">
+          <div class="gantt-dates"><span>Bắt đầu ${dateLabel(task.startDate || task.deadline)}</span><span>Hạn ${dateLabel(task.deadline)}${deadlineTime ? ` · ${deadlineTime}` : ''}</span></div>
+          <div class="gantt-day-labels" aria-hidden="true">${weekdayLabels.map(day => `<span>${day}</span>`).join('')}</div>
+          <div class="gantt-days ${barClass}" aria-hidden="true">${days}</div>
         </div>`;
       }
 
@@ -696,14 +873,14 @@
         $('teacher-filter-field').hidden = role === 'teacher';
         $('management-heading').textContent = role === 'director' ? 'Phân công & duyệt đơn' : 'Giao & phân công task đội ngũ';
         $('management-description').textContent = role === 'director'
-          ? 'Giao nhiệm vụ tuần P1, duyệt hoàn thành và quyết định đơn nghỉ / tăng ca. Thanh timeline hiển thị ngày bắt đầu đến deadline.'
-          : 'Giao nhiệm vụ tuần P2 cho trợ giảng và theo dõi tiến độ. Thanh timeline hiển thị ngày bắt đầu đến deadline.';
+          ? 'Giao nhiệm vụ tuần, duyệt hoàn thành và quyết định đơn nghỉ / tăng ca.'
+          : 'Giao nhiệm vụ tuần cho trợ giảng và theo dõi tiến độ.';
         $('director-schedule-actions').hidden = role === 'manager';
         $('accepted-heading').textContent = role === 'director' ? 'Kiểm tra task trợ giảng đã nhận' : 'Duyệt hoàn thành task';
         $('accepted-description').textContent = role === 'director'
-          ? 'Theo dõi tiến độ theo thanh timeline và duyệt hoặc trả lại task trợ giảng gửi yêu cầu hoàn thành.'
-          : 'Kiểm tra task theo thanh timeline và duyệt yêu cầu hoàn thành; Manager không duyệt đơn nghỉ / tăng ca.';
-        $('create-task').textContent = role === 'director' ? '＋ Giao nhiệm vụ tuần P1' : role === 'manager' ? '＋ Nhiệm vụ tuần P2 / việc cá nhân' : '＋ Thêm việc cá nhân';
+          ? 'Theo dõi tiến độ, duyệt hoàn thành hoặc trả task để trợ giảng cập nhật.'
+          : 'Kiểm tra task chờ duyệt và trả task để trợ giảng cập nhật; Manager không duyệt đơn nghỉ / tăng ca.';
+        $('create-task').textContent = role === 'director' ? '＋ Giao nhiệm vụ tuần' : role === 'manager' ? '＋ Giao task tuần / việc cá nhân' : '＋ Thêm việc cá nhân';
         const overdueCount = tasks.filter(task => getStatus(task) === 'OVERDUE').length;
         $('kpi-total').textContent = tasks.length;
         const pendingTasks = tasks.filter(task => task.status === 'PENDING').length;
@@ -747,10 +924,10 @@
         const taskRows = managedTasks.map(task => {
           const status = getStatus(task);
           return `<tr>
-            <td data-label="Loại"><span class="priority priority-${Number(task.priority)}">${Number(task.priority) <= 2 ? `Nhiệm vụ tuần · P${Number(task.priority)}` : `Việc cá nhân · P${Number(task.priority)}`}</span></td>
-            <td data-label="Công việc"><div class="task-title">${escapeHtml(task.title)}</div>${taskTimelineMarkup(task, filtered)}<div class="muted">${escapeHtml(task.createdBy)} giao${task.note ? ` · ${escapeHtml(task.note)}` : ''}</div>${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
+            <td data-label="Loại"><span class="priority priority-${Number(task.priority)}">${Number(task.priority) <= 2 ? 'Nhiệm vụ tuần' : `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}`}</span></td>
+            <td data-label="Công việc"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy)} giao${task.note ? ` · ${escapeHtml(task.note)}` : ''}</div>${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
             <td data-label="Trợ giảng"><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || 'Việc cá nhân')}</div></td>
-            <td data-label="Hạn"><strong>${dateLabel(task.deadline)} ${escapeHtml(task.deadlineTime || '')}</strong><div class="muted">${escapeHtml(task.punishment || (Number(task.stars) ? `Đánh giá ${task.stars}/5` : ''))}</div></td>
+            <td data-label="Hạn">${taskTimelineMarkup(task)}<div class="muted">${escapeHtml(task.punishment || (Number(task.stars) ? `Đánh giá ${task.stars}/5` : ''))}</div></td>
             <td data-label="Trạng thái"><span class="status-pill status-${status}">${statusLabel(status)}</span></td>
             <td data-label="Thao tác">${taskActionMarkup(task)}</td>
           </tr>`;
@@ -790,14 +967,14 @@
         $('accepted-task-body').innerHTML = acceptedTasks.length ? acceptedTasks.map(task => {
           const status = getStatus(task);
           return `<tr>
-            <td data-label="Task"><div class="task-title">${escapeHtml(task.title)}</div>${taskTimelineMarkup(task, acceptedTasks)}<div class="muted"><span class="priority priority-${Number(task.priority)}">P${Number(task.priority)}</span></div></td>
+            <td data-label="Task"><div class="task-title">${escapeHtml(task.title)}</div></td>
             <td data-label="Trợ giảng nhận việc"><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || '—')}</div></td>
             <td data-label="Người giao">${escapeHtml(task.createdBy)}</td>
-            <td data-label="Deadline"><strong>${dateLabel(task.deadline)} ${escapeHtml(task.deadlineTime || '')}</strong></td>
+            <td data-label="Deadline">${taskTimelineMarkup(task)}</td>
             <td data-label="Trạng thái"><span class="status-pill status-${status}">${statusLabel(status)}</span></td>
             <td data-label="Ghi chú tiến độ">${escapeHtml(task.reviewNote || task.note || '—')}</td>
             <td data-label="Hoàn thành">${['director', 'manager'].includes(role)
-              ? `<label class="completion-control"><input type="checkbox" data-complete-task="${escapeHtml(task.id)}" aria-label="Đánh dấu hoàn thành: ${escapeHtml(task.title)}" ${task.status === 'COMPLETED' ? 'checked disabled' : task.status !== 'PENDING' ? 'disabled' : ''}><span>${task.status === 'COMPLETED' ? 'Đã xong' : task.status === 'PENDING' ? 'Duyệt hoàn thành' : 'Chờ trợ giảng gửi yêu cầu'}</span></label>${task.status === 'PENDING' ? `<button class="small-button danger" data-task-action="reject" data-id="${escapeHtml(task.id)}">Trả lại</button>` : ''}`
+              ? `<div class="completion-actions"><label class="completion-control"><input type="checkbox" data-complete-task="${escapeHtml(task.id)}" aria-label="Đánh dấu hoàn thành: ${escapeHtml(task.title)}" ${task.status === 'COMPLETED' ? 'checked disabled' : task.status !== 'PENDING' ? 'disabled' : ''}><span>${task.status === 'COMPLETED' ? 'Đã xong' : task.status === 'PENDING' ? 'Duyệt hoàn thành' : 'Chờ trợ giảng gửi yêu cầu'}</span></label>${task.status === 'PENDING' ? `<button class="small-button danger" data-task-action="reject" data-id="${escapeHtml(task.id)}">Trả lại task</button>` : ''}${canDeleteTask(task) ? `<button class="small-button delete-task-button" data-task-action="delete" data-id="${escapeHtml(task.id)}">Xóa task</button>` : ''}</div>`
               : `<span class="muted">${task.status === 'PENDING' ? 'Chờ Giám đốc / Manager duyệt' : task.status === 'COMPLETED' ? 'Đã hoàn thành' : 'Chỉ quản lý đánh dấu hoàn thành'}</span>`}</td>
           </tr>`;
         }).join('') : '<tr><td colspan="7"><div class="empty-state"><strong>Chưa có task được tiếp nhận</strong>Các task sẽ xuất hiện tại đây sau khi trợ giảng nhận việc.</div></td></tr>';
@@ -808,22 +985,22 @@
         $('manager-personal-tasks').innerHTML = managerPersonalTasks.length ? managerPersonalTasks.map(task => {
           const status = getStatus(task);
           return `<article class="teacher-task-card">
-            <div class="teacher-task-top"><div class="teacher-task-title">${escapeHtml(task.title)}</div><span class="priority priority-${Number(task.priority)}">Việc cá nhân · P${Number(task.priority)} · Ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}</span><span class="status-pill status-${status}">${statusLabel(status)}</span></div>
-            ${taskTimelineMarkup(task, managerPersonalTasks)}
-            <div class="teacher-task-meta"><span>Deadline: ${dateLabel(task.deadline)} ${escapeHtml(task.deadlineTime || '')}</span><span>Tạo bởi: ${escapeHtml(task.createdBy)}</span></div>
+            <div class="teacher-task-top"><div class="teacher-task-title">${escapeHtml(task.title)}</div><span class="priority priority-${Number(task.priority)}">Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}</span><span class="status-pill status-${status}">${statusLabel(status)}</span></div>
+            <div class="teacher-task-meta"><span>Tạo bởi: ${escapeHtml(task.createdBy)}</span></div>
+            ${taskTimelineMarkup(task)}
             ${task.note ? `<div class="teacher-task-note">${escapeHtml(task.note)}</div>` : ''}
             ${task.reviewNote ? `<div class="teacher-task-note">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}
             <div>${taskActionMarkup(task)}</div>
           </article>`;
-        }).join('') : '<div class="empty-state"><strong>Chưa có việc cá nhân P3/P4</strong>Dùng “Giao / tự tạo task”, không chọn người nhận và tự chọn mức ưu tiên.</div>';
+        }).join('') : '<div class="empty-state"><strong>Chưa có việc cá nhân</strong>Dùng “Giao / tự tạo task”, không chọn người nhận và tự chọn mức ưu tiên.</div>';
 
         $('teacher-task-cards').innerHTML = filtered.length ? filtered.map(task => {
           const status = getStatus(task);
           const personal = Number(task.priority) >= 3;
           return `<article class="teacher-task-card">
-            <div class="teacher-task-top"><div class="teacher-task-title">${escapeHtml(task.title)}</div><span class="priority priority-${Number(task.priority)}">${personal ? `Việc cá nhân · P${Number(task.priority)} · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}` : `Nhiệm vụ tuần · P${Number(task.priority)}`}</span><span class="status-pill status-${status}">${statusLabel(status)}</span></div>
-            <div class="teacher-task-meta"><span>Hạn: ${dateLabel(task.deadline)} ${escapeHtml(task.deadlineTime || '')}</span><span>${personal ? 'Việc cá nhân nội bộ' : `Giao bởi: ${escapeHtml(task.createdBy)}`}</span><span>${escapeHtml(task.punishment || '')}</span></div>
-            ${taskTimelineMarkup(task, filtered)}
+            <div class="teacher-task-top"><div class="teacher-task-title">${escapeHtml(task.title)}</div><span class="priority priority-${Number(task.priority)}">${personal ? `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}` : 'Nhiệm vụ tuần'}</span><span class="status-pill status-${status}">${statusLabel(status)}</span></div>
+            <div class="teacher-task-meta"><span>${personal ? 'Việc cá nhân nội bộ' : `Giao bởi: ${escapeHtml(task.createdBy)}`}</span><span>${escapeHtml(task.punishment || '')}</span></div>
+            ${taskTimelineMarkup(task)}
             ${task.note ? `<div class="teacher-task-note">${escapeHtml(task.note)}</div>` : ''}
             ${task.reviewNote ? `<div class="teacher-task-note">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}
             <div>${taskActionMarkup(task)}</div>
@@ -897,10 +1074,10 @@
         });
         updatePersonalPriorityVisibility();
         $('task-dialog-title').textContent = role === 'director'
-          ? 'Giao nhiệm vụ tuần · P1'
+          ? 'Giao nhiệm vụ tuần'
           : role === 'manager'
-            ? 'Giao nhiệm vụ tuần · P2 hoặc thêm việc cá nhân'
-            : 'Ghi việc cá nhân P3/P4';
+            ? 'Giao nhiệm vụ tuần hoặc thêm việc cá nhân'
+            : 'Ghi việc cá nhân';
         $('task-dialog').showModal();
       }
 
@@ -954,11 +1131,15 @@
         if (!button) return;
         const action = button.dataset.taskAction;
         const taskId = button.dataset.id;
+        const selectedTask = tasks.find(item => item.id === taskId);
+        if (action === 'delete' && !window.confirm(`Xóa nhiệm vụ "${selectedTask?.title || ''}"? Thao tác này không thể hoàn tác.`)) return;
         button.disabled = true;
         try {
           if (action === 'accept') await apiCall('trackerAcceptTask', { token, taskId });
           else if (action === 'submit') await apiCall('trackerRequestCompletion', { token, taskId });
           else if (action === 'complete-personal') await apiCall('trackerCompletePersonalTask', { token, taskId });
+          else if (action === 'approve') await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '', stars: 0 });
+          else if (action === 'delete') await apiCall('trackerDeleteTask', { token, taskId });
           else if (action === 'note') {
             const task = tasks.find(item => item.id === taskId);
             const note = window.prompt('Cập nhật ghi chú cho nhiệm vụ:', task?.note || '');
@@ -970,7 +1151,7 @@
             await apiCall('trackerReviewTask', { token, taskId, decision: action, note, stars: 0 });
           }
           await refresh();
-          notify(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'submit' ? 'Đã gửi yêu cầu hoàn thành để duyệt.' : action === 'complete-personal' ? 'Đã hoàn thành task cá nhân.' : action === 'reject' ? 'Đã trả task để trợ giảng cập nhật.' : 'Đã cập nhật ghi chú.');
+          notify(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'submit' ? 'Đã gửi yêu cầu hoàn thành để duyệt.' : action === 'complete-personal' ? 'Đã hoàn thành task cá nhân.' : action === 'approve' ? 'Đã duyệt task hoàn thành.' : action === 'delete' ? 'Đã xóa nhiệm vụ.' : action === 'reject' ? 'Đã trả task để trợ giảng cập nhật.' : 'Đã cập nhật ghi chú.');
         } catch (error) {
           notify(error.message);
         } finally {
