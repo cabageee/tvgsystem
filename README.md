@@ -14,7 +14,7 @@ Mỗi mục điều hướng có một URL HTML riêng và chỉ tải nội dun
 - `levels.html` — Quản lý cấp độ lớp
 - `teacher-attendance.html` — Điểm danh lớp của trợ giảng
 - `change-password.html` — Đổi mật khẩu
-- `executive-tracker.html` — Tracker Gantt 7 ngày với phân quyền Giám đốc/Manager/Trợ giảng
+- `executive-tracker.html` — Task Tracking với phân quyền Giám đốc/Manager/Trợ giảng
 
 Trong giao diện trợ giảng, nút **Điểm danh hôm nay** trên thẻ học viên ghi ngày hiện tại vào buổi còn trống tiếp theo. Trợ giảng không cần mở phần chỉnh sửa ngày hoặc chuyển bàn phím sang chế độ số; nút chỉ khả dụng khi học viên chưa được điểm danh trong ngày và còn buổi học.
 
@@ -28,7 +28,7 @@ Giữ các file HTML, `app.js` và `app.css` trong cùng thư mục khi triển 
 
 ## Tracker điều hành
 
-Trang `executive-tracker.html` dùng chung Google Apps Script/Google Sheet, có Gantt theo 7 ngày (Thứ 2–Chủ Nhật), bộ lọc priority 1–4, trợ giảng và trạng thái, đồng thời sắp xếp priority trước rồi deadline.
+Trang `executive-tracker.html` dùng chung Google Apps Script/Google Sheet. Giao diện có bảng điều phối task và duyệt đơn nghỉ/tăng ca, cùng bảng theo dõi các task trợ giảng đã nhận; hỗ trợ lọc priority, trợ giảng và trạng thái.
 
 Apps Script source đã được cập nhật trong `tracker-backend.gs.txt`. Thay toàn bộ mã dự án Apps Script hiện tại bằng nội dung file này, lưu, chọn hàm `initDatabase` và bấm **Run** một lần để xác nhận quyền truy cập và chuẩn hóa các tab, rồi triển khai **New version** của Web app; giữ nguyên URL `/exec`. `initDatabase` tạo các tab còn thiếu. API đọc dữ liệu không tự định dạng/ghi lại toàn bộ sheet mỗi lần tải; nếu thiếu tab, API sẽ trả lỗi nêu rõ tên tab và hướng dẫn khởi tạo.
 

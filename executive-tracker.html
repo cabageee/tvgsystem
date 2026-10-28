@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#761e2b">
-  <meta name="description" content="Bảng theo dõi công việc theo quyền Giám đốc, Manager hoặc trợ giảng Thiên Vy Global.">
+  <meta name="description" content="Task Tracking: điều phối công việc, duyệt đơn nghỉ / tăng ca và theo dõi task trợ giảng Thiên Vy Global.">
   <link rel="manifest" href="manifest.webmanifest">
-  <title>Gantt Tracker | Thiên Vy Global</title>
+  <title>Task Tracking | Thiên Vy Global</title>
   <style>
     :root {
       color-scheme: light;
@@ -53,10 +53,6 @@
     .button-light:hover { background: #e1e6ed; }
     .button-danger { color: #a52835; background: #fff0f1; }
     main { padding-top: 18px; padding-bottom: 48px; }
-    .login-screen { min-height: calc(100vh - 74px); display: grid; place-items: center; padding: 24px; }
-    .login-card { width: min(420px, 100%); padding: 25px; border: 1px solid var(--line); border-radius: 20px; background: white; box-shadow: 0 18px 55px #18223516; }
-    .login-card h2 { margin: 0; font-size: 21px; }
-    .login-card p { color: var(--muted); font-size: 12px; line-height: 1.55; }
     .field { display: grid; gap: 5px; }
     .field label { color: #5a6678; font-size: 10px; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; }
     .field input, .field select, .field textarea { width: 100%; min-width: 0; border: 1px solid #dce2e9; border-radius: 9px; padding: 10px; outline: none; color: var(--ink); background: white; font-size: 12px; }
@@ -77,11 +73,8 @@
     .toolbar { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 11px; margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: white; }
     .filters { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: 8px; flex: 1; }
     .toolbar-actions { display: flex; flex-wrap: wrap; gap: 7px; }
-    .week-control { display: flex; align-items: center; gap: 6px; }
-    .week-control input { width: 145px; }
-    .week-control .button { padding: 9px 10px; }
     .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 3px 12px #17203308; }
-    table { width: 100%; min-width: 1260px; border-collapse: separate; border-spacing: 0; text-align: left; }
+    table { width: 100%; min-width: 850px; border-collapse: separate; border-spacing: 0; text-align: left; }
     th { position: sticky; top: 0; z-index: 1; padding: 10px 9px; color: #697488; background: #f7f8fa; border-bottom: 1px solid var(--line); font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
     td { padding: 10px 9px; border-bottom: 1px solid #edf0f4; vertical-align: middle; font-size: 11px; }
     tbody tr:last-child td { border-bottom: 0; }
@@ -97,16 +90,12 @@
     .status-REJECTED { color: #a42b37; background: #ffeaec; }
     .task-title { max-width: 240px; font-weight: 850; line-height: 1.35; }
     .muted { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.4; }
-    .assignee-list { max-width: 145px; line-height: 1.5; }
-    .gantt { min-width: 270px; }
-    .day-labels, .gantt-track { display: grid; grid-template-columns: repeat(7, minmax(20px, 1fr)); gap: 3px; }
-    .day-labels { margin-bottom: 5px; color: #7d8796; text-align: center; font-size: 8px; font-weight: 800; }
-    .gantt-track { position: relative; height: 20px; padding: 2px; border-radius: 5px; background: repeating-linear-gradient(90deg, #f1f3f6 0, #f1f3f6 calc(14.2857% - 1px), #e2e7ed calc(14.2857% - 1px), #e2e7ed 14.2857%); }
-    .gantt-bar { z-index: 1; align-self: stretch; min-width: 4px; border-radius: 4px; background: #6390cc; }
-    .gantt-bar.overdue { background: var(--red); }
-    .gantt-bar.PENDING { background: #dc9a20; }
-    .gantt-bar.COMPLETED { background: var(--green); }
-    .task-actions { display: flex; flex-wrap: wrap; gap: 5px; min-width: 165px; }
+    .assignee-list { max-width: 190px; line-height: 1.5; }
+    .task-actions { display: flex; flex-wrap: wrap; gap: 5px; min-width: 130px; }
+    .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 20px 0 9px; }
+    .section-heading h3 { margin: 0; font-size: 15px; }
+    .section-heading p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+    .table-wrap + .section-heading { margin-top: 24px; }
     .small-button { border: 0; border-radius: 7px; padding: 7px 8px; color: #394659; background: #eef1f5; font-size: 9px; font-weight: 850; }
     .small-button:hover { background: #dfe5ec; }
     .small-button.primary { color: white; background: var(--wine); }
@@ -114,7 +103,6 @@
     .small-button.danger { color: #a52835; background: #fff0f1; }
     .empty-state { padding: 40px 18px; color: var(--muted); text-align: center; }
     .empty-state strong { display: block; margin-bottom: 5px; color: #364255; }
-    .mobile-list { display: none; }
     dialog { width: min(720px, calc(100vw - 24px)); max-height: min(90vh, 780px); padding: 0; border: 0; border-radius: 16px; box-shadow: 0 20px 70px #0005; }
     dialog.wide { width: min(1080px, calc(100vw - 20px)); }
     dialog::backdrop { background: #101723a8; backdrop-filter: blur(3px); }
@@ -134,18 +122,7 @@
     @media (max-width: 900px) {
       .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .filters { grid-template-columns: repeat(2, minmax(125px, 1fr)); }
-      .table-wrap { display: none; }
-      .mobile-list { display: grid; gap: 9px; }
-      .task-card { padding: 13px; border: 1px solid var(--line); border-radius: 13px; background: white; }
-      .card-heading { display: flex; justify-content: space-between; gap: 8px; }
-      .card-title { font-size: 13px; font-weight: 850; line-height: 1.4; }
-      .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-      .card-grid span { display: block; color: var(--muted); font-size: 9px; }
-      .card-grid strong { display: block; margin-top: 3px; font-size: 10px; }
-      .card-gantt { margin-top: 12px; }
-      .card-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-      .card-actions .small-button { flex: 1; }
-      .card-note { width: 100%; margin-top: 9px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 11px; }
+      .table-wrap { display: block; }
     }
     @media (max-width: 560px) {
       .topbar-inner, main { padding-right: 13px; padding-left: 13px; }
@@ -159,7 +136,6 @@
       .filters { grid-template-columns: 1fr 1fr; }
       .toolbar { align-items: stretch; }
       .toolbar-actions > .button { flex: 1; }
-      .week-control input { width: 125px; }
       .dialog-form { grid-template-columns: 1fr; padding: 14px; }
       .dialog-form .full, .dialog-actions { grid-column: auto; }
       .manager-config { align-items: stretch; flex-direction: column; }
@@ -173,46 +149,37 @@
     <div class="topbar-inner">
       <a class="brand" href="index.html" aria-label="Thiên Vy Global — về trang chủ">
         <div class="brand-mark"><img src="Logo Thien Vy.png" alt=""></div>
-        <div><h1>THIÊN VY GLOBAL</h1><p class="subtitle">Gantt task tracker · 7 ngày</p></div>
+        <div><h1>THIÊN VY GLOBAL</h1><p class="subtitle">Task Tracking</p></div>
       </a>
       <div class="top-actions">
-        <div id="manager-box" class="manager-box" hidden><div id="manager-avatar" class="manager-avatar">—</div><div><div class="manager-label">Manager hiện tại</div><div id="manager-name" class="manager-name">Chưa ủy quyền</div></div></div>
-        <button id="schedules-button" class="top-link" type="button" hidden>Xem lịch nghỉ & tăng ca</button>
-        <button id="logout-button" class="top-link" type="button" hidden>Đăng xuất</button>
+        <div id="manager-box" class="manager-box" hidden><div id="manager-avatar" class="manager-avatar">—</div><div><div class="manager-label">Quản Lý Tiến Độ</div><div id="manager-name" class="manager-name">Chưa ủy quyền</div></div></div>
+        <button id="logout-button" class="top-link" type="button" hidden>Về hệ thống</button>
       </div>
     </div>
   </header>
 
   <main>
-    <section id="login-screen" class="login-screen">
-      <div class="login-card">
-        <span class="role-pill" id="login-title">Phiên Tracking</span>
-        <h2 style="margin-top:12px">Chưa có phiên truy cập</h2>
-        <p id="login-description">Tracking sử dụng cùng phiên đăng nhập với hệ thống. Quay lại trang chính để đăng nhập hoặc mở lại đúng giao diện Tracking.</p>
-        <p id="login-error" class="form-error" hidden></p>
-        <a class="button button-primary" href="index.html" style="display:inline-block;margin-top:8px;text-decoration:none">Quay về hệ thống</a>
+    <section id="tracker-error" class="empty-state" role="alert" hidden>
+      <strong id="tracker-error-title">Không thể mở Tracker</strong>
+      <p id="tracker-error-message"></p>
+      <div class="toolbar-actions" style="justify-content:center;margin-top:12px">
+        <button id="tracker-retry" class="button button-primary" type="button">Thử lại</button>
+        <a class="button button-light" href="index.html">Về hệ thống</a>
       </div>
     </section>
-
     <section id="tracker-screen" hidden>
       <div class="page-heading">
-        <div><span id="role-pill" class="role-pill"></span><h2 id="tracker-title" style="margin-top:8px">Tracking Gantt Chart</h2><p id="identity-line">—</p></div>
-        <div class="week-control">
-          <button id="previous-week" class="button button-light" type="button" aria-label="Tuần trước">‹</button>
-          <input id="week-start" type="date" aria-label="Ngày đầu tuần">
-          <button id="next-week" class="button button-light" type="button" aria-label="Tuần sau">›</button>
-          <button id="this-week" class="button button-light" type="button">Tuần này</button>
-        </div>
+        <div><span id="role-pill" class="role-pill"></span><h2 id="tracker-title" style="margin-top:8px">Task Tracking</h2><p id="identity-line">—</p></div>
       </div>
 
       <section id="manager-config" class="manager-config" hidden>
-        <div class="field"><label for="manager-select">Ủy quyền trợ giảng làm Manager</label><select id="manager-select"><option value="">Không có Manager</option></select></div>
+        <div class="field"><label for="manager-select">Ủy quyền trợ giảng làm Quản Lý Tiến Độ</label><select id="manager-select"><option value="">Không ủy quyền</option></select></div>
         <button id="save-manager" class="button button-primary" type="button">Lưu phân quyền</button>
       </section>
 
       <section class="kpis" aria-label="Tổng quan nhiệm vụ">
         <article class="kpi"><div class="kpi-label">Tổng nhiệm vụ</div><div id="kpi-total" class="kpi-value">0</div></article>
-        <article class="kpi"><div class="kpi-label">Đang chờ duyệt</div><div id="kpi-pending" class="kpi-value">0</div></article>
+        <article class="kpi"><div class="kpi-label">Task / đơn chờ duyệt</div><div id="kpi-pending" class="kpi-value">0 / 0</div></article>
         <article class="kpi"><div class="kpi-label">Quá hạn</div><div id="kpi-overdue" class="kpi-value">0</div></article>
         <article class="kpi"><div class="kpi-label">Tổng sao tích lũy</div><div id="kpi-stars" class="kpi-value">0</div></article>
       </section>
@@ -230,13 +197,26 @@
         </div>
       </section>
 
-      <section class="table-wrap" aria-label="Bảng Gantt task">
+      <div class="section-heading">
+        <div><h3>Điều phối công việc &amp; duyệt đơn</h3><p>Giao việc, xử lý yêu cầu hoàn thành và duyệt đơn nghỉ / tăng ca.</p></div>
+        <button id="export-schedules" class="button button-light" type="button">Export đơn</button>
+      </div>
+      <section class="table-wrap" aria-label="Bảng điều phối công việc và duyệt đơn">
         <table>
-          <thead id="task-head"></thead>
-          <tbody id="task-body"></tbody>
+          <thead><tr><th>Loại</th><th>Công việc / nội dung đơn</th><th>Trợ giảng</th><th>Hạn / thời gian</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <tbody id="management-body"></tbody>
         </table>
       </section>
-      <section id="mobile-list" class="mobile-list" aria-label="Danh sách task"></section>
+
+      <div class="section-heading">
+        <div><h3>Theo dõi task trợ giảng đã nhận</h3><p>Cập nhật tiến độ các task đã được trợ giảng tiếp nhận.</p></div>
+      </div>
+      <section class="table-wrap" aria-label="Bảng theo dõi task trợ giảng đã nhận">
+        <table>
+          <thead><tr><th>Task</th><th>Trợ giảng nhận việc</th><th>Người giao</th><th>Deadline</th><th>Trạng thái</th><th>Ghi chú tiến độ</th></tr></thead>
+          <tbody id="accepted-task-body"></tbody>
+        </table>
+      </section>
     </section>
   </main>
 
@@ -268,12 +248,6 @@
     </form>
   </dialog>
 
-  <dialog id="schedule-list-dialog" class="wide">
-    <div class="dialog-head"><h2>Lịch nghỉ & tăng ca</h2><div class="top-actions"><button id="export-schedules" class="top-link" type="button">Export Excel</button><button type="button" data-close="schedule-list-dialog" aria-label="Đóng">&times;</button></div></div>
-    <div class="schedule-table-wrap">
-      <table class="schedule-table"><thead><tr><th>Trợ giảng</th><th>Loại đăng ký</th><th>Ngày</th><th>Giờ</th><th>Ghi chú / lý do</th><th>Trạng thái</th><th>Duyệt</th></tr></thead><tbody id="schedule-body"></tbody></table>
-    </div>
-  </dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script>
@@ -282,13 +256,6 @@
       const TOKEN_KEY = 'TV_GLOBAL_TRACKER_TOKEN';
       const entryMode = new URLSearchParams(window.location.search).get('view') || '';
       const entryRoles = { director: 'director', manager: 'manager', teacher: 'teacher' };
-      const entryTitles = {
-        director: 'Tracking Giám đốc',
-        manager: 'Tracking Manager',
-        teacher: 'Task của tôi'
-      };
-      const DAY = 86400000;
-      const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
       const $ = id => document.getElementById(id);
       let token = '';
       let session = null;
@@ -307,14 +274,9 @@
         const date = localDate(value);
         return date ? date.toLocaleDateString('vi-VN') : '—';
       };
-      const weekMonday = date => {
-        const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-        return monday;
-      };
       const actorRole = () => session?.actor?.role || '';
       const statusLabel = status => ({ NEW: 'Mới giao', IN_PROGRESS: 'Đang làm', PENDING: 'Chờ duyệt', COMPLETED: 'Hoàn thành', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối', OVERDUE: 'Quá hạn' })[status] || status;
-      const roleLabel = role => ({ director: 'Giám đốc', manager: 'Manager', teacher: 'Trợ giảng' })[role] || role;
+      const roleLabel = role => ({ director: 'Giám đốc', manager: 'Quản Lý Tiến Độ', teacher: 'Trợ giảng' })[role] || role;
       const initials = name => String(name || '—').trim().split(/\s+/).slice(-2).map(part => part[0] || '').join('').toLocaleUpperCase('vi');
 
       function notify(message) {
@@ -324,7 +286,15 @@
         toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500);
       }
 
-      function apiCall(action, payload = {}) {
+      function showTrackerError(title, message) {
+        $('tracker-error-title').textContent = title;
+        $('tracker-error-message').textContent = message;
+        $('tracker-retry').hidden = !token;
+        $('tracker-error').hidden = false;
+        $('tracker-screen').hidden = true;
+      }
+
+      function callJsonp(action, payload) {
         return new Promise((resolve, reject) => {
           const callbackName = `trackerApi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
           const script = document.createElement('script');
@@ -348,6 +318,35 @@
         });
       }
 
+      async function apiCall(action, payload = {}) {
+        if (window.location.protocol === 'http:') {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 80000);
+          try {
+            const response = await fetch('http://127.0.0.1:3002/api/google-script', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action, ...payload }),
+              signal: controller.signal,
+              cache: 'no-store'
+            });
+            const result = await response.json();
+            if (!response.ok || result?.status === 'error') {
+              throw new Error(result?.message || `Không thể hoàn tất thao tác ${action}.`);
+            }
+            return result;
+          } catch (error) {
+            if (error?.name === 'AbortError') {
+              throw new Error('Máy chủ kết nối Tracker không phản hồi sau 80 giây. Hãy thử lại.');
+            }
+            if (!(error instanceof TypeError)) throw error;
+          } finally {
+            clearTimeout(timeout);
+          }
+        }
+        return callJsonp(action, payload);
+      }
+
       function getStatus(task) {
         if (task.status !== 'COMPLETED') {
           const deadline = localDate(task.deadline);
@@ -358,26 +357,6 @@
           }
         }
         return task.status;
-      }
-
-      function dayGantt(task) {
-        const monday = localDate($('week-start').value);
-        if (!monday) return `<div class="gantt"><div class="day-labels">${WEEKDAYS.map(day => `<span>${day}</span>`).join('')}</div><div class="gantt-track"></div></div>`;
-        const sunday = new Date(monday.getTime() + 6 * DAY);
-        const start = localDate(task.startDate);
-        const end = localDate(task.deadline);
-        let bar = '';
-        if (start && end && end >= monday && start <= sunday) {
-          const first = Math.max(0, Math.floor((Math.max(start, monday) - monday) / DAY));
-          const last = Math.min(6, Math.floor((Math.min(end, sunday) - monday) / DAY));
-          const status = getStatus(task);
-          bar = `<span class="gantt-bar ${status}" style="grid-column:${first + 1} / ${last + 2}" title="${escapeHtml(dateLabel(task.startDate))}–${escapeHtml(dateLabel(task.deadline))}"></span>`;
-        }
-        const dayLabels = WEEKDAYS.map((day, index) => {
-          const date = new Date(monday.getTime() + index * DAY);
-          return `<span>${day}<br>${date.getDate()}</span>`;
-        }).join('');
-        return `<div class="gantt"><div class="day-labels">${dayLabels}</div><div class="gantt-track">${bar}</div></div>`;
       }
 
       function visibleTasks() {
@@ -417,25 +396,25 @@
         const role = actorRole();
         const filtered = visibleTasks();
         $('role-pill').textContent = roleLabel(role);
-        $('tracker-title').textContent = entryTitles[entryMode];
-        $('identity-line').textContent = `Đăng nhập: ${session.actor.name}`;
+        $('tracker-title').textContent = 'Task Tracking';
+        $('identity-line').textContent = `${session.actor.name} · Tài khoản hệ thống`;
         $('manager-box').hidden = role === 'teacher';
         $('manager-name').textContent = manager || 'Chưa ủy quyền';
         $('manager-avatar').textContent = manager ? initials(manager) : '—';
         $('manager-config').hidden = role !== 'director';
-        $('create-task').hidden = role === 'teacher' && false;
         $('create-task').textContent = role === 'director' ? '＋ Giao nhiệm vụ' : role === 'manager' ? '＋ Giao / tự tạo task' : '＋ Tạo task cá nhân';
         $('submit-schedule').hidden = role === 'director';
-        $('schedules-button').hidden = role === 'teacher';
-        $('task-head').innerHTML = '<tr><th>Priority</th><th>Tên task & trạng thái</th><th>Người phân công</th><th>Trợ giảng được giao</th><th>Deadline & phạt / sao</th><th>Gantt 7 ngày · T2–CN</th><th>Hành động</th></tr>';
         const overdueCount = tasks.filter(task => getStatus(task) === 'OVERDUE').length;
         $('kpi-total').textContent = tasks.length;
-        $('kpi-pending').textContent = tasks.filter(task => task.status === 'PENDING').length;
+        const pendingTasks = tasks.filter(task => task.status === 'PENDING').length;
         $('kpi-overdue').textContent = overdueCount;
         $('kpi-stars').textContent = tasks.reduce((sum, task) => sum + (Number(task.stars) || 0), 0);
+        const pendingRequests = requests.filter(request => request.status === 'PENDING').length;
+        $('kpi-pending').textContent = `${pendingTasks} / ${pendingRequests}`;
+        $('export-schedules').hidden = role === 'teacher';
         const managerSelect = $('manager-select');
         if (managerSelect.dataset.loaded !== 'true') {
-          managerSelect.innerHTML = '<option value="">Không có Manager</option>' + teachers.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+          managerSelect.innerHTML = '<option value="">Không ủy quyền</option>' + teachers.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
           managerSelect.value = manager;
           managerSelect.dataset.loaded = 'true';
         } else if (managerSelect.value !== manager) managerSelect.value = manager;
@@ -444,74 +423,89 @@
         teacherFilter.innerHTML = '<option value="">Tất cả</option>' + teachers.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
         if (teachers.includes(selectedTeacher)) teacherFilter.value = selectedTeacher;
 
-        if (!filtered.length) {
-          $('task-body').innerHTML = '<tr><td colspan="7"><div class="empty-state"><strong>Chưa có nhiệm vụ phù hợp</strong>Điều chỉnh bộ lọc hoặc tạo nhiệm vụ mới.</div></td></tr>';
-          $('mobile-list').innerHTML = '<div class="empty-state"><strong>Chưa có nhiệm vụ phù hợp</strong>Điều chỉnh bộ lọc hoặc tạo nhiệm vụ mới.</div>';
-          return;
-        }
-
-        $('task-body').innerHTML = filtered.map(task => {
+        const taskRows = filtered.map(task => {
           const status = getStatus(task);
-          const stars = Number(task.stars) ? `⭐ ${task.stars}/5` : 'Chưa chấm sao';
-          const deadlineText = `${dateLabel(task.deadline)} ${escapeHtml(task.deadlineTime || '')}`;
           return `<tr>
-            <td><span class="priority priority-${Number(task.priority)}">P${Number(task.priority)}</span></td>
-            <td><div class="task-title">${escapeHtml(task.title)}</div><div class="muted"><span class="status-pill status-${status}">${statusLabel(status)}</span> ${escapeHtml(task.note || '')}</div>${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
-            <td>${escapeHtml(task.createdBy)}</td>
-            <td><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || '—')}</div></td>
-            <td><strong>${deadlineText}</strong><div class="muted">${escapeHtml(task.punishment || stars)}</div></td>
-            <td>${dayGantt(task)}</td>
+            <td><span class="priority priority-${Number(task.priority)}">Task · P${Number(task.priority)}</span></td>
+            <td><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy)} giao${task.note ? ` · ${escapeHtml(task.note)}` : ''}</div>${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
+            <td><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || 'Task cá nhân')}</div></td>
+            <td><strong>${dateLabel(task.deadline)} ${escapeHtml(task.deadlineTime || '')}</strong><div class="muted">${escapeHtml(task.punishment || (Number(task.stars) ? `⭐ ${task.stars}/5` : ''))}</div></td>
+            <td><span class="status-pill status-${status}">${statusLabel(status)}</span></td>
             <td>${taskActionMarkup(task)}</td>
           </tr>`;
         }).join('');
 
-        $('mobile-list').innerHTML = filtered.map(task => {
+        const requestRows = requests.slice()
+          .sort((a, b) => Number(b.status === 'PENDING') - Number(a.status === 'PENDING') || String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+          .map(request => {
+            const type = request.type === 'LEAVE' ? 'Đơn xin nghỉ' : 'Đơn tăng ca';
+            const actions = role === 'director' && request.status === 'PENDING'
+              ? `<div class="task-actions"><button class="small-button good" data-schedule-action="approve" data-id="${escapeHtml(request.id)}">Duyệt</button><button class="small-button danger" data-schedule-action="reject" data-id="${escapeHtml(request.id)}">Từ chối</button></div>`
+              : '<span class="muted">Không có thao tác</span>';
+            return `<tr>
+              <td><span class="priority priority-4">${type}</span></td>
+              <td><div class="task-title">${escapeHtml(request.reason)}</div>${request.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(request.reviewNote)}</div>` : ''}</td>
+              <td>${escapeHtml(request.teacher)}</td>
+              <td><strong>${dateLabel(request.date)}</strong><div class="muted">${escapeHtml(request.startTime)}–${escapeHtml(request.endTime)}</div></td>
+              <td><span class="status-pill status-${escapeHtml(request.status)}">${statusLabel(request.status)}</span></td>
+              <td>${actions}</td>
+            </tr>`;
+          }).join('');
+        $('management-body').innerHTML = taskRows + requestRows
+          || '<tr><td colspan="6"><div class="empty-state"><strong>Chưa có công việc hoặc đơn đăng ký</strong>Tạo task mới hoặc chờ trợ giảng gửi đơn nghỉ / tăng ca.</div></td></tr>';
+
+        const acceptedTasks = filtered.filter(task => task.status !== 'NEW');
+        $('accepted-task-body').innerHTML = acceptedTasks.length ? acceptedTasks.map(task => {
           const status = getStatus(task);
-          const due = `${dateLabel(task.deadline)} ${task.deadlineTime || ''}`;
-          const noteInput = (task.assignees || []).includes(session.actor.name) && ['NEW', 'IN_PROGRESS'].includes(task.status)
-            ? `<textarea class="card-note" data-note-id="${escapeHtml(task.id)}" maxlength="2000" aria-label="Ghi chú nhiệm vụ">${escapeHtml(task.note || '')}</textarea>`
-            : '';
-          return `<article class="task-card">
-            <div class="card-heading"><div><div class="card-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy)} giao · ${escapeHtml((task.assignees || []).join(', ') || 'Chưa giao')}</div></div><span class="priority priority-${Number(task.priority)}">P${Number(task.priority)}</span></div>
-            <div class="muted" style="margin-top:8px"><span class="status-pill status-${status}">${statusLabel(status)}</span></div>
-            <div class="card-grid"><div><span>Deadline</span><strong>${due}</strong></div><div><span>Phạt / số sao</span><strong>${escapeHtml(task.punishment || (Number(task.stars) ? `⭐ ${task.stars}/5` : '—'))}</strong></div></div>
-            ${dayGantt(task).replace('class="gantt"', 'class="gantt card-gantt"')}
-            ${noteInput}
-            <div class="card-actions">${taskActionMarkup(task)}</div>
-          </article>`;
-        }).join('');
+          return `<tr>
+            <td><div class="task-title">${escapeHtml(task.title)}</div><div class="muted"><span class="priority priority-${Number(task.priority)}">P${Number(task.priority)}</span></div></td>
+            <td><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || '—')}</div></td>
+            <td>${escapeHtml(task.createdBy)}</td>
+            <td><strong>${dateLabel(task.deadline)} ${escapeHtml(task.deadlineTime || '')}</strong></td>
+            <td><span class="status-pill status-${status}">${statusLabel(status)}</span></td>
+            <td>${escapeHtml(task.reviewNote || task.note || '—')}</td>
+          </tr>`;
+        }).join('') : '<tr><td colspan="6"><div class="empty-state"><strong>Chưa có task được tiếp nhận</strong>Các task sẽ xuất hiện tại đây sau khi trợ giảng nhận việc.</div></td></tr>';
       }
 
       async function refresh() {
+        let invalidSession = false;
         try {
           session = await apiCall('trackerBootstrap', { token });
           if (!entryRoles[entryMode] || actorRole() !== entryRoles[entryMode]) {
+            invalidSession = true;
             throw new Error('Vai trò này không thể mở trang theo dõi hiện tại. Hãy quay lại giao diện đúng vai trò.');
           }
           const appName = sessionStorage.getItem('TV_GLOBAL_USER') || '';
           if (appName && String(session.actor?.name || '').trim() !== appName) {
+            invalidSession = true;
             throw new Error('Phiên Tracking không khớp tài khoản đang đăng nhập. Hãy đăng nhập lại hệ thống.');
           }
+          $('tracker-error').hidden = true;
           tasks = Array.isArray(session.tasks) ? session.tasks : [];
           requests = Array.isArray(session.requests) ? session.requests : [];
           teachers = Array.isArray(session.teachers) ? session.teachers : [];
           manager = session.manager || '';
-          $('login-screen').hidden = true;
           $('tracker-screen').hidden = false;
           $('logout-button').hidden = false;
-          $('schedules-button').hidden = actorRole() === 'teacher';
           $('create-task').hidden = false;
           $('submit-schedule').hidden = actorRole() === 'director';
           render();
         } catch (error) {
           console.error('Tracker bootstrap failed:', error);
-          sessionStorage.removeItem(TOKEN_KEY);
-          token = '';
-          session = null;
-          $('tracker-screen').hidden = true;
-          $('login-screen').hidden = false;
-          $('login-error').textContent = error.message;
-          $('login-error').hidden = false;
+          const message = error instanceof Error ? error.message : String(error);
+          const expiredSession = /phiên đăng nhập Tracker đã hết hạn|phiên đăng nhập không hợp lệ/i.test(message);
+          if (invalidSession || expiredSession) {
+            sessionStorage.removeItem(TOKEN_KEY);
+            token = '';
+            session = null;
+          }
+          showTrackerError(
+            invalidSession || expiredSession ? 'Phiên Tracker không hợp lệ' : 'Tracker chưa kết nối được',
+            invalidSession || expiredSession
+              ? `${message} Hãy quay lại hệ thống và đăng nhập lại.`
+              : `${message} Phiên đăng nhập vẫn được giữ; hãy thử lại sau.`
+          );
         }
       }
 
@@ -599,21 +593,12 @@
         }
       }
 
-      async function saveNoteOnChange(event) {
-        const field = event.target.closest('[data-note-id]');
-        if (!field) return;
-        try {
-          await apiCall('trackerSaveNote', { token, taskId: field.dataset.noteId, note: field.value });
-          notify('Đã lưu ghi chú.');
-        } catch (error) { notify(error.message); }
-      }
-
       async function saveManager() {
         try {
           await apiCall('trackerSetManager', { token, manager: $('manager-select').value });
           $('manager-select').dataset.loaded = '';
           await refresh();
-          notify('Đã cập nhật quyền Manager.');
+          notify('Đã cập nhật quyền Quản Lý Tiến Độ.');
         } catch (error) { notify(error.message); }
       }
 
@@ -646,18 +631,6 @@
         }
       }
 
-      function renderScheduleList() {
-        const role = actorRole();
-        const rows = requests.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-        $('schedule-body').innerHTML = rows.length ? rows.map(request => {
-          const actions = role === 'director' && request.status === 'PENDING'
-            ? `<button class="small-button good" data-schedule-action="approve" data-id="${escapeHtml(request.id)}">Duyệt</button> <button class="small-button danger" data-schedule-action="reject" data-id="${escapeHtml(request.id)}">Từ chối</button>`
-            : '—';
-          const type = request.type === 'LEAVE' ? 'Nghỉ' : 'Tăng ca';
-          return `<tr><td>${escapeHtml(request.teacher)}</td><td>${type}</td><td>${dateLabel(request.date)}</td><td>${escapeHtml(request.startTime)}–${escapeHtml(request.endTime)}</td><td>${escapeHtml(request.reason)}${request.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(request.reviewNote)}</div>` : ''}</td><td><span class="status-pill status-${escapeHtml(request.status)}">${statusLabel(request.status)}</span></td><td>${actions}</td></tr>`;
-        }).join('') : '<tr><td colspan="7"><div class="empty-state">Chưa có đơn đăng ký.</div></td></tr>';
-      }
-
       async function scheduleAction(event) {
         const button = event.target.closest('[data-schedule-action]');
         if (!button) return;
@@ -670,7 +643,6 @@
         try {
           await apiCall('trackerReviewSchedule', { token, requestId: button.dataset.id, decision, note });
           await refresh();
-          renderScheduleList();
           notify(decision === 'approve' ? 'Đã duyệt đơn.' : 'Đã từ chối đơn.');
         } catch (error) { notify(error.message); }
       }
@@ -708,7 +680,6 @@
       }
 
       function logout() {
-        sessionStorage.removeItem(TOKEN_KEY);
         window.location.href = 'index.html';
       }
 
@@ -720,39 +691,34 @@
         $('schedule-date').value = dateInputValue(new Date());
         $('schedule-dialog').showModal();
       });
-      $('schedules-button').addEventListener('click', () => { renderScheduleList(); $('schedule-list-dialog').showModal(); });
       $('save-manager').addEventListener('click', saveManager);
+      $('tracker-retry').addEventListener('click', refresh);
       $('logout-button').addEventListener('click', logout);
-      $('task-body').addEventListener('click', taskAction);
-      $('mobile-list').addEventListener('click', taskAction);
-      $('task-body').addEventListener('change', saveNoteOnChange);
-      $('mobile-list').addEventListener('change', saveNoteOnChange);
-      $('schedule-body').addEventListener('click', scheduleAction);
+      $('management-body').addEventListener('click', event => {
+        taskAction(event);
+        scheduleAction(event);
+      });
       $('export-schedules').addEventListener('click', exportSchedules);
       document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => $(button.dataset.close).close()));
       ['filter-priority', 'filter-teacher', 'filter-status'].forEach(id => $(id).addEventListener('change', render));
       $('task-search').addEventListener('input', render);
-      $('week-start').value = dateInputValue(weekMonday(new Date()));
-      $('week-start').addEventListener('change', () => {
-        const date = localDate($('week-start').value);
-        if (date) $('week-start').value = dateInputValue(weekMonday(date));
-        render();
-      });
-      $('previous-week').addEventListener('click', () => { const date = localDate($('week-start').value); date.setDate(date.getDate() - 7); $('week-start').value = dateInputValue(date); render(); });
-      $('next-week').addEventListener('click', () => { const date = localDate($('week-start').value); date.setDate(date.getDate() + 7); $('week-start').value = dateInputValue(date); render(); });
-      $('this-week').addEventListener('click', () => { $('week-start').value = dateInputValue(weekMonday(new Date())); render(); });
-      if (entryTitles[entryMode]) {
-        $('login-title').textContent = entryTitles[entryMode];
-      } else {
-        $('login-title').textContent = 'Chưa chọn giao diện Tracking';
-        $('login-description').textContent = 'Hãy mở Tracking từ nút tương ứng trong giao diện Giám đốc, Trợ giảng hoặc Manager.';
-      }
       token = sessionStorage.getItem(TOKEN_KEY) || '';
-      if (token && entryRoles[entryMode]) {
-        refresh();
+      const globalRole = sessionStorage.getItem('TV_GLOBAL_ROLE') || '';
+      const globalName = sessionStorage.getItem('TV_GLOBAL_USER') || '';
+      const requestedRole = entryRoles[entryMode];
+      if (!globalRole || !globalName || !requestedRole) {
+        window.location.replace('index.html');
+      } else if (entryMode === 'director' && globalRole !== 'director') {
+        window.location.replace('index.html');
+      } else if ((entryMode === 'teacher' || entryMode === 'manager') && globalRole !== 'teacher') {
+        window.location.replace('index.html');
+      } else if (!token) {
+        showTrackerError(
+          'Chưa có phiên Tracker',
+          'Bạn đã vào hệ thống nhưng lần đăng nhập này chưa tạo phiên Tracker. Hãy quay lại hệ thống và đăng nhập lại khi kết nối Apps Script ổn định.'
+        );
       } else {
-        $('login-error').textContent = 'Phiên đăng nhập hệ thống chưa được tìm thấy.';
-        $('login-error').hidden = false;
+        refresh();
       }
     })();
   </script>
