@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyc799rCPxztmFyUXirjtAiHMZ0lRGV4UPNz5mC2tY1P0muX3LtAnvrJGhXtzzuWoxA/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyv2YLFI_0AG1cuotMYBB4fOO8DcPvW0Qu2Q_V4l47M_zmhYxZpkgrJ_nl3HIGRbtCL/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -317,15 +317,26 @@
 
     let assistantTeachers = [], currentUserRole = null, currentUserName = '', trackerManagerName = '', trackerManagerLoaded = false;
     let teacherTrackerTasks = [];
+    let teacherProgressReportTaskId = '';
     let studentsData = [], inactiveStudentsData = [];
     let currentReportStudent = null;
     let activeSessionEditor = null;
     let uiEmojisUpgraded = false;
     let birthdayNotificationShown = false;
+    let studentDataLoadComplete = false;
+    let studentDataLoadSucceeded = false;
+    let teacherLoginSummaryPending = false;
+    let teacherLoginSummaryTrackerReady = false;
+    let teacherTrackerLoadSucceeded = false;
     const NOTIFICATION_HISTORY_KEY = 'TV_GLOBAL_NOTIFICATION_HISTORY';
     const NOTIFICATION_HISTORY_READ_KEY = 'TV_GLOBAL_NOTIFICATION_HISTORY_READ';
+    const NOTIFICATION_HISTORY_DAY_KEY = 'TV_GLOBAL_NOTIFICATION_HISTORY_DAY';
     const NOTIFICATION_HISTORY_LIMIT = 30;
     const attendanceSavingStudentIds = new Set();
+    const inFlightApiCalls = new Map();
+    let localProxyUnavailableUntil = 0;
+    let dataRefreshPromise = null;
+    let dataRefreshVersion = 0;
 
     let profileCurrentPage = 1, masterCurrentPage = 1;
     const PAGE_SIZE = 12;
@@ -342,8 +353,22 @@
     });
 
     // Toast thông báo Auto-sync
+    function currentLocalDayKey() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    function resetNotificationHistoryForToday() {
+      const today = currentLocalDayKey();
+      if (localStorage.getItem(NOTIFICATION_HISTORY_DAY_KEY) === today) return;
+      localStorage.setItem(NOTIFICATION_HISTORY_DAY_KEY, today);
+      localStorage.removeItem(NOTIFICATION_HISTORY_KEY);
+      localStorage.removeItem(NOTIFICATION_HISTORY_READ_KEY);
+    }
+
     function getNotificationHistory() {
       try {
+        resetNotificationHistoryForToday();
         const history = JSON.parse(localStorage.getItem(NOTIFICATION_HISTORY_KEY) || '[]');
         return Array.isArray(history) ? history : [];
       } catch (error) {
@@ -358,8 +383,9 @@
       if (!button || !badge) return;
 
       try {
+        const history = getNotificationHistory();
         const readAt = Number(localStorage.getItem(NOTIFICATION_HISTORY_READ_KEY) || 0);
-        const unreadCount = getNotificationHistory().filter(item => item.createdAt > readAt).length;
+        const unreadCount = history.filter(item => item.createdAt > readAt).length;
         badge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
         badge.hidden = unreadCount === 0;
         badge.style.display = unreadCount === 0 ? 'none' : 'inline-flex';
@@ -460,8 +486,8 @@
       dialog.innerHTML = `
         <div class="notification-center-header">
           <div>
-            <p class="notification-center-eyebrow">LỊCH SỬ</p>
-            <h2 id="notification-center-title">Thông báo đã hiện</h2>
+            <p class="notification-center-eyebrow">HÔM NAY</p>
+            <h2 id="notification-center-title">Thông báo trong ngày</h2>
           </div>
           <button type="button" class="notification-center-close" aria-label="Đóng">&times;</button>
         </div>
@@ -521,9 +547,20 @@
     }
 
     // Call GAS Backend
-    async function apiCall(action, payload = {}) {
+    function apiCall(action, payload = {}) {
       const request = { action, ...payload };
+      const key = JSON.stringify(request);
+      if (inFlightApiCalls.has(key)) return inFlightApiCalls.get(key);
 
+      const pending = performApiCall(request).finally(() => {
+        if (inFlightApiCalls.get(key) === pending) inFlightApiCalls.delete(key);
+      });
+      inFlightApiCalls.set(key, pending);
+      return pending;
+    }
+
+    async function performApiCall(request) {
+      const action = request.action;
       const callJsonp = () => new Promise((resolve, reject) => {
         const callbackName = `tvgApi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
         const script = document.createElement('script');
@@ -554,7 +591,9 @@
 
       if (!window.google?.script?.run) {
         try {
-          const proxyBase = window.location.protocol === 'http:' ? 'http://127.0.0.1:3002' : '';
+          const proxyBase = window.location.protocol === 'http:' && Date.now() >= localProxyUnavailableUntil
+            ? 'http://127.0.0.1:3002'
+            : '';
           if (proxyBase) {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -572,6 +611,7 @@
             } catch (error) {
               if (error?.name === 'AbortError') throw new Error('Kết nối quá chậm hoặc bị gián đoạn. Vui lòng thử lại.');
               if (!(error instanceof TypeError)) throw error;
+              localProxyUnavailableUntil = Date.now() + 15000;
               // Máy chủ proxy đang tắt: dùng JSONP trực tiếp thay vì để người dùng bị kẹt.
               return await callJsonp();
             } finally {
@@ -623,6 +663,7 @@
             : [];
 
         studentsData = students;
+        studentDataLoadSucceeded = true;
         recalculateCompletedSessions();
 
         inactiveStudentsData = Array.isArray(res.inactive)
@@ -666,16 +707,36 @@
         return false;
       } finally {
         if (loading) loading.classList.add('hidden');
+        studentDataLoadComplete = true;
+        maybeShowTeacherLoginSummary();
         if (!isManual && currentUserRole) showUpcomingBirthdays();
       }
     }
 
-    async function refreshDataAfterMutation() {
-      const refreshed = await fetchDataFromGoogleSheet();
-      if (!refreshed) {
-        showToast('Đã lưu thao tác nhưng chưa tải được dữ liệu mới nhất. Vui lòng thử tải lại Sheet.', 'error');
+    function refreshDataAfterMutation() {
+      dataRefreshVersion++;
+      if (!dataRefreshPromise) {
+        dataRefreshPromise = (async () => {
+          let refreshed = false;
+          let processedVersion = 0;
+          while (processedVersion < dataRefreshVersion) {
+            processedVersion = dataRefreshVersion;
+            refreshed = await fetchDataFromGoogleSheet();
+          }
+          dataRefreshPromise = null;
+          if (!refreshed) {
+            showToast('Đã lưu thao tác nhưng chưa tải được dữ liệu mới nhất. Vui lòng thử tải lại Sheet.', 'error');
+          }
+          return refreshed;
+        })().catch(error => {
+          dataRefreshPromise = null;
+          console.error('Lỗi đồng bộ lại dữ liệu Google Sheet:', error);
+          showToast(`Đã lưu thao tác nhưng không thể tải lại dữ liệu: ${error.message}`, 'error');
+          return false;
+        });
       }
-      return refreshed;
+
+      return dataRefreshPromise;
     }
 
     function fetchAvatarUploadStatus(requestId) {
@@ -900,14 +961,14 @@
       const previousAvatar = student.avatar;
       try {
         const result = await apiCall('updateStudentInfo', {
-          student: { ...student, avatar: DEFAULT_AVATAR }
+          student: { id: student.id, avatar: DEFAULT_AVATAR }
         });
         if (!result || result.status !== 'success') {
           throw new Error(result?.message || 'Google Sheet không xác nhận xóa avatar.');
         }
         student.avatar = DEFAULT_AVATAR;
         updateAllViews();
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
         showToast(`Đã xóa ảnh đại diện của ${student.name}`);
       } catch (error) {
         student.avatar = previousAvatar;
@@ -933,14 +994,14 @@
       try {
         uploadedAvatar = await uploadAvatarFile(file);
         const result = await apiCall('updateStudentInfo', {
-          student: { ...student, avatar: uploadedAvatar }
+          student: { id: student.id, avatar: uploadedAvatar }
         });
         if (!result || result.status !== 'success') {
           throw new Error(result?.message || 'Google Sheet không xác nhận cập nhật avatar.');
         }
         student.avatar = uploadedAvatar;
         updateAllViews();
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
         showToast(`Đã cập nhật avatar học viên ${student.name}`);
       } catch (err) {
         console.error("Google Drive Upload Error:", err);
@@ -1375,7 +1436,7 @@
         recalculateCompletedSessions();
         saveAllDataToLocalStorage();
         closeModal('modal-payment');
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
         showToast(`Đã thanh toán cho ${student.name}`);
       } catch (error) {
         confirmButton.disabled = false;
@@ -1522,7 +1583,9 @@
       const status = document.getElementById('teacher-task-status');
       if (!list || !status) return;
       const personalTasks = teacherTrackerTasks
-        .filter(task => Array.isArray(task.assignees) && task.assignees.includes(currentUserName))
+        .filter(task => task.status !== 'ARCHIVED'
+          && Array.isArray(task.assignees)
+          && task.assignees.includes(currentUserName))
         .sort((a, b) => Number(a.priority) - Number(b.priority)
           || String(a.deadline || '').localeCompare(String(b.deadline || '')));
 
@@ -1538,15 +1601,19 @@
           && Array.isArray(task.assignees) && task.assignees.includes(currentUserName);
         const gantt = trackerTaskGantt(task, overdue ? 'OVERDUE' : task.status);
         const actions = [];
-        if (task.status === 'NEW') {
+        if (task.syncing) {
+          actions.push('<span class="px-3 py-2 text-xs font-semibold text-slate-500">Đang đồng bộ...</span>');
+        } else if (task.status === 'NEW') {
           actions.push(`<button type="button" data-teacher-task-action="accept" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">Nhận việc</button>`);
         } else if (task.status === 'IN_PROGRESS') {
-          actions.push(`<button type="button" data-teacher-task-action="complete" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-[#8B1515] hover:bg-red-900 text-white text-xs font-bold">Yêu cầu hoàn thành</button>`);
+          const submission = task.completionSubmissions?.[currentUserName];
+          actions.push(`<button type="button" data-teacher-task-action="complete" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-[#8B1515] hover:bg-red-900 text-white text-xs font-bold">${submission?.submitted ? 'Cập nhật output' : 'Gửi output hoàn thành'}</button>`);
+          actions.push(`<button type="button" data-teacher-task-action="report-progress" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-900 text-xs font-bold">Báo cáo tiến độ</button>`);
         }
-        if (['NEW', 'IN_PROGRESS'].includes(task.status)) {
+        if (!task.syncing && ['NEW', 'IN_PROGRESS'].includes(task.status)) {
           actions.push(`<button type="button" data-teacher-task-action="save-note" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">Lưu ghi chú</button>`);
         }
-        if (canDelete) {
+        if (!task.syncing && canDelete) {
           actions.push(`<button type="button" data-teacher-task-action="delete" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold">Xóa việc cá nhân</button>`);
         }
         const statusClass = overdue ? 'bg-red-100 text-red-700' : task.status === 'COMPLETED'
@@ -1554,21 +1621,153 @@
           : task.status === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700';
         return `<article class="rounded-xl border border-slate-200 p-3 sm:p-4 bg-white">
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2"><span class="px-2 py-1 rounded-full bg-[#8B1515]/10 text-[#8B1515] text-[10px] font-bold">${personal ? `Việc cá nhân · ưu tiên ${priority === 3 ? 'trước' : 'sau'}` : 'Nhiệm vụ tuần'}</span><span class="px-2 py-1 rounded-full ${statusClass} text-[10px] font-bold">${statusText}</span></div>
+            <div class="flex items-center gap-2"><span class="px-2 py-1 rounded-full bg-[#8B1515]/10 text-[#8B1515] text-[10px] font-bold">${personal ? `Việc cá nhân · ưu tiên ${priority === 3 ? 'trước' : 'sau'}` : `Nhiệm vụ tuần${task.repeatWeekly ? ' · lặp lại' : ''}`}</span><span class="px-2 py-1 rounded-full ${statusClass} text-[10px] font-bold">${statusText}</span></div>
           </div>
           ${gantt}
           <h3 class="mt-2 text-sm font-bold text-slate-800">${escapeHtml(task.title)}</h3>
           <p class="mt-1 text-[11px] text-slate-500">Người giao: ${escapeHtml(task.createdBy || '—')}${task.punishment ? ` · Lưu ý: ${escapeHtml(task.punishment)}` : ''}</p>
           ${task.output ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Output:</strong> ${escapeHtml(task.output)}</p>` : ''}
+          ${Number(task.priority) <= 2 && Array.isArray(task.assignees) && task.assignees.length ? `<div class="mt-2 text-[11px] text-slate-600"><strong>Output theo trợ giảng:</strong> ${task.assignees.map(name => { const submission = task.completionSubmissions?.[name]; const output = String(submission?.note || '').trim(); return `<p class="mt-1"><strong>${escapeHtml(name)}:</strong> ${submission?.submitted ? escapeHtml(output) : output ? `<span class="text-amber-700">Cần gửi lại:</span> ${escapeHtml(output)}` : 'Chưa gửi output'}</p>`; }).join('')}</div>` : task.completionNote ? `<p class="mt-2 text-xs text-slate-600"><strong>Đã hoàn thành:</strong> ${escapeHtml(task.completionNote)}</p>` : ''}
+          ${task.progressReport ? `<p class="mt-2 text-[11px] text-slate-600 whitespace-pre-wrap"><strong>Tiến độ đã báo cáo:</strong> ${escapeHtml(task.progressReport)}</p>` : ''}
+          ${task.blocker ? `<p class="mt-2 text-[11px] text-amber-800 whitespace-pre-wrap"><strong>Vấn đề cần hỗ trợ:</strong> ${escapeHtml(task.blocker)}</p>` : ''}
           ${task.reviewNote ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Phản hồi:</strong> ${escapeHtml(task.reviewNote)}</p>` : ''}
           ${['NEW', 'IN_PROGRESS'].includes(task.status) ? `<div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="${task.status === 'NEW' ? 'sm:col-span-2' : ''}"><label class="block text-[10px] font-bold uppercase text-slate-500" for="teacher-task-note-${escapeHtml(task.id)}">Ghi chú tiến độ</label><textarea id="teacher-task-note-${escapeHtml(task.id)}" data-teacher-task-note="${escapeHtml(task.id)}" maxlength="2000" class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.note || '')}</textarea></div>
-            ${task.status === 'IN_PROGRESS' ? `<div><label class="block text-[10px] font-bold uppercase text-slate-500" for="teacher-task-completion-note-${escapeHtml(task.id)}">Nội dung hoàn thành <span class="text-red-600">*</span></label><textarea id="teacher-task-completion-note-${escapeHtml(task.id)}" data-teacher-task-completion-note="${escapeHtml(task.id)}" maxlength="2000" required placeholder="Ghi rõ phần đã hoàn thành..." class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.completionNote || '')}</textarea></div>` : ''}
+            ${task.status === 'IN_PROGRESS' ? `<div><label class="block text-[10px] font-bold uppercase text-slate-500" for="teacher-task-completion-note-${escapeHtml(task.id)}">Output của bạn <span class="text-red-600">*</span></label><textarea id="teacher-task-completion-note-${escapeHtml(task.id)}" data-teacher-task-completion-note="${escapeHtml(task.id)}" maxlength="2000" required placeholder="Ghi rõ output bạn hoàn thành..." class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.completionSubmissions?.[currentUserName]?.note || '')}</textarea></div>` : ''}
           </div>` : task.note ? `<p class="mt-2 text-xs text-slate-600"><strong>Ghi chú tiến độ:</strong> ${escapeHtml(task.note)}</p>` : ''}
-          ${task.completionNote ? `<p class="mt-2 text-xs text-slate-600"><strong>Đã hoàn thành:</strong> ${escapeHtml(task.completionNote)}</p>` : ''}
           ${actions.length ? `<div class="mt-3 flex flex-wrap gap-2">${actions.join('')}</div>` : ''}
         </article>`;
       }).join('');
+    }
+
+    function renderSummaryEntries(containerId, entries, emptyMessage) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.replaceChildren();
+      if (!entries.length) {
+        container.textContent = emptyMessage;
+        return;
+      }
+      const list = document.createElement('ul');
+      list.className = 'list-disc pl-5 space-y-1';
+      entries.forEach(entry => {
+        const item = document.createElement('li');
+        item.textContent = entry;
+        list.append(item);
+      });
+      container.append(list);
+    }
+
+    function maybeShowTeacherLoginSummary() {
+      if (!teacherLoginSummaryPending || !studentDataLoadComplete || !teacherLoginSummaryTrackerReady) return;
+      teacherLoginSummaryPending = false;
+
+      const assignedStudents = studentsData.filter(student => normalizeAssistants(student.assistants).includes(currentUserName));
+      const renewalCount = assignedStudents.filter(student => getProgressWarningPriority(student.completedSessions || 0, student.level) === 3).length;
+      const careCount = assignedStudents.filter(student => getProgressWarningPriority(student.completedSessions || 0, student.level) === 2).length;
+      const studentSummary = document.getElementById('teacher-login-summary-students');
+      if (studentSummary) {
+        studentSummary.textContent = studentDataLoadSucceeded
+          ? `${careCount} học sinh cần chăm sóc · ${renewalCount} học sinh cần gia hạn.`
+          : 'Không tải được dữ liệu học sinh. Vui lòng tải lại Sheet để xem số liệu mới nhất.';
+      }
+
+      const myTasks = teacherTrackerLoadSucceeded ? teacherTrackerTasks.filter(task => (
+        Array.isArray(task.assignees)
+        && task.assignees.includes(currentUserName)
+        && !['COMPLETED', 'ARCHIVED'].includes(task.status)
+      )) : [];
+      const awaitingAcceptance = myTasks
+        .filter(task => task.status === 'NEW')
+        .map(task => task.title || 'Task chưa có tên');
+      renderSummaryEntries(
+        'teacher-login-summary-accept',
+        awaitingAcceptance,
+        teacherTrackerLoadSucceeded ? 'Không có task nào đang chờ bạn nhận.' : 'Không tải được danh sách task. Vui lòng thử lại trong mục Task Tracking.'
+      );
+
+      const now = new Date();
+      const deadlines = myTasks
+        .filter(task => ['NEW', 'IN_PROGRESS', 'PENDING'].includes(task.status) && trackerDateValue(task.deadline))
+        .map(task => {
+          const date = trackerDateValue(task.deadline);
+          const time = trackerTimeValue(task.deadlineTime) || '23:59';
+          const deadline = new Date(`${date}T${time}:00`);
+          const remaining = deadline.getTime() - now.getTime();
+          let remainingLabel;
+          if (remaining <= 0) {
+            remainingLabel = 'Đã quá hạn';
+          } else if (date === currentLocalDayKey()) {
+            remainingLabel = `Còn ${Math.max(1, Math.ceil(remaining / 3600000))} tiếng`;
+          } else {
+            remainingLabel = `Còn ${Math.ceil(remaining / 86400000)} ngày`;
+          }
+          return {
+            deadline: deadline.getTime(),
+            label: `${task.title || 'Task'} — ${date} ${time}: ${remainingLabel}`
+          };
+        })
+        .sort((a, b) => a.deadline - b.deadline)
+        .map(item => item.label);
+      renderSummaryEntries(
+        'teacher-login-summary-deadlines',
+        deadlines,
+        teacherTrackerLoadSucceeded ? 'Không có deadline đang theo dõi.' : 'Không tải được deadline. Vui lòng thử lại trong mục Task Tracking.'
+      );
+
+      const dateLabel = document.getElementById('teacher-login-summary-date');
+      if (dateLabel) dateLabel.textContent = `Xin chào ${currentUserName} · ${new Date().toLocaleDateString('vi-VN')}`;
+      document.getElementById('modal-teacher-login-summary')?.classList.remove('hidden');
+    }
+
+    function openTeacherProgressReport(task) {
+      teacherProgressReportTaskId = task.id;
+      document.getElementById('teacher-progress-report-task').textContent = task.title;
+      document.getElementById('teacher-progress-report-done').value = task.progressReport || '';
+      document.getElementById('teacher-progress-report-blocker').value = task.blocker || '';
+      document.getElementById('teacher-progress-report-error').classList.add('hidden');
+      document.getElementById('modal-teacher-progress-report').classList.remove('hidden');
+    }
+
+    async function submitTeacherProgressReport(event) {
+      event.preventDefault();
+      const task = teacherTrackerTasks.find(item => item.id === teacherProgressReportTaskId);
+      const progress = document.getElementById('teacher-progress-report-done').value.trim();
+      const blocker = document.getElementById('teacher-progress-report-blocker').value.trim();
+      const errorElement = document.getElementById('teacher-progress-report-error');
+      const saveButton = document.getElementById('teacher-progress-report-save');
+      errorElement.classList.add('hidden');
+      if (!task || !progress) {
+        errorElement.textContent = task ? 'Vui lòng ghi nội dung đã thực hiện.' : 'Không tìm thấy task cần báo cáo.';
+        errorElement.classList.remove('hidden');
+        return;
+      }
+
+      const previousTask = { ...task };
+      task.progressReport = progress;
+      task.blocker = blocker;
+      task.progressReportedAt = new Date().toISOString();
+      task.syncing = true;
+      renderTeacherTrackerTasks();
+      saveButton.disabled = true;
+      try {
+        const token = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN');
+        if (!token) throw new Error('Phiên theo dõi đã hết hạn. Vui lòng đăng xuất rồi đăng nhập lại.');
+        const result = await apiCall('trackerReportProgress', { token, taskId: task.id, progress, blocker });
+        task.progressReportedAt = result.reportedAt || task.progressReportedAt;
+        task.syncing = false;
+        closeModal('modal-teacher-progress-report');
+        renderTeacherTrackerTasks();
+        showToast('Đã gửi báo cáo tiến độ cho Giám đốc/Manager.');
+      } catch (error) {
+        Object.assign(task, previousTask);
+        renderTeacherTrackerTasks();
+        errorElement.textContent = error.message;
+        errorElement.classList.remove('hidden');
+        showToast(`Không thể gửi báo cáo tiến độ: ${error.message}`, 'error');
+      } finally {
+        saveButton.disabled = false;
+      }
     }
 
     async function loadTeacherTrackerTasks() {
@@ -1579,6 +1778,9 @@
       if (!token) {
         status.textContent = 'Phiên theo dõi chưa sẵn sàng. Vui lòng đăng xuất rồi đăng nhập lại.';
         list.innerHTML = '';
+        teacherLoginSummaryTrackerReady = true;
+        teacherTrackerLoadSucceeded = false;
+        maybeShowTeacherLoginSummary();
         return;
       }
 
@@ -1589,10 +1791,15 @@
           throw new Error('Phiên đăng nhập không khớp với tài khoản trợ giảng hiện tại. Vui lòng đăng nhập lại.');
         }
         teacherTrackerTasks = Array.isArray(result.tasks) ? result.tasks : [];
+        teacherTrackerLoadSucceeded = true;
         renderTeacherTrackerTasks();
       } catch (error) {
+        teacherTrackerLoadSucceeded = false;
         status.textContent = `Không tải được nhiệm vụ: ${error.message}`;
         list.innerHTML = '';
+      } finally {
+        teacherLoginSummaryTrackerReady = true;
+        maybeShowTeacherLoginSummary();
       }
     }
 
@@ -1602,23 +1809,49 @@
       const token = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN');
       const taskId = button.dataset.taskId;
       const action = button.dataset.teacherTaskAction;
+      let previousTask = null;
+      let taskIndex = -1;
       button.disabled = true;
       try {
         if (!token) throw new Error('Phiên theo dõi đã hết hạn. Vui lòng đăng xuất rồi đăng nhập lại.');
         const task = teacherTrackerTasks.find(item => item.id === taskId);
         if (!task) throw new Error('Không tìm thấy nhiệm vụ cần cập nhật.');
+        if (action === 'report-progress') {
+          openTeacherProgressReport(task);
+          button.disabled = false;
+          return;
+        }
+        previousTask = {
+          ...task,
+          completionSubmissions: { ...(task.completionSubmissions || {}) }
+        };
+        taskIndex = teacherTrackerTasks.indexOf(task);
         if (action === 'accept') {
-          await apiCall('trackerAcceptTask', { token, taskId });
+          task.syncing = true;
           task.status = 'IN_PROGRESS';
+          renderTeacherTrackerTasks();
+          showToast('Đang đồng bộ trạng thái nhiệm vụ...');
+          await apiCall('trackerAcceptTask', { token, taskId });
         } else if (action === 'complete') {
           const completionNote = document.getElementById(`teacher-task-completion-note-${taskId}`);
           const note = completionNote?.value.trim() || '';
           if (!note) throw new Error('Vui lòng ghi rõ những việc đã hoàn thành.');
-          await apiCall('trackerRequestCompletion', { token, taskId, note });
-          task.status = 'PENDING';
-          task.completionNote = note;
+          if (!Array.isArray(task.assignees) || !task.assignees.includes(currentUserName)) {
+            throw new Error('Bạn không được giao nhiệm vụ này.');
+          }
+          task.completionSubmissions = task.completionSubmissions || {};
+          task.completionSubmissions[currentUserName] = {
+            note,
+            submitted: true,
+            submittedAt: new Date().toISOString()
+          };
+          task.syncing = true;
+          renderTeacherTrackerTasks();
+          showToast('Đang gửi output của bạn...');
+          const result = await apiCall('trackerRequestCompletion', { token, taskId, note });
+          task.status = result.taskStatus || task.status;
+          task.completionSubmissions = result.completionSubmissions || task.completionSubmissions;
         } else if (action === 'delete') {
-          const task = teacherTrackerTasks.find(item => item.id === taskId);
           if (!task || !canDeleteTeacherPersonalTask(task)) {
             throw new Error('Bạn chỉ có thể xóa việc cá nhân ưu tiên do mình tạo.');
           }
@@ -1627,19 +1860,31 @@
             button.disabled = false;
             return;
           }
-          await apiCall('trackerDeleteTask', { token, taskId });
+          task.syncing = true;
           teacherTrackerTasks = teacherTrackerTasks.filter(item => item.id !== taskId);
+          renderTeacherTrackerTasks();
+          showToast('Đang xóa việc cá nhân...');
+          await apiCall('trackerDeleteTask', { token, taskId });
         } else if (action === 'save-note') {
           const note = document.getElementById(`teacher-task-note-${taskId}`);
           if (!note) throw new Error('Không tìm thấy ô ghi chú của nhiệm vụ.');
-          await apiCall('trackerSaveNote', { token, taskId, note: note.value });
+          task.syncing = true;
           task.note = note.value;
+          renderTeacherTrackerTasks();
+          showToast('Đang đồng bộ ghi chú...');
+          await apiCall('trackerSaveNote', { token, taskId, note: task.note });
         } else {
           throw new Error('Thao tác nhiệm vụ không hợp lệ.');
         }
+        const updatedTask = teacherTrackerTasks.find(item => item.id === taskId);
+        if (updatedTask) updatedTask.syncing = false;
         renderTeacherTrackerTasks();
-        showToast(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'complete' ? 'Đã gửi yêu cầu hoàn thành.' : action === 'delete' ? 'Đã xóa việc cá nhân.' : 'Đã lưu ghi chú.');
+        showToast(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'complete' ? 'Đã gửi output của bạn; trạng thái duyệt được cập nhật.' : action === 'delete' ? 'Đã xóa việc cá nhân.' : 'Đã lưu ghi chú.');
       } catch (error) {
+        const task = teacherTrackerTasks.find(item => item.id === taskId);
+        if (task) Object.assign(task, previousTask);
+        else if (action === 'delete' && previousTask) teacherTrackerTasks.splice(Math.min(taskIndex, teacherTrackerTasks.length), 0, previousTask);
+        renderTeacherTrackerTasks();
         showToast(`Không thể cập nhật nhiệm vụ: ${error.message}`, 'error');
         button.disabled = false;
       }
@@ -1773,7 +2018,7 @@
 
       try {
         await apiCall('update_level', { studentId: student.id, level: newLevel });
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
       } catch (e) {
         showToast("✕ Lỗi đồng bộ Google Sheet", "error");
       }
@@ -1796,8 +2041,8 @@
           value
         });
         if (result?.status !== 'success') throw new Error(result?.message || 'Google Sheet không xác nhận lưu điểm danh.');
-        const refreshed = await refreshDataAfterMutation();
-        if (refreshed) showToast(`Đã lưu Buổi ${sessionIdx + 1} cho ${student.name}`);
+        void refreshDataAfterMutation();
+        showToast(`Đã lưu Buổi ${sessionIdx + 1} cho ${student.name}`);
         return true;
       } catch (error) {
         student.sessions[sessionIdx] = previousValue;
@@ -2294,7 +2539,7 @@
       try {
         const result = await apiCall('restoreStudent', { student: restoredStudent });
         if (result?.status !== 'success') throw new Error(result?.message || 'Khôi phục lên Sheet thất bại');
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
       } catch (err) {
         showToast(`✕ Lỗi đồng bộ khôi phục lên Sheet: ${err.message}`, 'error');
       }
@@ -2325,7 +2570,7 @@
           studentId: student.id,
           reason: student.note || 'Đã dừng học'
         });
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
       } catch (e) {
         showToast("Lỗi đồng bộ xóa lên Sheet!", "error");
       }
@@ -2393,7 +2638,7 @@
 
       try {
         await apiCall('addStudent', { student: newStudent });
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
       } catch (err) {
         showToast("✕ Lỗi đồng bộ lên Sheet!", "error");
       }
@@ -2428,6 +2673,7 @@
       const id = document.getElementById('edit_id').value;
       const student = studentsData.find(s => s.id === id);
       if (!student) return;
+      const previousStudent = { ...student };
 
       const dob = document.getElementById('edit_dob').value.trim();
       const regDate = document.getElementById('edit_regDate').value.trim();
@@ -2450,8 +2696,13 @@
       showToast(`Đã cập nhật học viên ${student.name}`);
 
       try {
-        await apiCall('updateStudentInfo', { student });
-        await refreshDataAfterMutation();
+        const updates = { id: student.id };
+        ['name', 'dob', 'gender', 'level', 'regDate', 'parentName', 'parentPhone', 'address', 'feeStatus', 'note', 'avatar']
+          .forEach(key => {
+            if (student[key] !== previousStudent[key]) updates[key] = student[key];
+          });
+        await apiCall('updateStudentInfo', { student: updates });
+        void refreshDataAfterMutation();
       } catch (err) {
         showToast("✕ Lỗi đồng bộ Google Sheet", "error");
       }
@@ -2566,7 +2817,7 @@
         if (!result || result.status !== 'success') {
           throw new Error(result?.message || 'Google Sheet không xác nhận lưu phân công.');
         }
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
         showToast(`Đã lưu phân công ${teacherName} cho ${student.name}`);
       } catch (error) {
         student.assistants = previousAssistants;
@@ -3062,7 +3313,7 @@
         saveAllDataToLocalStorage();
         input.value = '';
         updateAllViews();
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
         showToast(`Đã thêm loại lớp "${val}"`);
       } catch (err) {
         showToast(`✕ Không thể lưu cấp độ lên Sheet: ${err.message}`, 'error');
@@ -3079,7 +3330,7 @@
         customLevelsList = customLevelsList.filter(l => l !== lvlName);
         saveAllDataToLocalStorage();
         updateAllViews();
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
         showToast(`Đã xóa loại lớp "${lvlName}"`);
       } catch (err) {
         showToast(`✕ Không thể xóa cấp độ trên Sheet: ${err.message}`, 'error');
@@ -3107,7 +3358,7 @@
 
       try {
         await apiCall('addTeacher', { teacherName: name, password: pwd });
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
       } catch (err) {
         showToast(`Không thể lưu trợ giảng: ${err.message}`, 'error');
       }
@@ -3122,7 +3373,7 @@
       updateAllViews();
       try {
         await apiCall('deleteTeacher', { teacherName });
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
       } catch (err) {
         showToast(`Không thể xóa trợ giảng: ${err.message}`, 'error');
       }
@@ -3144,7 +3395,7 @@
       try {
         await apiCall('changePassword', { username: accountName, oldPassword: oldPwd, newPassword: newPwd });
         saveAllDataToLocalStorage();
-        await refreshDataAfterMutation();
+        void refreshDataAfterMutation();
         showToast("Đã đổi mật khẩu và cập nhật lên Sheet thành công!");
 
         document.getElementById('pwd_old').value = '';
@@ -3293,6 +3544,9 @@
     function loginAs(role, name, fromSession = false) {
       currentUserRole = role;
       currentUserName = name;
+      teacherLoginSummaryPending = role === 'teacher';
+      teacherLoginSummaryTrackerReady = role !== 'teacher';
+      teacherTrackerLoadSucceeded = false;
       updateTrackerNavigation();
       sessionStorage.setItem('TV_GLOBAL_ROLE', role);
       sessionStorage.setItem('TV_GLOBAL_USER', name);
@@ -3355,6 +3609,7 @@
     window.onload = async function() {
       initializeAccessibility();
       document.getElementById('teacher-task-list')?.addEventListener('click', handleTeacherTrackerAction);
+      document.getElementById('teacher-progress-report-form')?.addEventListener('submit', submitTeacherProgressReport);
       document.getElementById('teacher-task-toggle')?.addEventListener('click', event => {
         const toggle = event.currentTarget;
         const content = document.getElementById('teacher-task-content');

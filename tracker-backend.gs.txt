@@ -285,7 +285,9 @@ function initDatabase() {
       headers: [
         'ID', 'Nhiệm vụ', 'Người giao', 'Priority', 'Người được giao (JSON)',
         'Ngày bắt đầu', 'Deadline', 'Giờ deadline', 'Trạng thái', 'Ghi chú',
-        'Hình thức phạt', 'Số sao', 'Ghi chú duyệt', 'Ngày tạo', 'Cập nhật lần cuối', 'Output', 'Ghi chú hoàn thành'
+        'Hình thức phạt', 'Số sao', 'Ghi chú duyệt', 'Ngày tạo', 'Cập nhật lần cuối', 'Output', 'Ghi chú hoàn thành',
+        'Lặp lại hàng tuần', 'Tuần lặp gần nhất', 'Tiến độ đã báo cáo', 'Vấn đề cần hỗ trợ', 'Ngày báo cáo tiến độ',
+        'Output theo trợ giảng (JSON)'
       ]
     },
     {
@@ -336,7 +338,31 @@ function initDatabase() {
 // ROUTER API
 // =====================================================
 
+const API_WRITE_ACTIONS_ = new Set([
+  'trackerSetManager', 'trackerCreateTask', 'trackerUpdateTask', 'trackerAcceptTask',
+  'trackerCompletePersonalTask', 'trackerReviewTask', 'trackerDeleteTask',
+  'trackerSaveNote', 'trackerReportProgress', 'trackerSubmitSchedule',
+  'trackerReviewSchedule', 'updateFeeStatus', 'processPayment', 'addLevel',
+  'deleteLevel', 'changePassword', 'addStudent', 'updateAttendance',
+  'updateAssistants', 'update_assistants', 'updateLevel', 'update_level',
+  'updateStudentInfo', 'moveToInactive', 'restoreStudent', 'saveMasterData',
+  'addTeacher', 'deleteTeacher', 'initDatabase'
+]);
+
 function handleApiAction(payload) {
+  const action = payload && payload.action;
+  if (!API_WRITE_ACTIONS_.has(action)) return dispatchApiAction_(payload);
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    return dispatchApiAction_(payload);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function dispatchApiAction_(payload) {
   const action = payload.action;
 
   switch (action) {
@@ -362,6 +388,8 @@ function handleApiAction(payload) {
       return trackerDeleteTask_(payload.token, payload.taskId);
     case 'trackerSaveNote':
       return trackerSaveNote_(payload.token, payload.taskId, payload.note);
+    case 'trackerReportProgress':
+      return trackerReportProgress_(payload.token, payload.taskId, payload.progress, payload.blocker);
     case 'trackerSubmitSchedule':
       return trackerSubmitSchedule_(payload.token, payload.request);
     case 'trackerReviewSchedule':
@@ -534,6 +562,23 @@ function trackerTaskTime_(value, timezone) {
 function trackerEnsureOutputColumn_(sheet) {
   trackerEnsureTaskColumn_(sheet, 16, 'Output');
   trackerEnsureTaskColumn_(sheet, 17, 'Ghi chú hoàn thành');
+  trackerEnsureTaskColumn_(sheet, 18, 'Lặp lại hàng tuần');
+  trackerEnsureTaskColumn_(sheet, 19, 'Tuần lặp gần nhất');
+  trackerEnsureTaskColumn_(sheet, 20, 'Tiến độ đã báo cáo');
+  trackerEnsureTaskColumn_(sheet, 21, 'Vấn đề cần hỗ trợ');
+  trackerEnsureTaskColumn_(sheet, 22, 'Ngày báo cáo tiến độ');
+  trackerEnsureTaskColumn_(sheet, 23, 'Output theo trợ giảng (JSON)');
+}
+
+function trackerParseCompletionSubmissions_(value, taskId) {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(String(value));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    console.error('Invalid tracker completion submissions JSON for task ' + taskId, error);
+    return { __invalidTrackerCompletionJson__: true };
+  }
 }
 
 function trackerEnsureTaskColumn_(sheet, column, label) {
@@ -553,14 +598,15 @@ function trackerTaskRecords_() {
   trackerEnsureOutputColumn_(sheet);
   if (sheet.getLastRow() < 2) return [];
   const timezone = getSpreadsheet().getSpreadsheetTimeZone();
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 17).getValues()
-    .filter(row => String(row[0] || '').trim())
-    .map(row => {
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 23).getValues()
+    .map((row, index) => ({ row, rowNumber: index + 2 }))
+    .filter(record => String(record.row[0] || '').trim())
+    .map(({ row, rowNumber }) => {
       let assignees = [];
       try { assignees = JSON.parse(String(row[4] || '[]')); } catch (error) {
         console.error('Invalid tracker assignees JSON for task ' + row[0], error);
       }
-      return {
+      const task = {
         id: String(row[0]),
         title: String(row[1] || ''),
         createdBy: String(row[2] || ''),
@@ -577,8 +623,16 @@ function trackerTaskRecords_() {
         createdAt: String(row[13] || ''),
         updatedAt: String(row[14] || ''),
         output: String(row[15] || ''),
-        completionNote: String(row[16] || '')
+        completionNote: String(row[16] || ''),
+        repeatWeekly: row[17] === true || String(row[17]).toLowerCase() === 'true',
+        repeatWeek: trackerTaskDate_(row[18], timezone),
+        progressReport: String(row[19] || ''),
+        blocker: String(row[20] || ''),
+        progressReportedAt: String(row[21] || ''),
+        completionSubmissions: trackerParseCompletionSubmissions_(row[22], row[0])
       };
+      Object.defineProperty(task, 'rowNumber', { value: rowNumber });
+      return task;
     });
 }
 
@@ -586,27 +640,43 @@ function trackerRequestRecords_() {
   const sheet = requireSheet_(TAB.TRACKER_REQUESTS);
   if (sheet.getLastRow() < 2) return [];
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues()
-    .filter(row => String(row[0] || '').trim())
-    .map(row => ({
-      id: String(row[0]),
-      teacher: String(row[1] || ''),
-      type: String(row[2] || ''),
-      date: String(row[3] || ''),
-      startTime: String(row[4] || ''),
-      endTime: String(row[5] || ''),
-      reason: String(row[6] || ''),
-      status: String(row[7] || 'PENDING'),
-      reviewer: String(row[8] || ''),
-      reviewNote: String(row[9] || ''),
-      createdAt: String(row[10] || '')
-    }));
+    .map((row, index) => ({ row, rowNumber: index + 2 }))
+    .filter(record => String(record.row[0] || '').trim())
+    .map(({ row, rowNumber }) => {
+      const request = {
+        id: String(row[0]),
+        teacher: String(row[1] || ''),
+        type: String(row[2] || ''),
+        date: String(row[3] || ''),
+        startTime: String(row[4] || ''),
+        endTime: String(row[5] || ''),
+        reason: String(row[6] || ''),
+        status: String(row[7] || 'PENDING'),
+        reviewer: String(row[8] || ''),
+        reviewNote: String(row[9] || ''),
+        createdAt: String(row[10] || '')
+      };
+      Object.defineProperty(request, 'rowNumber', { value: rowNumber });
+      return request;
+    });
 }
 
 function trackerBootstrap_(token) {
   const actor = trackerActor_(token);
   const teachers = readTeachers(requireSheet_(TAB.TEACHERS))
     .map(teacher => teacher.name);
-  const allTasks = trackerTaskRecords_();
+  const taskSheet = requireSheet_(TAB.TRACKER_TASKS);
+  trackerEnsureOutputColumn_(taskSheet);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  let allTasks;
+  try {
+    allTasks = trackerTaskRecords_();
+    trackerApplyWeeklyTaskChanges_(taskSheet, allTasks);
+    allTasks = trackerTaskRecords_();
+  } finally {
+    lock.releaseLock();
+  }
   const allRequests = trackerRequestRecords_();
   const manager = trackerManager_();
   const tasks = actor.role === 'teacher'
@@ -657,6 +727,7 @@ function trackerCreateTask_(token, input) {
   const deadline = String(task.deadline || '');
   const deadlineTime = String(task.deadlineTime || '');
   const output = String(task.output || '').trim();
+  const repeatWeekly = task.repeatWeekly === true;
   const personalPriority = Number(task.priority || (actor.role === 'manager' ? 3 : 4));
   if (!title || title.length > 300) throw new Error('Tên nhiệm vụ không hợp lệ.');
   if (!trackerValidDate_(startDate) || !trackerValidDate_(deadline) || deadline < startDate) {
@@ -664,6 +735,9 @@ function trackerCreateTask_(token, input) {
   }
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(deadlineTime)) throw new Error('Vui lòng nhập giờ deadline hợp lệ.');
   if (output.length > 2000) throw new Error('Output không được vượt quá 2000 ký tự.');
+  if (repeatWeekly && !['director', 'manager'].includes(actor.role)) {
+    throw new Error('Chỉ Giám đốc hoặc Manager được giao task lặp hàng tuần.');
+  }
 
   const teacherSheet = requireSheet_(TAB.TEACHERS);
   const validTeachers = readTeachers(teacherSheet).map(teacher => teacher.name);
@@ -689,16 +763,19 @@ function trackerCreateTask_(token, input) {
   if (assignees.some(name => validTeachers.indexOf(name) === -1)) {
     throw new Error('Danh sách người được giao có tài khoản không hợp lệ.');
   }
+  if (repeatWeekly && priority > 2) throw new Error('Chỉ nhiệm vụ tuần được phép lặp hàng tuần.');
 
   const id = Utilities.getUuid();
   const now = new Date().toISOString();
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
+  trackerEnsureOutputColumn_(sheet);
+  const weekStart = trackerCurrentWeekStart_();
   const row = [
     id, title, creator, priority, JSON.stringify(assignees), startDate, deadline,
     deadlineTime, 'NEW', String(task.note || '').slice(0, 2000),
-    String(task.punishment || '').slice(0, 300), 0, '', now, now, output, ''
+    String(task.punishment || '').slice(0, 300), 0, '', now, now, output, '',
+    repeatWeekly, repeatWeekly ? weekStart : '', '', '', ''
   ];
-  const sheet = requireSheet_(TAB.TRACKER_TASKS);
-  trackerEnsureOutputColumn_(sheet);
   sheet.appendRow(row);
   return { status: 'success', taskId: id };
 }
@@ -714,6 +791,7 @@ function trackerUpdateTask_(token, taskId, input) {
   const deadline = String(updates.deadline || '');
   const deadlineTime = String(updates.deadlineTime || '');
   const output = String(updates.output || '').trim();
+  const repeatWeekly = updates.repeatWeekly === true;
   const priority = Number(task.priority);
   const isPersonalTask = [3, 4].includes(priority);
   const assignedToActor = task.assignees.indexOf(actor.name) !== -1;
@@ -737,6 +815,10 @@ function trackerUpdateTask_(token, taskId, input) {
   }
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(deadlineTime)) throw new Error('Vui lòng nhập giờ deadline hợp lệ.');
   if (output.length > 2000) throw new Error('Output không được vượt quá 2000 ký tự.');
+  if (repeatWeekly && !['director', 'manager'].includes(actor.role)) {
+    throw new Error('Chỉ Giám đốc hoặc Manager được giao task lặp hàng tuần.');
+  }
+  if (repeatWeekly && priority > 2) throw new Error('Chỉ nhiệm vụ tuần được phép lặp hàng tuần.');
   if (priority === 1 && actor.role !== 'director') throw new Error('Chỉ Giám đốc được chỉnh sửa nhiệm vụ tuần.');
   if (isPersonalTask && (assignees.length !== 1 || assignees[0] !== task.createdBy)) {
     throw new Error('Việc cá nhân phải tiếp tục được giao cho chính người tạo.');
@@ -749,7 +831,7 @@ function trackerUpdateTask_(token, taskId, input) {
     throw new Error('Danh sách người được giao có tài khoản không hợp lệ.');
   }
 
-  const row = findRowById(sheet, task.id);
+  const row = task.rowNumber;
   if (!row) throw new Error('Không tìm thấy dòng nhiệm vụ trong bảng dữ liệu.');
   sheet.getRange(row, 2).setValue(title);
   sheet.getRange(row, 5).setValue(JSON.stringify(assignees));
@@ -760,11 +842,71 @@ function trackerUpdateTask_(token, taskId, input) {
   sheet.getRange(row, 15).setValue(new Date().toISOString());
   trackerEnsureOutputColumn_(sheet);
   sheet.getRange(row, 16).setValue(output);
+  sheet.getRange(row, 18).setValue(repeatWeekly);
+  if (repeatWeekly && !task.repeatWeekly) {
+    sheet.getRange(row, 19).setValue(trackerCurrentWeekStart_());
+  } else if (!repeatWeekly) {
+    sheet.getRange(row, 19).clearContent();
+  }
   return { status: 'success' };
+}
+
+function trackerCurrentWeekStart_() {
+  const timezone = getSpreadsheet().getSpreadsheetTimeZone();
+  const today = Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd');
+  const parts = today.split('-').map(Number);
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  const offset = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - offset);
+  return Utilities.formatDate(date, 'GMT', 'yyyy-MM-dd');
+}
+
+function trackerApplyWeeklyTaskChanges_(sheet, tasks) {
+  const currentWeek = trackerCurrentWeekStart_();
+  const currentWeekStart = new Date(`${currentWeek}T00:00:00Z`);
+  const now = new Date().toISOString();
+  tasks.forEach(task => {
+    if (Number(task.priority) > 2) return;
+    if (task.repeatWeekly) {
+      if (!task.repeatWeek) {
+        sheet.getRange(task.rowNumber, 19).setValue(currentWeek);
+        return;
+      }
+      if (task.repeatWeek >= currentWeek) return;
+      const previousWeekStart = new Date(`${task.repeatWeek}T00:00:00Z`);
+      const elapsedWeeks = Math.max(1, Math.floor((currentWeekStart - previousWeekStart) / (7 * 86400000)));
+      const dateOffset = elapsedWeeks * 7;
+      const shiftedDate = value => {
+        const parts = String(value || '').split('-').map(Number);
+        if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return String(value || '');
+        const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+        date.setUTCDate(date.getUTCDate() + dateOffset);
+        return Utilities.formatDate(date, 'GMT', 'yyyy-MM-dd');
+      };
+      sheet.getRange(task.rowNumber, 6, 1, 4).setValues([[
+        shiftedDate(task.startDate),
+        shiftedDate(task.deadline),
+        task.deadlineTime,
+        'NEW'
+      ]]);
+      sheet.getRange(task.rowNumber, 12, 1, 2).setValues([[0, '']]);
+      sheet.getRange(task.rowNumber, 15).setValue(now);
+      sheet.getRange(task.rowNumber, 17).clearContent();
+      sheet.getRange(task.rowNumber, 19).setValue(currentWeek);
+      sheet.getRange(task.rowNumber, 23).clearContent();
+      return;
+    }
+
+    if (task.status === 'COMPLETED' && task.deadline && task.deadline < currentWeek) {
+      sheet.getRange(task.rowNumber, 9).setValue('ARCHIVED');
+      sheet.getRange(task.rowNumber, 15).setValue(now);
+    }
+  });
 }
 
 function trackerUpdateTaskStatus_(token, taskId, nextAction, note) {
   const actor = trackerActor_(token);
+  if (nextAction === 'complete') return trackerSubmitAssigneeCompletion_(actor, taskId, note);
   const sheet = requireSheet_(TAB.TRACKER_TASKS);
   const tasks = trackerTaskRecords_();
   const task = tasks.find(item => item.id === String(taskId || ''));
@@ -773,21 +915,53 @@ function trackerUpdateTaskStatus_(token, taskId, nextAction, note) {
     throw new Error('Bạn không được giao nhiệm vụ này.');
   }
 
-  const row = findRowById(sheet, task.id);
+  const row = task.rowNumber;
   if (nextAction === 'accept') {
     if (actor.role === 'director' || task.status !== 'NEW') throw new Error('Nhiệm vụ không còn ở trạng thái mới giao.');
     sheet.getRange(row, 9).setValue('IN_PROGRESS');
-  } else {
-    if (actor.role === 'director' || task.status !== 'IN_PROGRESS') throw new Error('Chỉ có thể yêu cầu hoàn thành khi nhiệm vụ đang thực hiện.');
-    const completionNote = String(note || '').trim();
-    if (!completionNote) throw new Error('Vui lòng ghi rõ những việc đã hoàn thành trước khi gửi yêu cầu.');
-    if (completionNote.length > 2000) throw new Error('Ghi chú hoàn thành không được vượt quá 2000 ký tự.');
-    trackerEnsureOutputColumn_(sheet);
-    sheet.getRange(row, 9).setValue('PENDING');
-    sheet.getRange(row, 17).setValue(completionNote);
   }
   sheet.getRange(row, 15).setValue(new Date().toISOString());
   return { status: 'success' };
+}
+
+function trackerSubmitAssigneeCompletion_(actor, taskId, note) {
+  if (actor.role === 'director') throw new Error('Giám đốc không thể gửi output thay trợ giảng.');
+  const output = String(note || '').trim();
+  if (!output) throw new Error('Vui lòng ghi rõ output đã hoàn thành.');
+  if (output.length > 2000) throw new Error('Output không được vượt quá 2000 ký tự.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheet = requireSheet_(TAB.TRACKER_TASKS);
+    trackerEnsureOutputColumn_(sheet);
+    const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
+    if (!task) throw new Error('Không tìm thấy nhiệm vụ.');
+    if (!task.assignees.includes(actor.name)) throw new Error('Bạn không được giao nhiệm vụ này.');
+    if (Number(task.priority) > 2) throw new Error('Chỉ task được giao cho nhóm mới cần output theo từng trợ giảng.');
+    if (task.status !== 'IN_PROGRESS') throw new Error('Task không ở trạng thái nhận output.');
+    if (!task.assignees.length) throw new Error('Task chưa có trợ giảng được giao.');
+
+    const submissions = task.completionSubmissions || {};
+    const now = new Date().toISOString();
+    submissions[actor.name] = { note: output, submitted: true, submittedAt: now };
+    const submittedCount = task.assignees.filter(name => (
+      submissions[name] && submissions[name].submitted && String(submissions[name].note || '').trim()
+    )).length;
+    const allSubmitted = submittedCount === task.assignees.length;
+    sheet.getRange(task.rowNumber, 23).setValue(JSON.stringify(submissions));
+    sheet.getRange(task.rowNumber, 15).setValue(now);
+    if (allSubmitted) sheet.getRange(task.rowNumber, 9).setValue('PENDING');
+    return {
+      status: 'success',
+      taskStatus: allSubmitted ? 'PENDING' : 'IN_PROGRESS',
+      submittedCount: submittedCount,
+      requiredCount: task.assignees.length,
+      completionSubmissions: submissions
+    };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function trackerAcceptTask_(token, taskId) {
@@ -807,7 +981,7 @@ function trackerCompletePersonalTask_(token, taskId) {
     throw new Error('Bạn không có quyền cập nhật task cá nhân này.');
   }
   if (task.status === 'COMPLETED') throw new Error('Task cá nhân này đã hoàn thành.');
-  const row = findRowById(sheet, task.id);
+  const row = task.rowNumber;
   sheet.getRange(row, 9).setValue('COMPLETED');
   sheet.getRange(row, 12).setValue(0);
   sheet.getRange(row, 15).setValue(new Date().toISOString());
@@ -821,6 +995,15 @@ function trackerReviewTask_(token, taskId, decision, note, stars) {
   const sheet = requireSheet_(TAB.TRACKER_TASKS);
   const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
   if (!task || task.status !== 'PENDING') throw new Error('Nhiệm vụ không ở trạng thái chờ duyệt.');
+  const submissions = task.completionSubmissions || {};
+  if (Object.keys(submissions).length) {
+    const submittedCount = task.assignees.filter(name => (
+      submissions[name] && submissions[name].submitted && String(submissions[name].note || '').trim()
+    )).length;
+    if (submittedCount !== task.assignees.length) {
+      throw new Error(`Chưa đủ output của tất cả trợ giảng (${submittedCount}/${task.assignees.length}).`);
+    }
+  }
   const manager = trackerManager_();
   if (actor.role === 'manager' && task.createdBy !== actor.name && task.assignees.indexOf(actor.name) === -1 && manager !== actor.name) {
     throw new Error('Bạn không có quyền duyệt nhiệm vụ này.');
@@ -829,11 +1012,18 @@ function trackerReviewTask_(token, taskId, decision, note, stars) {
   if (decision === 'approve' && rating && (rating < 1 || rating > 5 || Math.floor(rating) !== rating)) {
     throw new Error('Số sao phải từ 1 đến 5.');
   }
-  const row = findRowById(sheet, task.id);
+  const row = task.rowNumber;
   sheet.getRange(row, 9).setValue(decision === 'approve' ? 'COMPLETED' : 'IN_PROGRESS');
   sheet.getRange(row, 12).setValue(decision === 'approve' ? rating : 0);
   sheet.getRange(row, 13).setValue(String(note || '').slice(0, 1000));
   sheet.getRange(row, 15).setValue(new Date().toISOString());
+  if (decision === 'reject') {
+    const submissions = task.completionSubmissions || {};
+    task.assignees.forEach(name => {
+      if (submissions[name]) submissions[name].submitted = false;
+    });
+    sheet.getRange(row, 23).setValue(JSON.stringify(submissions));
+  }
   return { status: 'success' };
 }
 
@@ -853,7 +1043,7 @@ function trackerDeleteTask_(token, taskId) {
       ? 'Trợ giảng chỉ được xóa việc cá nhân ưu tiên do mình tạo.'
       : 'Manager chỉ được xóa nhiệm vụ do mình tạo.');
   }
-  const row = findRowById(sheet, task.id);
+  const row = task.rowNumber;
   if (!row) throw new Error('Không tìm thấy dòng nhiệm vụ trong bảng dữ liệu.');
   sheet.deleteRow(row);
   return { status: 'success' };
@@ -864,10 +1054,34 @@ function trackerSaveNote_(token, taskId, note) {
   const sheet = requireSheet_(TAB.TRACKER_TASKS);
   const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
   if (!task || task.assignees.indexOf(actor.name) === -1) throw new Error('Bạn không được cập nhật nhiệm vụ này.');
-  const row = findRowById(sheet, task.id);
+  const row = task.rowNumber;
   sheet.getRange(row, 10).setValue(String(note || '').slice(0, 2000));
   sheet.getRange(row, 15).setValue(new Date().toISOString());
   return { status: 'success' };
+}
+
+function trackerReportProgress_(token, taskId, progress, blocker) {
+  const actor = trackerActor_(token);
+  if (actor.role === 'director') throw new Error('Chỉ trợ giảng được gửi báo cáo tiến độ.');
+  const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
+  if (!task || task.assignees.indexOf(actor.name) === -1) {
+    throw new Error('Bạn không được báo cáo tiến độ cho nhiệm vụ này.');
+  }
+  if (task.status !== 'IN_PROGRESS') {
+    throw new Error('Chỉ có thể báo cáo task đang thực hiện.');
+  }
+  const report = String(progress || '').trim();
+  const issue = String(blocker || '').trim();
+  if (!report) throw new Error('Vui lòng ghi nội dung đã thực hiện.');
+  if (report.length > 2000 || issue.length > 2000) {
+    throw new Error('Mỗi nội dung báo cáo không được vượt quá 2000 ký tự.');
+  }
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
+  const row = task.rowNumber;
+  const now = new Date().toISOString();
+  sheet.getRange(row, 20, 1, 3).setValues([[report, issue, now]]);
+  sheet.getRange(row, 15).setValue(now);
+  return { status: 'success', reportedAt: now };
 }
 
 function trackerSubmitSchedule_(token, input) {
@@ -899,7 +1113,7 @@ function trackerReviewSchedule_(token, requestId, decision, note) {
   const sheet = requireSheet_(TAB.TRACKER_REQUESTS);
   const request = trackerRequestRecords_().find(item => item.id === String(requestId || ''));
   if (!request || request.status !== 'PENDING') throw new Error('Đơn không còn ở trạng thái chờ duyệt.');
-  const row = findRowById(sheet, request.id);
+  const row = request.rowNumber;
   sheet.getRange(row, 8).setValue(decision === 'approve' ? 'APPROVED' : 'REJECTED');
   sheet.getRange(row, 9).setValue(actor.name);
   sheet.getRange(row, 10).setValue(String(note || '').slice(0, 1000));
@@ -1336,24 +1550,19 @@ function updateStudentInfo(student) {
     };
   }
 
-  const assistants = splitAssistants(student.assistants).join(', ');
-  const feeStatus = normalizeFeeStatus(student.feeStatus);
-
-  sheet.getRange(row, 1, 1, 13).setValues([[
-    student.id || '',
-    student.name || '',
-    student.dob || '',
-    student.gender || '',
-    student.level || '',
-    student.regDate || '',
-    student.parentName || '',
-    student.parentPhone || '',
-    student.address || '',
-    feeStatus,
-    student.note || '',
-    student.avatar || '',
-    assistants
-  ]]);
+  const values = sheet.getRange(row, 1, 1, 13).getValues()[0];
+  const fields = [
+    ['name', 1], ['dob', 2], ['gender', 3], ['level', 4], ['regDate', 5],
+    ['parentName', 6], ['parentPhone', 7], ['address', 8], ['feeStatus', 9],
+    ['note', 10], ['avatar', 11], ['assistants', 12]
+  ];
+  fields.forEach(([key, index]) => {
+    if (!Object.prototype.hasOwnProperty.call(student, key)) return;
+    if (key === 'feeStatus') values[index] = normalizeFeeStatus(student[key]);
+    else if (key === 'assistants') values[index] = splitAssistants(student[key]).join(', ');
+    else values[index] = student[key] || '';
+  });
+  sheet.getRange(row, 1, 1, 13).setValues([values]);
 
   return {
     status: 'success',

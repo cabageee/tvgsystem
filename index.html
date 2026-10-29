@@ -63,6 +63,58 @@
     </div>
   </div>
 
+  <div id="modal-teacher-login-summary" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95%] sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="bg-[#8B1515] text-white p-4 flex justify-between items-center">
+        <div>
+          <h3 class="font-bold text-sm uppercase tracking-wider">📋 Tổng quan công việc hôm nay</h3>
+          <p id="teacher-login-summary-date" class="text-xs text-white/80 mt-1"></p>
+        </div>
+        <button onclick="closeModal('modal-teacher-login-summary')" class="text-white/80 hover:text-white text-2xl leading-none p-1" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="p-4 sm:p-5 space-y-3 overflow-y-auto">
+        <section class="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <h4 class="text-xs font-bold uppercase text-amber-900">1. Học sinh cần chăm sóc / gia hạn</h4>
+          <p id="teacher-login-summary-students" class="mt-1 text-sm text-slate-700"></p>
+        </section>
+        <section class="rounded-xl border border-blue-200 bg-blue-50 p-3">
+          <h4 class="text-xs font-bold uppercase text-blue-900">2. Task cần nhận</h4>
+          <div id="teacher-login-summary-accept" class="mt-1 text-sm text-slate-700"></div>
+        </section>
+        <section class="rounded-xl border border-red-200 bg-red-50 p-3">
+          <h4 class="text-xs font-bold uppercase text-red-900">3. Deadline và thời gian còn lại</h4>
+          <div id="teacher-login-summary-deadlines" class="mt-1 text-sm text-slate-700"></div>
+        </section>
+      </div>
+      <div class="p-4 pt-0">
+        <button onclick="closeModal('modal-teacher-login-summary')" class="w-full py-3 bg-[#8B1515] text-white font-bold rounded-xl text-sm">Đã hiểu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-teacher-progress-report" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95%] sm:max-w-xl overflow-hidden">
+      <div class="bg-[#8B1515] text-white p-4 flex justify-between items-center">
+        <h3 class="font-bold text-sm uppercase tracking-wider">Báo cáo tiến độ</h3>
+        <button onclick="closeModal('modal-teacher-progress-report')" class="text-white/80 hover:text-white text-2xl leading-none p-1" aria-label="Đóng">&times;</button>
+      </div>
+      <form id="teacher-progress-report-form" class="p-5 space-y-3">
+        <p id="teacher-progress-report-task" class="text-sm font-bold text-slate-700"></p>
+        <label class="block text-xs font-bold text-slate-700">Đã thực hiện được gì? <span class="text-red-600">*</span>
+          <textarea id="teacher-progress-report-done" required maxlength="2000" class="mt-1 w-full min-h-24 rounded-lg border border-slate-200 p-2 text-sm" placeholder="Tóm tắt phần việc đã hoàn thành hoặc tiến độ hiện tại..."></textarea>
+        </label>
+        <label class="block text-xs font-bold text-slate-700">Vấn đề đang gặp / cần hỗ trợ
+          <textarea id="teacher-progress-report-blocker" maxlength="2000" class="mt-1 w-full min-h-20 rounded-lg border border-slate-200 p-2 text-sm" placeholder="Mô tả khó khăn để Giám đốc/Manager hỗ trợ..."></textarea>
+        </label>
+        <p id="teacher-progress-report-error" class="hidden text-xs text-red-600 font-bold"></p>
+        <div class="flex justify-end gap-2">
+          <button type="button" onclick="closeModal('modal-teacher-progress-report')" class="px-4 py-2 rounded-lg border text-sm font-bold">Hủy</button>
+          <button id="teacher-progress-report-save" type="submit" class="px-4 py-2 rounded-lg bg-[#8B1515] text-white text-sm font-bold">Gửi báo cáo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- CONFIRM MODAL -->
   <div id="modal-confirm" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95%] sm:max-w-md overflow-hidden">
