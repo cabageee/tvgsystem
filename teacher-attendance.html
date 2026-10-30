@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Thien Vy Global - Class Attendance</title>
+  <title>Thiên Vy Global | Điểm danh lớp học</title>
   <meta name="theme-color" content="#8B1515">
   <meta name="description" content="Hệ thống quản lý học viên, điểm danh và theo dõi học phí của Thiên Vy Global.">
   <link rel="icon" type="image/png" href="Logo Thien Vy.png">
@@ -30,8 +30,8 @@
         <div class="space-y-2">
           <label for="login-pwd-director" class="block text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Mật khẩu quản trị viên</label>
           <div class="flex gap-2">
-            <input type="password" id="login-pwd-director" placeholder="Mật khẩu Admin..." class="flex-1 px-3 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#8B1515]/50" onkeyup="if(event.key==='Enter') handleLoginSubmit('director')">
-            <button onclick="handleLoginSubmit('director')" class="bg-[#8B1515] hover:bg-red-900 text-white font-bold px-4 py-2 rounded-xl text-sm transition active:scale-[0.98]">Vào</button>
+            <input type="password" id="login-pwd-director" placeholder="Nhập mật khẩu quản trị viên..." class="flex-1 px-3 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#8B1515]/50" onkeyup="if(event.key==='Enter') handleLoginSubmit('director')">
+            <button onclick="handleLoginSubmit('director')" class="bg-[#8B1515] hover:bg-red-900 text-white font-bold px-4 py-2 rounded-xl text-sm transition active:scale-[0.98]">Đăng nhập</button>
           </div>
         </div>
         <hr class="border-slate-100">
@@ -40,10 +40,51 @@
           <select id="login-teacher-select" aria-label="Tài khoản Trợ Giảng" class="w-full px-3 py-2 border rounded-xl text-sm outline-none bg-slate-50 focus:ring-2 focus:ring-[#8B1515]/50 mb-2"></select>
           <div class="flex gap-2">
             <input type="password" id="login-pwd-teacher" aria-label="Mật khẩu Trợ Giảng" placeholder="Mật khẩu Trợ Giảng..." class="flex-1 px-3 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#8B1515]/50" onkeyup="if(event.key==='Enter') handleLoginSubmit('teacher')">
-            <button onclick="handleLoginSubmit('teacher')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-sm transition active:scale-[0.98]">Vào</button>
+            <button onclick="handleLoginSubmit('teacher')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-sm transition active:scale-[0.98]">Đăng nhập</button>
           </div>
         </div>
         <p id="login-error-msg" class="text-xs text-red-600 font-bold text-center hidden">⚠️ Mật khẩu không đúng, vui lòng thử lại!</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-teacher-login-summary" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95%] sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="bg-[#8B1515] text-white p-4 flex justify-between items-center">
+        <div>
+          <h3 class="font-bold text-sm uppercase tracking-wider">📋 Tổng quan học viên &amp; công việc hôm nay</h3>
+          <p id="teacher-login-summary-date" class="text-xs text-white/80 mt-1"></p>
+        </div>
+        <button onclick="closeModal('modal-teacher-login-summary')" class="text-white/80 hover:text-white text-2xl leading-none p-1" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="p-4 sm:p-5 space-y-3 overflow-y-auto">
+        <section class="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <h4 class="text-xs font-bold uppercase text-amber-900">1. Học viên cần ưu tiên</h4>
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <article class="rounded-lg border border-amber-200 bg-white p-3 text-center">
+              <p class="text-[10px] font-bold uppercase tracking-wide text-amber-800">Cần chăm sóc</p>
+              <p id="teacher-login-summary-care-count" class="mt-1 text-3xl font-black leading-none text-amber-700">—</p>
+              <p class="mt-1 text-[10px] text-slate-500">học viên</p>
+            </article>
+            <article class="rounded-lg border border-red-200 bg-white p-3 text-center">
+              <p class="text-[10px] font-bold uppercase tracking-wide text-red-800">Cần gia hạn</p>
+              <p id="teacher-login-summary-renewal-count" class="mt-1 text-3xl font-black leading-none text-red-700">—</p>
+              <p class="mt-1 text-[10px] text-slate-500">học viên</p>
+            </article>
+          </div>
+          <p id="teacher-login-summary-students" class="mt-2 text-xs text-slate-600" role="status"></p>
+        </section>
+        <section class="rounded-xl border border-blue-200 bg-blue-50 p-3">
+          <h4 class="text-xs font-bold uppercase text-blue-900">2. Công việc cần tiếp nhận</h4>
+          <div id="teacher-login-summary-accept" class="mt-1 text-sm text-slate-700"></div>
+        </section>
+        <section class="rounded-xl border border-red-200 bg-red-50 p-3">
+          <h4 class="text-xs font-bold uppercase text-red-900">3. Thời hạn và thời gian còn lại</h4>
+          <div id="teacher-login-summary-deadlines" class="mt-1 text-sm text-slate-700"></div>
+        </section>
+      </div>
+      <div class="p-4 pt-0">
+        <button onclick="closeModal('modal-teacher-login-summary')" class="w-full py-3 bg-[#8B1515] text-white font-bold rounded-xl text-sm">Đã hiểu</button>
       </div>
     </div>
   </div>
@@ -223,7 +264,7 @@
           </div>
           
           <div class="flex items-center gap-4">
-            <img id="card-student-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23f1f5f9'/%3E%3Ccircle cx='32' cy='24' r='12' fill='%2394a3b8'/%3E%3Cpath d='M10 58c2-12 10-18 22-18s20 6 22 18' fill='%2394a3b8'/%3E%3C/svg%3E" onerror="handleAvatarImageError(this)" alt="Avatar học viên" class="w-16 h-16 rounded-full object-cover border-2 border-amber-300 bg-white shrink-0">
+            <img id="card-student-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23f1f5f9'/%3E%3Ccircle cx='32' cy='24' r='12' fill='%2394a3b8'/%3E%3Cpath d='M10 58c2-12 10-18 22-18s20 6 22 18' fill='%2394a3b8'/%3E%3C/svg%3E" onerror="handleAvatarImageError(this)" alt="Ảnh đại diện học viên" class="w-16 h-16 rounded-full object-cover border-2 border-amber-300 bg-white shrink-0">
             <div class="space-y-1">
               <h3 id="card-student-name" class="font-bold text-base text-amber-200">...</h3>
               <p class="text-xs">Cấp độ / Lớp: <span id="card-student-level" class="font-bold text-white">...</span></p>
@@ -397,31 +438,23 @@
             <img src="Logo Thien Vy.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" alt="Logo Thiên Vy Global" class="w-9 h-9 sm:w-11 sm:h-11 rounded-full object-cover shadow-sm shrink-0 border-2 border-amber-300/60 bg-white">
             <div>
               <div class="flex items-center gap-2">
-                <h1 class="text-sm sm:text-base font-bold tracking-wide uppercase leading-none">THIÊN VY GLOBAL</h1>
+                <h1 class="text-sm sm:text-xl font-bold tracking-normal leading-tight">Thiên Vy Global</h1>
                 <span id="user-role-badge" class="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold uppercase hidden sm:inline-block"></span>
               </div>
               <p id="user-info-text" class="text-[10px] sm:text-[11px] text-amber-200 font-light mt-0.5">...</p>
             </div>
           </a>
           <div class="flex gap-1 sm:hidden">
-            <button onclick="showPage('page-change-password')" class="text-[11px] bg-white/10 hover:bg-white/20 px-2 py-1.5 rounded-lg transition shrink-0">🔑</button>
+            <button onclick="showPage('page-change-password')" aria-label="Đổi mật khẩu" title="Đổi mật khẩu" class="text-[11px] bg-white/10 hover:bg-white/20 px-2 py-1.5 rounded-lg transition shrink-0">🔑</button>
             <button onclick="logout()" class="text-[11px] bg-white/10 hover:bg-white/20 px-2 py-1.5 rounded-lg transition shrink-0">Đăng xuất</button>
           </div>
         </div>
         
         <div class="flex items-center gap-2 w-full sm:w-auto overflow-hidden">
           <nav id="teacher-tracker-nav" class="hidden w-full sm:w-auto mobile-scroll-x items-center gap-2 pb-1 sm:pb-0 pt-1 sm:pt-0" aria-label="Theo dõi công việc">
-            <a id="teacher-tracker-link" href="executive-tracker.html?view=teacher" class="hidden tracker-nav-link shrink-0 text-white font-semibold transition"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span>Task của tôi</span></a>
-                        <a id="manager-tracker-link" href="executive-tracker.html?view=manager" class="hidden shrink-0 bg-amber-400 hover:bg-amber-500 text-slate-900 text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">📈 Quản Lý Tiến Độ</a>
+            <a id="teacher-tracker-link" href="executive-tracker.html?view=teacher" class="hidden tracker-nav-link shrink-0 text-white font-semibold transition"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span>Công việc của tôi</span></a>
+            <a id="manager-tracker-link" href="executive-tracker.html?view=manager" class="hidden shrink-0 bg-amber-400 hover:bg-amber-500 text-slate-900 text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">📈 Quản lý tiến độ</a>
           </nav>
-          <div id="admin-nav-buttons" class="hidden w-full sm:w-auto mobile-scroll-x flex items-center gap-2 pb-1 sm:pb-0 pt-1 sm:pt-0">
-            <button onclick="showPage('page-admin-master')" class="shrink-0 bg-amber-400 hover:bg-amber-500 text-slate-900 text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">📊 Master View</button>
-            <button onclick="showPage('page-director-list')" class="shrink-0 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-semibold px-3 py-2 sm:py-1.5 rounded-lg transition">📋 Phân Công</button>
-            <button onclick="showPage('page-student-profiles')" class="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">📁 Hồ Sơ HV</button>
-            <button onclick="showPage('page-director-attendance')" class="shrink-0 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-semibold px-3 py-2 sm:py-1.5 rounded-lg transition">✅ Điểm Danh</button>
-            <button onclick="showPage('page-daily-summary')" class="shrink-0 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-semibold px-3 py-2 sm:py-1.5 rounded-lg transition">📅 Điểm Danh Hôm Nay</button>
-            <button onclick="showPage('page-inactive-students')" class="shrink-0 bg-red-800 hover:bg-red-700 text-white text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">🚪 HV Nghỉ</button>
-          </div>
           <div class="hidden sm:flex items-center gap-2">
             <button onclick="showPage('page-change-password')" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition flex items-center gap-1">🔑 Đổi MK</button>
             <button onclick="logout()" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition">Đăng xuất</button>
@@ -434,7 +467,7 @@
       <!-- Loading state -->
       <div id="loading-state" class="hidden text-center py-12 sm:py-16 bg-white rounded-xl shadow-sm border border-slate-200 mx-2 sm:mx-0">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#8B1515] border-t-transparent mb-2"></div>
-        <p class="text-slate-500 text-xs sm:text-sm font-medium">Đang đồng bộ dữ liệu Realtime với Google Sheet...</p>
+        <p class="text-slate-500 text-xs sm:text-sm font-medium">Đang tải dữ liệu từ Google Sheet...</p>
       </div>
 
       <div id="alert-banner" class="hidden mb-4 mx-2 sm:mx-0 p-3 sm:p-4 bg-red-100 border-l-4 border-red-600 rounded-r-xl text-red-900 font-semibold text-[11px] sm:text-xs shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -469,6 +502,7 @@
             <p class="text-xs text-emerald-100 mt-1">Bấm “Điểm danh hôm nay” trên thẻ học viên để ghi nhận nhanh, không cần nhập ngày.</p>
           </div>
           <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button onclick="fetchDataFromGoogleSheet(true)" class="flex-1 sm:flex-none bg-white/20 hover:bg-white/30 text-white font-bold px-3.5 py-2 rounded-xl text-xs active:scale-[0.98]">🔄 Làm mới</button>
             <button onclick="openAddStudentModal()" class="flex-1 sm:flex-none bg-white/20 hover:bg-white/30 text-white font-bold px-3.5 py-2 rounded-xl text-xs active:scale-[0.98]">➕ Thêm HV</button>
             <span class="flex-1 sm:flex-none text-center text-xs font-mono bg-emerald-900/60 px-3 py-2 rounded-xl border border-emerald-700 font-bold">Sĩ số: <strong id="teacher-student-count" class="text-amber-300">0</strong></span>
           </div>

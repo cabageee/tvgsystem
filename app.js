@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyv2YLFI_0AG1cuotMYBB4fOO8DcPvW0Qu2Q_V4l47M_zmhYxZpkgrJ_nl3HIGRbtCL/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyMzmznzc7E1MrAO5qtWVwkkVjp9O20sjw4slj4izJQ3jjwaT0Cm2M3WRyFHkBlEs7/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -750,7 +750,7 @@
         };
         const timeoutId = setTimeout(() => {
           cleanup();
-          reject(new Error('Không nhận được trạng thái upload từ Apps Script.'));
+          reject(new Error('Không nhận được trạng thái tải ảnh lên từ Apps Script.'));
         }, 10000);
 
         window[callbackName] = result => {
@@ -759,7 +759,7 @@
         };
         script.onerror = () => {
           cleanup();
-          reject(new Error('Không truy vấn được trạng thái upload avatar.'));
+          reject(new Error('Không truy vấn được trạng thái tải ảnh đại diện lên.'));
         };
         const query = new URLSearchParams({
           callback: callbackName,
@@ -791,7 +791,7 @@
       const frameName = `drive-upload-${requestId}`;
       const iframe = document.createElement('iframe');
       iframe.name = frameName;
-      iframe.title = 'Tải avatar lên Google Drive';
+      iframe.title = 'Tải ảnh đại diện lên Google Drive';
       iframe.hidden = true;
 
       const form = document.createElement('form');
@@ -846,14 +846,14 @@
               }
             } catch (error) {
               lastPollError = error?.message || String(error);
-              console.warn('Chưa truy vấn được trạng thái upload avatar:', error);
+              console.warn('Chưa truy vấn được trạng thái tải ảnh đại diện lên:', error);
             }
             if (!finished) pollTimer = setTimeout(pollStatus, 1000);
           };
 
           timeoutId = setTimeout(() => {
             const detail = lastPollError ? ` ${lastPollError}` : '';
-            finish(new Error(`Apps Script không hoàn tất upload avatar sau 60 giây.${detail}`));
+            finish(new Error(`Apps Script không hoàn tất tải ảnh đại diện lên sau 60 giây.${detail}`));
           }, 60000);
           window.addEventListener('message', onMessage);
           try {
@@ -884,11 +884,11 @@
         const avatarUrl = await uploadAvatarFile(file);
         document.getElementById(targetIds.value).value = avatarUrl;
         setAvatarImage(document.getElementById(targetIds.preview), avatarUrl);
-        if (statusEl) statusEl.innerText = "Upload ảnh thành công.";
+        if (statusEl) statusEl.innerText = "Tải ảnh lên thành công.";
       } catch (err) {
         console.error("Google Drive Upload Error:", err);
         const errorText = err?.message || err?.error_description || String(err);
-        if (statusEl) statusEl.innerText = `Upload thất bại: ${errorText}`;
+        if (statusEl) statusEl.innerText = `Tải ảnh lên thất bại: ${errorText}`;
       }
     }
 
@@ -902,7 +902,7 @@
     function openDirectAvatarOptions(studentIdx) {
       const student = studentsData[studentIdx];
       if (!student) {
-        showToast('Không tìm thấy học viên cần cập nhật avatar.', 'error');
+        showToast('Không tìm thấy học viên cần cập nhật ảnh đại diện.', 'error');
         return;
       }
 
@@ -964,7 +964,7 @@
           student: { id: student.id, avatar: DEFAULT_AVATAR }
         });
         if (!result || result.status !== 'success') {
-          throw new Error(result?.message || 'Google Sheet không xác nhận xóa avatar.');
+          throw new Error(result?.message || 'Google Sheet không xác nhận xóa ảnh đại diện.');
         }
         student.avatar = DEFAULT_AVATAR;
         updateAllViews();
@@ -973,7 +973,7 @@
       } catch (error) {
         student.avatar = previousAvatar;
         updateAllViews();
-        console.error('Lỗi xóa avatar học viên:', error);
+        console.error('Lỗi xóa ảnh đại diện học viên:', error);
         showToast(`Không xóa được ảnh đại diện: ${error.message}`, 'error');
       }
     }
@@ -997,7 +997,7 @@
           student: { id: student.id, avatar: uploadedAvatar }
         });
         if (!result || result.status !== 'success') {
-          throw new Error(result?.message || 'Google Sheet không xác nhận cập nhật avatar.');
+          throw new Error(result?.message || 'Google Sheet không xác nhận cập nhật ảnh đại diện.');
         }
         student.avatar = uploadedAvatar;
         updateAllViews();
@@ -1009,7 +1009,7 @@
         showToast(
           uploadedAvatar
             ? `Đã tải ảnh lên Drive nhưng chưa lưu được vào Sheet: ${errorText}`
-            : `Upload avatar thất bại: ${errorText}`,
+            : `Tải ảnh đại diện lên thất bại: ${errorText}`,
           "error"
         );
       } finally {
@@ -1607,7 +1607,7 @@
           actions.push(`<button type="button" data-teacher-task-action="accept" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">Nhận việc</button>`);
         } else if (task.status === 'IN_PROGRESS') {
           const submission = task.completionSubmissions?.[currentUserName];
-          actions.push(`<button type="button" data-teacher-task-action="complete" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-[#8B1515] hover:bg-red-900 text-white text-xs font-bold">${submission?.submitted ? 'Cập nhật output' : 'Gửi output hoàn thành'}</button>`);
+          actions.push(`<button type="button" data-teacher-task-action="complete" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-[#8B1515] hover:bg-red-900 text-white text-xs font-bold">${submission?.submitted ? 'Cập nhật kết quả' : 'Gửi kết quả hoàn thành'}</button>`);
           actions.push(`<button type="button" data-teacher-task-action="report-progress" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-900 text-xs font-bold">Báo cáo tiến độ</button>`);
         }
         if (!task.syncing && ['NEW', 'IN_PROGRESS'].includes(task.status)) {
@@ -1626,14 +1626,14 @@
           ${gantt}
           <h3 class="mt-2 text-sm font-bold text-slate-800">${escapeHtml(task.title)}</h3>
           <p class="mt-1 text-[11px] text-slate-500">Người giao: ${escapeHtml(task.createdBy || '—')}${task.punishment ? ` · Lưu ý: ${escapeHtml(task.punishment)}` : ''}</p>
-          ${task.output ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Output:</strong> ${escapeHtml(task.output)}</p>` : ''}
-          ${Number(task.priority) <= 2 && Array.isArray(task.assignees) && task.assignees.length ? `<div class="mt-2 text-[11px] text-slate-600"><strong>Output theo trợ giảng:</strong> ${task.assignees.map(name => { const submission = task.completionSubmissions?.[name]; const output = String(submission?.note || '').trim(); return `<p class="mt-1"><strong>${escapeHtml(name)}:</strong> ${submission?.submitted ? escapeHtml(output) : output ? `<span class="text-amber-700">Cần gửi lại:</span> ${escapeHtml(output)}` : 'Chưa gửi output'}</p>`; }).join('')}</div>` : task.completionNote ? `<p class="mt-2 text-xs text-slate-600"><strong>Đã hoàn thành:</strong> ${escapeHtml(task.completionNote)}</p>` : ''}
+          ${task.output ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Kết quả cần đạt:</strong> ${escapeHtml(task.output)}</p>` : ''}
+          ${Number(task.priority) <= 2 && Array.isArray(task.assignees) && task.assignees.length ? `<div class="mt-2 text-[11px] text-slate-600"><strong>Kết quả theo trợ giảng:</strong> ${task.assignees.map(name => { const submission = task.completionSubmissions?.[name]; const output = String(submission?.note || '').trim(); return `<p class="mt-1"><strong>${escapeHtml(name)}:</strong> ${submission?.submitted ? escapeHtml(output) : output ? `<span class="text-amber-700">Cần gửi lại:</span> ${escapeHtml(output)}` : 'Chưa gửi kết quả'}</p>`; }).join('')}</div>` : task.completionNote ? `<p class="mt-2 text-xs text-slate-600"><strong>Đã hoàn thành:</strong> ${escapeHtml(task.completionNote)}</p>` : ''}
           ${task.progressReport ? `<p class="mt-2 text-[11px] text-slate-600 whitespace-pre-wrap"><strong>Tiến độ đã báo cáo:</strong> ${escapeHtml(task.progressReport)}</p>` : ''}
           ${task.blocker ? `<p class="mt-2 text-[11px] text-amber-800 whitespace-pre-wrap"><strong>Vấn đề cần hỗ trợ:</strong> ${escapeHtml(task.blocker)}</p>` : ''}
           ${task.reviewNote ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Phản hồi:</strong> ${escapeHtml(task.reviewNote)}</p>` : ''}
           ${['NEW', 'IN_PROGRESS'].includes(task.status) ? `<div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="${task.status === 'NEW' ? 'sm:col-span-2' : ''}"><label class="block text-[10px] font-bold uppercase text-slate-500" for="teacher-task-note-${escapeHtml(task.id)}">Ghi chú tiến độ</label><textarea id="teacher-task-note-${escapeHtml(task.id)}" data-teacher-task-note="${escapeHtml(task.id)}" maxlength="2000" class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.note || '')}</textarea></div>
-            ${task.status === 'IN_PROGRESS' ? `<div><label class="block text-[10px] font-bold uppercase text-slate-500" for="teacher-task-completion-note-${escapeHtml(task.id)}">Output của bạn <span class="text-red-600">*</span></label><textarea id="teacher-task-completion-note-${escapeHtml(task.id)}" data-teacher-task-completion-note="${escapeHtml(task.id)}" maxlength="2000" required placeholder="Ghi rõ output bạn hoàn thành..." class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.completionSubmissions?.[currentUserName]?.note || '')}</textarea></div>` : ''}
+            ${task.status === 'IN_PROGRESS' ? `<div><label class="block text-[10px] font-bold uppercase text-slate-500" for="teacher-task-completion-note-${escapeHtml(task.id)}">Kết quả hoàn thành <span class="text-red-600">*</span></label><textarea id="teacher-task-completion-note-${escapeHtml(task.id)}" data-teacher-task-completion-note="${escapeHtml(task.id)}" maxlength="2000" required placeholder="Ghi rõ kết quả bạn đã hoàn thành..." class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.completionSubmissions?.[currentUserName]?.note || '')}</textarea></div>` : ''}
           </div>` : task.note ? `<p class="mt-2 text-xs text-slate-600"><strong>Ghi chú tiến độ:</strong> ${escapeHtml(task.note)}</p>` : ''}
           ${actions.length ? `<div class="mt-3 flex flex-wrap gap-2">${actions.join('')}</div>` : ''}
         </article>`;
@@ -1666,9 +1666,13 @@
       const renewalCount = assignedStudents.filter(student => getProgressWarningPriority(student.completedSessions || 0, student.level) === 3).length;
       const careCount = assignedStudents.filter(student => getProgressWarningPriority(student.completedSessions || 0, student.level) === 2).length;
       const studentSummary = document.getElementById('teacher-login-summary-students');
+      const careCountElement = document.getElementById('teacher-login-summary-care-count');
+      const renewalCountElement = document.getElementById('teacher-login-summary-renewal-count');
+      if (careCountElement) careCountElement.textContent = studentDataLoadSucceeded ? String(careCount) : '—';
+      if (renewalCountElement) renewalCountElement.textContent = studentDataLoadSucceeded ? String(renewalCount) : '—';
       if (studentSummary) {
         studentSummary.textContent = studentDataLoadSucceeded
-          ? `${careCount} học sinh cần chăm sóc · ${renewalCount} học sinh cần gia hạn.`
+          ? 'Số học viên được phân công cho bạn cần ưu tiên xử lý hôm nay.'
           : 'Không tải được dữ liệu học sinh. Vui lòng tải lại Sheet để xem số liệu mới nhất.';
       }
 
@@ -1679,11 +1683,11 @@
       )) : [];
       const awaitingAcceptance = myTasks
         .filter(task => task.status === 'NEW')
-        .map(task => task.title || 'Task chưa có tên');
+        .map(task => task.title || 'Nhiệm vụ chưa có tên');
       renderSummaryEntries(
         'teacher-login-summary-accept',
         awaitingAcceptance,
-        teacherTrackerLoadSucceeded ? 'Không có task nào đang chờ bạn nhận.' : 'Không tải được danh sách task. Vui lòng thử lại trong mục Task Tracking.'
+        teacherTrackerLoadSucceeded ? 'Không có nhiệm vụ nào đang chờ bạn nhận.' : 'Không tải được danh sách nhiệm vụ. Vui lòng thử lại trong mục Theo dõi công việc.'
       );
 
       const now = new Date();
@@ -1704,7 +1708,7 @@
           }
           return {
             deadline: deadline.getTime(),
-            label: `${task.title || 'Task'} — ${date} ${time}: ${remainingLabel}`
+            label: `${task.title || 'Nhiệm vụ'} — ${date} ${time}: ${remainingLabel}`
           };
         })
         .sort((a, b) => a.deadline - b.deadline)
@@ -1712,7 +1716,7 @@
       renderSummaryEntries(
         'teacher-login-summary-deadlines',
         deadlines,
-        teacherTrackerLoadSucceeded ? 'Không có deadline đang theo dõi.' : 'Không tải được deadline. Vui lòng thử lại trong mục Task Tracking.'
+        teacherTrackerLoadSucceeded ? 'Không có thời hạn nào đang theo dõi.' : 'Không tải được thời hạn. Vui lòng thử lại trong mục Theo dõi công việc.'
       );
 
       const dateLabel = document.getElementById('teacher-login-summary-date');
@@ -1738,7 +1742,7 @@
       const saveButton = document.getElementById('teacher-progress-report-save');
       errorElement.classList.add('hidden');
       if (!task || !progress) {
-        errorElement.textContent = task ? 'Vui lòng ghi nội dung đã thực hiện.' : 'Không tìm thấy task cần báo cáo.';
+        errorElement.textContent = task ? 'Vui lòng ghi nội dung đã thực hiện.' : 'Không tìm thấy nhiệm vụ cần báo cáo.';
         errorElement.classList.remove('hidden');
         return;
       }
@@ -1758,7 +1762,7 @@
         task.syncing = false;
         closeModal('modal-teacher-progress-report');
         renderTeacherTrackerTasks();
-        showToast('Đã gửi báo cáo tiến độ cho Giám đốc/Manager.');
+        showToast('Đã gửi báo cáo tiến độ cho Giám đốc / Quản lý.');
       } catch (error) {
         Object.assign(task, previousTask);
         renderTeacherTrackerTasks();
@@ -1847,7 +1851,7 @@
           };
           task.syncing = true;
           renderTeacherTrackerTasks();
-          showToast('Đang gửi output của bạn...');
+          showToast('Đang gửi kết quả của bạn...');
           const result = await apiCall('trackerRequestCompletion', { token, taskId, note });
           task.status = result.taskStatus || task.status;
           task.completionSubmissions = result.completionSubmissions || task.completionSubmissions;
@@ -1879,7 +1883,7 @@
         const updatedTask = teacherTrackerTasks.find(item => item.id === taskId);
         if (updatedTask) updatedTask.syncing = false;
         renderTeacherTrackerTasks();
-        showToast(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'complete' ? 'Đã gửi output của bạn; trạng thái duyệt được cập nhật.' : action === 'delete' ? 'Đã xóa việc cá nhân.' : 'Đã lưu ghi chú.');
+        showToast(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'complete' ? 'Đã gửi kết quả của bạn; trạng thái duyệt được cập nhật.' : action === 'delete' ? 'Đã xóa việc cá nhân.' : 'Đã lưu ghi chú.');
       } catch (error) {
         const task = teacherTrackerTasks.find(item => item.id === taskId);
         if (task) Object.assign(task, previousTask);
@@ -2041,7 +2045,6 @@
           value
         });
         if (result?.status !== 'success') throw new Error(result?.message || 'Google Sheet không xác nhận lưu điểm danh.');
-        void refreshDataAfterMutation();
         showToast(`Đã lưu Buổi ${sessionIdx + 1} cho ${student.name}`);
         return true;
       } catch (error) {
@@ -2594,7 +2597,7 @@
       document.getElementById('add_avatar').value = '';
       setAvatarImage(document.getElementById('avatar-preview'), '');
       document.getElementById('add_avatar_file').value = '';
-      document.getElementById('upload-status').innerText = 'Chọn ảnh để upload tự động.';
+      document.getElementById('upload-status').innerText = 'Chọn ảnh để tải lên tự động.';
       document.getElementById('modal-add-student').classList.remove('hidden');
     }
 
@@ -2663,7 +2666,7 @@
       document.getElementById('edit_avatar').value = student.avatar || '';
       setAvatarImage(document.getElementById('edit-avatar-preview'), student.avatar);
       document.getElementById('edit_avatar_file').value = '';
-      document.getElementById('edit-upload-status').innerText = student.avatar ? 'Đang dùng avatar hiện tại. Chọn ảnh mới để thay.' : 'Chọn ảnh để upload tự động.';
+      document.getElementById('edit-upload-status').innerText = student.avatar ? 'Đang dùng ảnh đại diện hiện tại. Chọn ảnh mới để thay.' : 'Chọn ảnh để tải lên tự động.';
 
       document.getElementById('modal-edit-student').classList.remove('hidden');
     }
@@ -2960,7 +2963,7 @@
           <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
             <div class="flex items-center justify-between border-b pb-3">
               <div class="flex items-center gap-3">
-                <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${s.name}" class="w-10 h-10 rounded-full object-cover border">
+                <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="Ảnh đại diện ${s.name}" class="w-10 h-10 rounded-full object-cover border">
                 <div>
                   <h3 class="font-bold text-slate-800 text-sm">${s.name}</h3>
                   <p class="text-[11px] text-slate-400 font-mono">${s.id} - ${s.level}</p>
@@ -3134,7 +3137,7 @@
         return `
           <article class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col gap-3">
             <div class="flex items-center gap-3 min-w-0">
-              <img src="${getAvatarDisplayUrl(student.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${student.name || 'học viên'}" class="w-12 h-12 rounded-full object-cover border border-slate-200 shrink-0">
+              <img src="${getAvatarDisplayUrl(student.avatar)}" onerror="handleAvatarImageError(this)" alt="Ảnh đại diện ${student.name || 'học viên'}" class="w-12 h-12 rounded-full object-cover border border-slate-200 shrink-0">
               <div class="min-w-0 flex-1">
                 <h3 class="font-bold text-slate-800 truncate">${student.name || 'Chưa có tên'}</h3>
                 <p class="text-xs text-slate-500">${student.id || 'Chưa có mã'} · ${student.level || 'Chưa xếp lớp'}</p>
@@ -3217,7 +3220,7 @@
       container.innerHTML = attended.map(s => `
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-emerald-200 flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="Avatar ${s.name}" class="w-10 h-10 rounded-full object-cover border">
+            <img src="${getAvatarDisplayUrl(s.avatar)}" onerror="handleAvatarImageError(this)" alt="Ảnh đại diện ${s.name}" class="w-10 h-10 rounded-full object-cover border">
             <div>
               <h4 class="font-bold text-slate-800 text-sm">${s.name}</h4>
               <p class="text-[11px] text-slate-400">${s.id} - ${s.level}</p>
@@ -3517,7 +3520,7 @@
           throw new Error(identity?.message || 'Tài khoản hoặc mật khẩu không đúng.');
         }
         if (!identity.token) {
-          throw new Error('Apps Script chưa cấp quyền truy cập Tracker. Hãy cập nhật deployment bằng tracker-backend.gs.txt rồi thử lại.');
+          throw new Error('Apps Script chưa cấp quyền truy cập hệ thống theo dõi công việc. Hãy cập nhật deployment bằng tracker-backend.gs.txt rồi thử lại.');
         }
         const identityName = String(identity.name || username).trim();
         sessionStorage.removeItem('TV_GLOBAL_TRACKER_TOKEN');
@@ -3564,12 +3567,12 @@
       if (role === 'director') {
         badge.innerText = 'Admin';
         badge.className = "text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-amber-200 text-[#8B1515] sm:inline-block hidden";
-        document.getElementById('admin-nav-buttons').classList.remove('hidden');
+        document.getElementById('admin-nav-buttons')?.classList.remove('hidden');
         showPage(fromSession ? document.body.dataset.appPage : 'page-admin-master');
       } else {
         badge.innerText = 'Trợ Giảng';
         badge.className = "text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-emerald-500 text-white sm:inline-block hidden";
-        document.getElementById('admin-nav-buttons').classList.add('hidden');
+        document.getElementById('admin-nav-buttons')?.classList.add('hidden');
         const teacherClassName = document.getElementById('teacher-class-name');
         if (teacherClassName) teacherClassName.innerText = name;
         showPage(fromSession ? document.body.dataset.appPage : 'page-teacher-attendance');

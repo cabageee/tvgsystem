@@ -26,6 +26,7 @@
 - Tải avatar lên Google Drive thông qua Apps Script.
 - Thông báo trong ứng dụng, bao gồm nhắc sinh nhật trong 3 ngày tới.
 - Giao diện responsive cho máy tính và điện thoại; có thể cài như PWA trên trình duyệt hỗ trợ.
+- Menu quản trị nằm cạnh nút Theo dõi công việc trên trang chính; chọn logo hoặc tên Thiên Vy Global để quay lại trang chính.
 - Các thao tác cập nhật phản hồi ngay trên giao diện ở những luồng phù hợp; các lần tải lại dữ liệu gần nhau được gộp và thao tác ghi được khóa tuần tự để hạn chế ghi đè khi nhiều người dùng đồng thời.
 
 ## Cấu trúc dự án
@@ -141,7 +142,7 @@ Khi thêm hoặc đổi tệp giao diện cần cache, cập nhật danh sách `
 - Trong giao diện trợ giảng, nút **Điểm danh hôm nay** ghi ngày hiện tại vào buổi còn trống tiếp theo. Nút không khả dụng nếu học viên đã được điểm danh trong ngày hoặc đã hết buổi học.
 - Việc chuyển trang dùng URL HTML riêng. Phiên đăng nhập được lưu trong `sessionStorage` để duy trì khi chuyển trang trong cùng trình duyệt/tab.
 - Thông báo sinh nhật xuất hiện tối đa một lần mỗi ngày trên trình duyệt đang dùng. Trung tâm thông báo lưu tối đa 30 thông báo gần nhất trong ngày cục bộ; đây là thông báo trong ứng dụng, không phải Web Push.
-- Lịch sử ở nút **Thông báo** được làm mới theo ngày. Mỗi lần trợ giảng đăng nhập, màn hình tổng quan hiển thị học sinh cần chăm sóc/gia hạn, task cần nhận và thời gian còn lại đến deadline.
+- Lịch sử ở nút **Thông báo** được làm mới theo ngày. Mỗi lần trợ giảng đăng nhập, popup tổng quan ưu tiên hiển thị số học viên cần chăm sóc và cần gia hạn, sau đó là task cần nhận và thời gian còn lại đến deadline.
 
 ## Tracker công việc
 
@@ -150,13 +151,13 @@ Tracker sử dụng cùng Google Apps Script và Spreadsheet với ứng dụng 
 ### Vai trò và luồng công việc
 
 - **Giám đốc:** giao nhiệm vụ tuần P1, quản lý quyền Manager, duyệt yêu cầu hoàn thành và duyệt/từ chối đơn nghỉ hoặc tăng ca.
-- **Manager:** giao nhiệm vụ tuần P2 cho trợ giảng khác, quản lý task trong Tracker và duyệt yêu cầu hoàn thành. Manager không có quyền duyệt đơn nghỉ/tăng ca.
+- **Manager:** giao nhiệm vụ tuần P2 cho trợ giảng khác, quản lý task trong Tracker, xem và cập nhật nhiệm vụ được giao trực tiếp cho mình, và duyệt yêu cầu hoàn thành. Manager không có quyền duyệt đơn nghỉ/tăng ca.
 - **Trợ giảng:** nhận nhiệm vụ tuần, cập nhật ghi chú, gửi output hoàn thành riêng; có thể tạo việc cá nhân P3/P4 và gửi đơn nghỉ/tăng ca.
 - Với task giao nhiều trợ giảng, mỗi người gửi output riêng. Task chỉ chuyển sang chờ duyệt khi tất cả người được giao đã gửi; Giám đốc/Manager xem output và số lượng đã gửi theo từng người rồi duyệt task một lần. Nếu task bị trả lại, mọi người phải gửi lại output.
 - Khi hết tuần, task tuần đã hoàn thành được lưu trữ; task chưa hoàn thành tiếp tục giữ nguyên để theo dõi. Task bật **Lặp lại hàng tuần** được giao lại ở trạng thái mới, deadline được chuyển thêm một tuần và trợ giảng cần nhận lại.
 - Trợ giảng có thể gửi **Báo cáo tiến độ** gồm phần đã làm và vấn đề cần hỗ trợ; Giám đốc/Manager xem báo cáo trong bảng task đã nhận. Báo cáo mới nhất được giữ trên task.
 - **Việc cá nhân P3/P4:** P3 là ưu tiên trước, P4 là ưu tiên sau. Người tạo cập nhật ghi chú và tự đánh dấu hoàn thành, không cần Manager/Giám đốc duyệt.
-- Trợ giảng chỉ nhận dữ liệu task/đơn thuộc tài khoản của mình. Manager và Giám đốc có trang Tracker riêng theo vai trò.
+- Trợ giảng chỉ nhận dữ liệu task/đơn thuộc tài khoản của mình. Manager và Giám đốc có trang Tracker riêng theo vai trò; Manager có thể mở cả lối vào **Công việc của tôi** và **Quản lý tiến độ**. Vai trò thực tế luôn lấy từ phiên Apps Script; nếu tài khoản được nhận diện là trợ giảng, trang chỉ hiển thị và cho thao tác trên nhiệm vụ được giao cho tài khoản đó.
 
 ### Cập nhật tức thời và đồng bộ
 

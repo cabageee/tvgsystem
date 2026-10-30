@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Thien Vy Global - Class Levels</title>
+  <title>Thiên Vy Global | Cấp độ lớp học</title>
   <meta name="theme-color" content="#8B1515">
   <meta name="description" content="Hệ thống quản lý học viên, điểm danh và theo dõi học phí của Thiên Vy Global.">
   <link rel="icon" type="image/png" href="Logo Thien Vy.png">
@@ -30,8 +30,8 @@
         <div class="space-y-2">
           <label for="login-pwd-director" class="block text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Mật khẩu quản trị viên</label>
           <div class="flex gap-2">
-            <input type="password" id="login-pwd-director" placeholder="Mật khẩu Admin..." class="flex-1 px-3 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#8B1515]/50" onkeyup="if(event.key==='Enter') handleLoginSubmit('director')">
-            <button onclick="handleLoginSubmit('director')" class="bg-[#8B1515] hover:bg-red-900 text-white font-bold px-4 py-2 rounded-xl text-sm transition active:scale-[0.98]">Vào</button>
+            <input type="password" id="login-pwd-director" placeholder="Nhập mật khẩu quản trị viên..." class="flex-1 px-3 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#8B1515]/50" onkeyup="if(event.key==='Enter') handleLoginSubmit('director')">
+            <button onclick="handleLoginSubmit('director')" class="bg-[#8B1515] hover:bg-red-900 text-white font-bold px-4 py-2 rounded-xl text-sm transition active:scale-[0.98]">Đăng nhập</button>
           </div>
         </div>
         <hr class="border-slate-100">
@@ -40,7 +40,7 @@
           <select id="login-teacher-select" aria-label="Tài khoản Trợ Giảng" class="w-full px-3 py-2 border rounded-xl text-sm outline-none bg-slate-50 focus:ring-2 focus:ring-[#8B1515]/50 mb-2"></select>
           <div class="flex gap-2">
             <input type="password" id="login-pwd-teacher" aria-label="Mật khẩu Trợ Giảng" placeholder="Mật khẩu Trợ Giảng..." class="flex-1 px-3 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#8B1515]/50" onkeyup="if(event.key==='Enter') handleLoginSubmit('teacher')">
-            <button onclick="handleLoginSubmit('teacher')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-sm transition active:scale-[0.98]">Vào</button>
+            <button onclick="handleLoginSubmit('teacher')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-sm transition active:scale-[0.98]">Đăng nhập</button>
           </div>
         </div>
         <p id="login-error-msg" class="text-xs text-red-600 font-bold text-center hidden">⚠️ Mật khẩu không đúng, vui lòng thử lại!</p>
@@ -167,7 +167,7 @@
           </div>
           
           <div class="flex items-center gap-4">
-            <img id="card-student-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23f1f5f9'/%3E%3Ccircle cx='32' cy='24' r='12' fill='%2394a3b8'/%3E%3Cpath d='M10 58c2-12 10-18 22-18s20 6 22 18' fill='%2394a3b8'/%3E%3C/svg%3E" onerror="handleAvatarImageError(this)" alt="Avatar học viên" class="w-16 h-16 rounded-full object-cover border-2 border-amber-300 bg-white shrink-0">
+            <img id="card-student-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23f1f5f9'/%3E%3Ccircle cx='32' cy='24' r='12' fill='%2394a3b8'/%3E%3Cpath d='M10 58c2-12 10-18 22-18s20 6 22 18' fill='%2394a3b8'/%3E%3C/svg%3E" onerror="handleAvatarImageError(this)" alt="Ảnh đại diện học viên" class="w-16 h-16 rounded-full object-cover border-2 border-amber-300 bg-white shrink-0">
             <div class="space-y-1">
               <h3 id="card-student-name" class="font-bold text-base text-amber-200">...</h3>
               <p class="text-xs">Cấp độ / Lớp: <span id="card-student-level" class="font-bold text-white">...</span></p>
@@ -341,28 +341,20 @@
             <img src="Logo Thien Vy.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" alt="Logo Thiên Vy Global" class="w-9 h-9 sm:w-11 sm:h-11 rounded-full object-cover shadow-sm shrink-0 border-2 border-amber-300/60 bg-white">
             <div>
               <div class="flex items-center gap-2">
-                <h1 class="text-sm sm:text-base font-bold tracking-wide uppercase leading-none">THIÊN VY GLOBAL</h1>
+                <h1 class="text-sm sm:text-xl font-bold tracking-normal leading-tight">Thiên Vy Global</h1>
                 <span id="user-role-badge" class="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold uppercase hidden sm:inline-block"></span>
               </div>
               <p id="user-info-text" class="text-[10px] sm:text-[11px] text-amber-200 font-light mt-0.5">...</p>
             </div>
           </a>
           <div class="flex gap-1 sm:hidden">
-            <button onclick="showPage('page-change-password')" class="text-[11px] bg-white/10 hover:bg-white/20 px-2 py-1.5 rounded-lg transition shrink-0">🔑</button>
+            <button onclick="showPage('page-change-password')" aria-label="Đổi mật khẩu" title="Đổi mật khẩu" class="text-[11px] bg-white/10 hover:bg-white/20 px-2 py-1.5 rounded-lg transition shrink-0">🔑</button>
             <button onclick="logout()" class="text-[11px] bg-white/10 hover:bg-white/20 px-2 py-1.5 rounded-lg transition shrink-0">Đăng xuất</button>
           </div>
         </div>
         
-        <div class="flex items-center gap-2 w-full sm:w-auto overflow-hidden">
-          <div id="admin-nav-buttons" class="hidden w-full sm:w-auto mobile-scroll-x flex items-center gap-2 pb-1 sm:pb-0 pt-1 sm:pt-0">
-            <button onclick="showPage('page-admin-master')" class="shrink-0 bg-amber-400 hover:bg-amber-500 text-slate-900 text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">📊 Master View</button>
-            <button onclick="showPage('page-director-list')" class="shrink-0 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-semibold px-3 py-2 sm:py-1.5 rounded-lg transition">📋 Phân Công</button>
-            <button onclick="showPage('page-student-profiles')" class="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">📁 Hồ Sơ HV</button>
-            <button onclick="showPage('page-director-attendance')" class="shrink-0 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-semibold px-3 py-2 sm:py-1.5 rounded-lg transition">✅ Điểm Danh</button>
-            <button onclick="showPage('page-daily-summary')" class="shrink-0 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-semibold px-3 py-2 sm:py-1.5 rounded-lg transition">📅 Điểm Danh Hôm Nay</button>
-            <button onclick="showPage('page-inactive-students')" class="shrink-0 bg-red-800 hover:bg-red-700 text-white text-[11px] sm:text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg shadow transition">🚪 HV Nghỉ</button>
-          </div>
-          <div class="hidden sm:flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div class="flex items-center gap-2">
             <button onclick="showPage('page-change-password')" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition flex items-center gap-1">🔑 Đổi MK</button>
             <button onclick="logout()" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition">Đăng xuất</button>
           </div>

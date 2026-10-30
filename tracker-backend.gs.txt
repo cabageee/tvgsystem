@@ -340,7 +340,7 @@ function initDatabase() {
 
 const API_WRITE_ACTIONS_ = new Set([
   'trackerSetManager', 'trackerCreateTask', 'trackerUpdateTask', 'trackerAcceptTask',
-  'trackerCompletePersonalTask', 'trackerReviewTask', 'trackerDeleteTask',
+  'trackerRequestCompletion', 'trackerCompletePersonalTask', 'trackerReviewTask', 'trackerDeleteTask',
   'trackerSaveNote', 'trackerReportProgress', 'trackerSubmitSchedule',
   'trackerReviewSchedule', 'updateFeeStatus', 'processPayment', 'addLevel',
   'deleteLevel', 'changePassword', 'addStudent', 'updateAttendance',
