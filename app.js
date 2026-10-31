@@ -1798,7 +1798,7 @@
           (Array.isArray(performance.penalties) ? performance.penalties : []).forEach(penalty => {
             if (trackerMonthKey(penalty.penalizedAt) === currentMonth) {
               overdueItems.set(
-                `${task.id}:${penalty.cycleKey || 'penalty'}`,
+                `${task.id}:${penalty.cycleKey || task.repeatWeek || task.id}`,
                 `${task.title || 'Nhiệm vụ'} · trễ hạn, đã bị phạt`
               );
             }

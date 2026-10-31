@@ -513,7 +513,7 @@
       <section class="kpis" aria-label="Tổng quan nhiệm vụ">
         <article class="kpi"><div class="kpi-label">Tổng nhiệm vụ</div><div id="kpi-total" class="kpi-value">0</div><span class="kpi-icon fa-solid fa-list-check" aria-hidden="true"></span></article>
         <article class="kpi"><div class="kpi-label">Nhiệm vụ / đơn chờ duyệt</div><div id="kpi-pending" class="kpi-value">0 / 0</div><span class="kpi-icon fa-solid fa-clipboard-check" aria-hidden="true"></span></article>
-        <article class="kpi"><div class="kpi-label">Quá hạn</div><div id="kpi-overdue" class="kpi-value">0</div><span class="kpi-icon fa-solid fa-triangle-exclamation" aria-hidden="true"></span></article>
+        <article class="kpi"><div id="kpi-overdue-label" class="kpi-label">Quá hạn</div><div id="kpi-overdue" class="kpi-value">0</div><span class="kpi-icon fa-solid fa-triangle-exclamation" aria-hidden="true"></span></article>
         <article class="kpi"><div class="kpi-label">Tổng sao tích lũy</div><div id="kpi-stars" class="kpi-value">0</div><span class="kpi-icon fa-solid fa-star" aria-hidden="true"></span></article>
       </section>
 
@@ -907,14 +907,54 @@
 
       function getStatus(task) {
         if (!['COMPLETED', 'ARCHIVED'].includes(task.status)) {
-          const deadline = localDate(task.deadline);
+          const deadline = taskDeadline(task);
           if (deadline) {
-            const [hour, minute] = (timeLabel(task.deadlineTime) || '23:59').split(':').map(Number);
-            deadline.setHours(hour, minute, 0, 0);
             if (deadline < new Date() && task.status !== 'PENDING') return 'OVERDUE';
           }
         }
         return task.status;
+      }
+
+      function taskDeadline(task) {
+        const deadline = localDate(task.deadline);
+        if (!deadline) return null;
+        const [hour, minute] = (timeLabel(task.deadlineTime) || '23:59').split(':').map(Number);
+        deadline.setHours(hour, minute, 0, 0);
+        return deadline;
+      }
+
+      function teacherOverdueItems(name, currentMonth) {
+        const overdueItems = new Map();
+        const addOverdueItem = (task, cycleKey, message) => {
+          overdueItems.set(`${task.id}:${cycleKey || task.id}`, `${task.title || 'Nhiệm vụ'} · ${message}`);
+        };
+
+        tasks.forEach(task => {
+          if (!Array.isArray(task.assignees) || !task.assignees.includes(name)) return;
+          const performance = task.performanceByAssignee?.[name] || {};
+          (Array.isArray(performance.penalties) ? performance.penalties : []).forEach(penalty => {
+            const penalizedDate = localDate(penalty.penalizedAt);
+            if (penalizedDate && dateInputValue(penalizedDate).slice(0, 7) === currentMonth) {
+              addOverdueItem(task, penalty.cycleKey || task.repeatWeek || task.id, 'trễ hạn, đã bị phạt');
+            }
+          });
+
+          const deadline = taskDeadline(task);
+          const submission = task.completionSubmissions?.[name];
+          const hasSubmittedOutput = Boolean(submission?.submitted && String(submission.note || '').trim());
+          const submittedAt = submission?.submittedAt ? new Date(submission.submittedAt) : null;
+          if (deadline && hasSubmittedOutput && submittedAt && Number.isFinite(submittedAt.getTime())
+            && submittedAt > deadline
+            && dateInputValue(deadline).slice(0, 7) === currentMonth) {
+            addOverdueItem(task, task.repeatWeek || task.id, 'trễ hạn, đã bị phạt');
+          } else if (deadline && deadline < new Date()
+            && !['COMPLETED', 'ARCHIVED'].includes(task.status)
+            && !hasSubmittedOutput) {
+            addOverdueItem(task, task.repeatWeek || task.id, 'trễ hạn, cần hoàn thành');
+          }
+        });
+
+        return overdueItems;
       }
 
       function visibleTasks() {
@@ -1109,11 +1149,14 @@
           : 'Kiểm tra nhiệm vụ chờ duyệt và trả lại để trợ giảng cập nhật; quản lý không duyệt đơn nghỉ / tăng ca.';
         $('create-task').textContent = role === 'director' ? 'Giao nhiệm vụ tuần' : role === 'manager' ? 'Giao nhiệm vụ tuần / việc cá nhân' : 'Thêm việc cá nhân';
         const activeTasks = tasks.filter(task => task.status !== 'ARCHIVED');
-        const overdueCount = activeTasks.filter(task => getStatus(task) === 'OVERDUE').length;
+        const currentMonth = dateInputValue(new Date()).slice(0, 7);
+        const overdueCount = role === 'teacher'
+          ? teacherOverdueItems(session.actor.name, currentMonth).size
+          : activeTasks.filter(task => getStatus(task) === 'OVERDUE').length;
         $('kpi-total').textContent = activeTasks.length;
         const pendingTasks = activeTasks.filter(task => task.status === 'PENDING').length;
         $('kpi-overdue').textContent = overdueCount;
-        const currentMonth = dateInputValue(new Date()).slice(0, 7);
+        $('kpi-overdue-label').textContent = role === 'teacher' ? 'Trễ hạn' : 'Quá hạn';
         const starRecipient = role === 'teacher' ? session.actor.name : '';
         $('kpi-stars').textContent = tasks.reduce((sum, task) => {
           const performance = task.performanceByAssignee || {};
