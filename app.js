@@ -1719,6 +1719,7 @@
     }
 
     function teacherTaskWasSubmittedLate(task, teacherName) {
+      if (Number(task.priority) <= 2 && ['COMPLETED', 'ARCHIVED'].includes(task.status)) return false;
       const submission = task.completionSubmissions?.[teacherName];
       if (!teacherTaskHasSubmittedOutput(task, teacherName) || !submission.submittedAt) return false;
       const deadline = trackerTaskDeadline(task);
@@ -1848,6 +1849,8 @@
       if (teacherTrackerLoadSucceeded) {
         teacherTrackerTasks.forEach(task => {
           if (!Array.isArray(task.assignees) || !task.assignees.includes(currentUserName)) return;
+          const approvedTeamTask = Number(task.priority) <= 2
+            && ['COMPLETED', 'ARCHIVED'].includes(task.status);
           const performance = task.performanceByAssignee?.[currentUserName] || {};
           (Array.isArray(performance.rewards) ? performance.rewards : []).forEach(reward => {
             if (trackerMonthKey(reward.rewardedAt) === currentMonth && Number(reward.stars) > 0) {
@@ -1855,7 +1858,7 @@
             }
           });
           (Array.isArray(performance.penalties) ? performance.penalties : []).forEach(penalty => {
-            if (trackerMonthKey(penalty.penalizedAt) === currentMonth) {
+            if (!approvedTeamTask && trackerMonthKey(penalty.penalizedAt) === currentMonth) {
               overdueItems.set(
                 `${task.id}:${penalty.cycleKey || task.repeatWeek || task.id}`,
                 `${task.title || 'Nhiệm vụ'} · trễ hạn, đã bị phạt`
@@ -1867,7 +1870,7 @@
           const deadline = trackerTaskDeadline(task);
           const submittedAt = submission?.submitted ? new Date(submission.submittedAt || '') : null;
           const hasValidSubmittedAt = submittedAt && Number.isFinite(submittedAt.getTime());
-          if (deadline && hasValidSubmittedAt && submittedAt > deadline && trackerMonthKey(task.deadline) === currentMonth) {
+          if (!approvedTeamTask && deadline && hasValidSubmittedAt && submittedAt > deadline && trackerMonthKey(task.deadline) === currentMonth) {
             overdueItems.set(
               `${task.id}:${task.repeatWeek || task.id}`,
               `${task.title || 'Nhiệm vụ'} · trễ hạn, đã bị phạt`

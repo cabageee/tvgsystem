@@ -685,6 +685,12 @@ function trackerBootstrap_(token) {
   let allTasks;
   try {
     allTasks = trackerTaskRecords_();
+    allTasks.forEach(task => {
+      if (Number(task.priority) <= 2
+        && (['COMPLETED', 'ARCHIVED'].includes(task.status) || task.archiveMonth)) {
+        trackerClearTaskPenalties_(taskSheet, task);
+      }
+    });
     trackerApplyWeeklyTaskChanges_(taskSheet, allTasks);
     allTasks = trackerTaskRecords_();
   } finally {
@@ -994,10 +1000,6 @@ function trackerSubmitAssigneeCompletion_(actor, taskId, note) {
     )).length;
     const allSubmitted = submittedCount === task.assignees.length;
     sheet.getRange(task.rowNumber, 23).setValue(JSON.stringify(submissions));
-    const deadline = trackerTaskDeadline_(task);
-    if (deadline && nowDate > deadline) {
-      trackerRecordTaskPenalty_(sheet, task, actor.name, task.deadline);
-    }
     sheet.getRange(task.rowNumber, 15).setValue(now);
     if (allSubmitted) sheet.getRange(task.rowNumber, 9).setValue('PENDING');
     return {
@@ -1033,7 +1035,7 @@ function trackerCompletePersonalTask_(token, taskId) {
   const now = new Date();
   const deadline = trackerTaskDeadline_(task);
   if (deadline && now > deadline) {
-    trackerRecordTaskPenalty_(sheet, task, actor.name, task.deadline);
+    trackerRecordTaskPenalty_(sheet, task, actor.name, now.toISOString());
   }
   sheet.getRange(row, 9).setValue('COMPLETED');
   sheet.getRange(row, 12).setValue(0);
@@ -1067,6 +1069,21 @@ function trackerRecordTaskPenalty_(sheet, task, teacherName, penalizedAt) {
   sheet.getRange(task.rowNumber, 24).setValue(JSON.stringify(performance));
 }
 
+function trackerClearTaskPenalties_(sheet, task) {
+  const performance = task.performanceByAssignee || {};
+  const cycleKey = task.repeatWeekly ? task.repeatWeek : task.id;
+  let changed = false;
+  Object.keys(performance).forEach(name => {
+    const teacherPerformance = performance[name] || {};
+    const penalties = Array.isArray(teacherPerformance.penalties) ? teacherPerformance.penalties : [];
+    const remainingPenalties = penalties.filter(penalty => penalty.cycleKey !== cycleKey);
+    if (remainingPenalties.length === penalties.length) return;
+    performance[name] = { ...teacherPerformance, penalties: remainingPenalties };
+    changed = true;
+  });
+  if (changed) sheet.getRange(task.rowNumber, 24).setValue(JSON.stringify(performance));
+}
+
 function trackerReviewTask_(token, taskId, decision, note) {
   const actor = trackerActor_(token);
   if (actor.role === 'teacher') throw new Error('Chỉ Giám đốc hoặc Manager được duyệt nhiệm vụ.');
@@ -1089,6 +1106,7 @@ function trackerReviewTask_(token, taskId, decision, note) {
   }
   const row = task.rowNumber;
   if (decision === 'approve') {
+    if (Number(task.priority) <= 2) trackerClearTaskPenalties_(sheet, task);
     const performance = task.performanceByAssignee || {};
     const rewardedAt = Utilities.formatDate(
       new Date(),
@@ -1115,9 +1133,15 @@ function trackerReviewTask_(token, taskId, decision, note) {
   sheet.getRange(row, 13).setValue(String(note || '').slice(0, 1000));
   sheet.getRange(row, 15).setValue(new Date().toISOString());
   if (decision === 'reject') {
-    const submissions = task.completionSubmissions || {};
+    const deadline = trackerTaskDeadline_(task);
     task.assignees.forEach(name => {
-      if (submissions[name]) submissions[name].submitted = false;
+      const submission = submissions[name];
+      if (!submission) return;
+      const submittedAt = submission.submittedAt ? new Date(submission.submittedAt) : null;
+      if (deadline && submittedAt && !isNaN(submittedAt.getTime()) && submittedAt > deadline) {
+        trackerRecordTaskPenalty_(sheet, task, name, submission.submittedAt);
+      }
+      submission.submitted = false;
     });
     sheet.getRange(row, 23).setValue(JSON.stringify(submissions));
   }

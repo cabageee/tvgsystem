@@ -764,6 +764,14 @@
     </div>
   </dialog>
 
+  <dialog id="team-penalty-detail-dialog" class="wide">
+    <div class="dialog-head"><h2 id="team-penalty-detail-title">Chi tiết nhiệm vụ</h2><button type="button" data-close="team-penalty-detail-dialog" aria-label="Đóng">&times;</button></div>
+    <div id="team-penalty-detail-content" class="dialog-form"></div>
+    <div class="dialog-actions" style="padding:0 16px 16px">
+      <button class="button button-light" type="button" data-close="team-penalty-detail-dialog">Đóng</button>
+    </div>
+  </dialog>
+
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script>
@@ -810,6 +818,12 @@
       const dateLabel = value => {
         const date = localDate(value);
         return date ? date.toLocaleDateString('vi-VN') : '—';
+      };
+      const dateTimeLabel = value => {
+        const date = value instanceof Date ? value : new Date(String(value || ''));
+        return Number.isFinite(date.getTime())
+          ? date.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+          : '—';
       };
       const timeLabel = value => {
         if (value instanceof Date && Number.isFinite(value.getTime())) {
@@ -1021,8 +1035,10 @@
 
         tasks.forEach(task => {
           if (!Array.isArray(task.assignees) || !task.assignees.includes(name)) return;
+          const approvedTeamTask = Number(task.priority) <= 2
+            && ['COMPLETED', 'ARCHIVED'].includes(task.status);
           const performance = task.performanceByAssignee?.[name] || {};
-          (Array.isArray(performance.penalties) ? performance.penalties : []).forEach(penalty => {
+          (approvedTeamTask ? [] : Array.isArray(performance.penalties) ? performance.penalties : []).forEach(penalty => {
             const penalizedDate = localDate(penalty.penalizedAt);
             if (penalizedDate && dateInputValue(penalizedDate).slice(0, 7) === currentMonth) {
               addOverdueItem(task, penalty.cycleKey || task.repeatWeek || task.id, 'trễ hạn, đã bị phạt');
@@ -1034,7 +1050,7 @@
           const submission = task.completionSubmissions?.[name];
           const hasSubmittedOutput = Boolean(submission?.submitted && String(submission.note || '').trim());
           const submittedAt = submission?.submittedAt ? new Date(submission.submittedAt) : null;
-          if (deadline && hasSubmittedOutput && submittedAt && Number.isFinite(submittedAt.getTime())
+          if (!approvedTeamTask && deadline && hasSubmittedOutput && submittedAt && Number.isFinite(submittedAt.getTime())
             && submittedAt > deadline
             && dateInputValue(deadline).slice(0, 7) === currentMonth) {
             addOverdueItem(task, task.repeatWeek || task.id, 'trễ hạn, đã bị phạt');
@@ -1052,36 +1068,79 @@
         const records = new Map();
         tasks.forEach(task => {
           if (!Array.isArray(task.assignees)) return;
+          if (Number(task.priority) <= 2 && ['COMPLETED', 'ARCHIVED'].includes(task.status)) return;
           task.assignees.forEach(name => {
             const performance = task.performanceByAssignee?.[name] || {};
             const penalties = Array.isArray(performance.penalties) ? performance.penalties : [];
             penalties.forEach(penalty => {
-              const penalizedDate = localDate(penalty.penalizedAt);
+              const submission = task.completionSubmissions?.[name];
+              const penalizedAt = submission?.submittedAt || penalty.penalizedAt;
+              const penalizedDate = localDate(penalizedAt);
               if (!penalizedDate || dateInputValue(penalizedDate).slice(0, 7) !== currentMonth) return;
               const cycleKey = penalty.cycleKey || task.repeatWeek || task.id;
               records.set(`${name}:${task.sourceTaskId || task.id}:${cycleKey}`, {
                 teacher: name,
                 task,
-                penalizedAt: penalty.penalizedAt
+                penalizedAt
               });
             });
 
-            const submission = task.completionSubmissions?.[name];
-            const hasSubmittedOutput = Boolean(submission?.submitted && String(submission.note || '').trim());
-            const submittedAt = submission?.submittedAt ? new Date(submission.submittedAt) : null;
-            const deadline = taskDeadline(task);
-            if (!deadline || !hasSubmittedOutput || !submittedAt || !Number.isFinite(submittedAt.getTime())
-              || submittedAt <= deadline || dateInputValue(submittedAt).slice(0, 7) !== currentMonth) return;
-            const cycleKey = task.repeatWeek || task.id;
-            const recordKey = `${name}:${task.sourceTaskId || task.id}:${cycleKey}`;
-            if (!records.has(recordKey)) {
-              records.set(recordKey, { teacher: name, task, penalizedAt: submission.submittedAt });
-            }
           });
         });
         return [...records.values()].sort((a, b) => a.teacher.localeCompare(b.teacher, 'vi')
           || String(a.task.deadline || '').localeCompare(String(b.task.deadline || ''))
           || String(a.task.title || '').localeCompare(String(b.task.title || ''), 'vi'));
+      }
+
+      function showTeamPenaltyTaskDetail(taskId) {
+        const task = tasks.find(item => item.id === taskId);
+        if (!task) {
+          notify('Không tìm thấy nhiệm vụ. Hãy tải lại dữ liệu rồi thử lại.');
+          return;
+        }
+
+        const deadline = taskDeadline(task);
+        const deadlineLabel = deadline ? dateTimeLabel(deadline) : 'Chưa đặt thời hạn';
+        const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+        const rows = assignees.map(name => {
+          const submission = task.completionSubmissions?.[name];
+          const hasSubmittedOutput = Boolean(submission?.submitted && String(submission.note || '').trim());
+          const submittedAt = submission?.submittedAt ? new Date(submission.submittedAt) : null;
+          const submittedLate = Boolean(deadline && hasSubmittedOutput
+            && submittedAt && Number.isFinite(submittedAt.getTime()) && submittedAt > deadline);
+          const performance = task.performanceByAssignee?.[name] || {};
+          const cycleKey = task.repeatWeekly ? task.repeatWeek : task.id;
+            const approvalWaivesPenalty = Number(task.priority) <= 2
+              && ['COMPLETED', 'ARCHIVED'].includes(task.status);
+            const hasPenalty = !approvalWaivesPenalty && (Array.isArray(performance.penalties) ? performance.penalties : [])
+              .some(penalty => penalty.cycleKey === cycleKey);
+          return `<tr>
+            <td><strong>${escapeHtml(name)}</strong></td>
+            <td>${hasSubmittedOutput ? 'Đã gửi' : 'Chưa gửi'}</td>
+            <td>${hasSubmittedOutput ? dateTimeLabel(submission.submittedAt) : '—'}</td>
+            <td>${submittedLate ? '<span class="status-pill status-OVERDUE">Gửi sau hạn</span>' : hasSubmittedOutput ? 'Đúng hạn' : '—'}</td>
+            <td>${hasPenalty ? '<span class="status-pill status-OVERDUE">Đã ghi phạt</span>' : 'Không'}</td>
+            <td>${hasSubmittedOutput ? escapeHtml(submission.note) : '—'}</td>
+          </tr>`;
+        }).join('');
+        const approvalStatus = task.status === 'COMPLETED'
+          ? 'Đã duyệt hoàn thành'
+          : task.status === 'PENDING'
+            ? 'Đang chờ duyệt'
+            : statusLabel(task.status);
+        $('team-penalty-detail-title').textContent = `Chi tiết: ${task.title || 'Nhiệm vụ'}`;
+        $('team-penalty-detail-content').innerHTML = `
+          <div class="field full"><strong>Trạng thái hiện tại:</strong> ${escapeHtml(approvalStatus)}<br>
+            <strong>Hạn hoàn thành:</strong> ${escapeHtml(deadlineLabel)}<br>
+            <strong>Người giao:</strong> ${escapeHtml(task.createdBy || '—')}</div>
+          <p class="muted full">${Number(task.priority) <= 2 && ['COMPLETED', 'ARCHIVED'].includes(task.status)
+            ? 'Task đã được duyệt hoàn thành; lần phạt trễ của chu kỳ này được miễn và không tính vào thống kê.'
+            : 'Thời điểm gửi kết quả được đối chiếu với deadline để xác định có gửi trễ hay không.'}</p>
+          <div class="table-wrap full"><table>
+            <thead><tr><th>Trợ giảng</th><th>Kết quả</th><th>Thời điểm gửi</th><th>So với hạn</th><th>Phạt</th><th>Nội dung đã gửi</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="6">Task không có trợ giảng được giao.</td></tr>'}</tbody>
+          </table></div>`;
+        $('team-penalty-detail-dialog').showModal();
       }
 
       function visibleTasks() {
@@ -1309,9 +1368,7 @@
             </tr>`;
           }).join('')
           : '<tr><td colspan="6"><div class="empty-state"><strong>Chưa có công việc lưu trữ</strong>Các task đã hoàn thành hoặc quá hạn sẽ xuất hiện tại đây sau khi kết thúc tuần.</div></td></tr>';
-        const overdueCount = role === 'teacher'
-          ? teacherOverdueItems(session.actor.name, currentMonth).size
-          : activeTasks.filter(task => getStatus(task) === 'OVERDUE').length;
+        const teamPenalties = teamPenaltyRecords(currentMonth);
         const overdueTasks = activeTasks
           .filter(task => getStatus(task) === 'OVERDUE')
           .sort((a, b) => String(a.deadline || '').localeCompare(String(b.deadline || ''))
@@ -1328,7 +1385,6 @@
             <td data-label="Tiến độ / vấn đề">${task.progressReport ? `<div class="task-report-text">${escapeHtml(task.progressReport)}</div>` : '<span class="muted">Chưa có cập nhật tiến độ</span>'}${task.blocker ? `<div class="muted task-report-text"><strong>Vấn đề:</strong> ${escapeHtml(task.blocker)}</div>` : ''}</td>
           </tr>`).join('')
           : '<tr><td colspan="6"><div class="empty-state"><strong>Không có task đang bị trì hoãn</strong>Các task quá hạn sẽ tự động hiển thị tại đây.</div></td></tr>';
-        const teamPenalties = teamPenaltyRecords(currentMonth);
         const penaltyCounts = new Map();
         teamPenalties.forEach(record => penaltyCounts.set(record.teacher, (penaltyCounts.get(record.teacher) || 0) + 1));
         $('team-penalty-body').innerHTML = teamPenalties.length
@@ -1336,14 +1392,16 @@
             <td data-label="Trợ giảng"><strong>${escapeHtml(record.teacher)}</strong></td>
             <td data-label="Nhiệm vụ"><div class="task-title">${escapeHtml(record.task.title || 'Nhiệm vụ')}</div></td>
             <td data-label="Hạn hoàn thành">${dateLabel(record.task.deadline)} · ${escapeHtml(timeLabel(record.task.deadlineTime) || '23:59')}</td>
-            <td data-label="Ngày ghi nhận phạt">${dateLabel(record.penalizedAt)}</td>
-            <td data-label="Thống kê"><span class="status-pill status-OVERDUE">Phạt trễ hạn</span><div class="muted">${penaltyCounts.get(record.teacher)} lần trong tháng</div></td>
+            <td data-label="Ngày ghi nhận phạt">${dateTimeLabel(record.penalizedAt)}</td>
+            <td data-label="Thống kê"><span class="status-pill status-OVERDUE">Phạt trễ hạn</span><div class="muted">${penaltyCounts.get(record.teacher)} lần trong tháng</div><button class="small-button" type="button" data-team-penalty-detail="${escapeHtml(record.task.id)}">Chi tiết task</button></td>
           </tr>`).join('')
           : '<tr><td colspan="5"><div class="empty-state"><strong>Chưa có lần trễ hạn bị phạt trong tháng này</strong>Các lần phạt được ghi nhận tại đây và đồng bộ với thống kê trợ giảng.</div></td></tr>';
         $('kpi-total').textContent = activeTasks.length;
         const pendingTasks = activeTasks.filter(task => task.status === 'PENDING').length;
-        $('kpi-overdue').textContent = overdueCount;
-        $('kpi-overdue-label').textContent = role === 'teacher' ? 'Trễ hạn' : 'Quá hạn';
+        $('kpi-overdue').textContent = role === 'teacher'
+          ? teacherOverdueItems(session.actor.name, currentMonth).size
+          : teamPenalties.length;
+        $('kpi-overdue-label').textContent = role === 'teacher' ? 'Trễ hạn' : 'Trễ hạn tháng này';
         const starRecipient = role === 'teacher' ? session.actor.name : '';
         const recordedRewards = new Map();
         tasks.forEach(task => {
@@ -2113,6 +2171,10 @@
       $('save-manager').addEventListener('click', saveManager);
       $('tracker-retry').addEventListener('click', refresh);
       $('clear-previous-archive').addEventListener('click', clearPreviousArchive);
+      $('team-penalty-body').addEventListener('click', event => {
+        const button = event.target.closest('[data-team-penalty-detail]');
+        if (button) showTeamPenaltyTaskDetail(button.dataset.teamPenaltyDetail);
+      });
       $('archive-month-filter').addEventListener('change', render);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && token) scheduleTrackerRefresh(0);

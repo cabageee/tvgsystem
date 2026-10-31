@@ -54,6 +54,29 @@ if (!writeActions.has('trackerClearArchivedMonth')) {
   process.exit(1);
 }
 
+const groupSubmission = backendSource.match(/function trackerSubmitAssigneeCompletion_\([\s\S]*?\nfunction trackerAcceptTask_/);
+if (!groupSubmission || groupSubmission[0].includes('trackerRecordTaskPenalty_(')) {
+  console.error(backendFile, 'ERROR: Group-task penalties must not be recorded before approval.');
+  process.exit(1);
+}
+const personalCompletion = backendSource.match(/function trackerCompletePersonalTask_\([\s\S]*?\nfunction trackerTaskDeadline_/);
+if (!personalCompletion || !personalCompletion[0].includes('trackerRecordTaskPenalty_(')) {
+  console.error(backendFile, 'ERROR: Late personal-task completion must retain its penalty.');
+  process.exit(1);
+}
+const reviewTask = backendSource.match(/function trackerReviewTask_\([\s\S]*?\nfunction trackerDeleteTask_/);
+if (!reviewTask
+  || !reviewTask[0].includes('trackerClearTaskPenalties_(sheet, task)')
+  || !reviewTask[0].includes('trackerRecordTaskPenalty_(sheet, task, name, submission.submittedAt)')) {
+  console.error(backendFile, 'ERROR: Approval must waive group penalties and rejection must record late submissions.');
+  process.exit(1);
+}
+const bootstrap = backendSource.match(/function trackerBootstrap_\([\s\S]*?\nfunction trackerSetManager_/);
+if (!bootstrap || !bootstrap[0].includes('trackerClearTaskPenalties_(taskSheet, task)')) {
+  console.error(backendFile, 'ERROR: Previously approved group-task penalties must be cleaned up on bootstrap.');
+  process.exit(1);
+}
+
 const backendActions = new Set([...backendSource.matchAll(/case\s+'([^']+)'\s*:/g)].map(match => match[1]));
 const frontendSource = [
   fs.readFileSync('app.js', 'utf8'),
