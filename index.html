@@ -534,7 +534,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full md:w-auto flex-1">
             <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-[#8B1515]">
               <span class="text-slate-400 text-xs">🔍</span>
-              <input type="text" id="search-input" oninput="filterMasterData()" placeholder="Tìm theo mã, tên, phụ huynh, số điện thoại hoặc trợ giảng..." class="w-full text-xs outline-none bg-transparent text-slate-800 font-medium">
+              <input type="text" id="search-input" oninput="filterMasterData(true)" placeholder="Tìm theo mã, tên, phụ huynh, số điện thoại hoặc trợ giảng..." class="w-full text-xs outline-none bg-transparent text-slate-800 font-medium">
             </div>
             <select id="master-filter-level" onchange="filterMasterData()" aria-label="Lọc theo cấp độ" class="min-w-0 flex-1 md:flex-none px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-[#8B1515] text-slate-700"></select>
             <select id="master-filter-teacher" onchange="filterMasterData()" aria-label="Lọc theo trợ giảng" class="min-w-0 flex-1 md:flex-none px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-[#8B1515] text-slate-700">
@@ -543,7 +543,7 @@
           </div>
 
           <div class="flex flex-wrap gap-2 w-full md:w-auto justify-end">
-            <button onclick="fetchDataFromGoogleSheet(true)" class="flex-1 sm:flex-none bg-slate-100 hover:bg-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-[0.98]">🔄 Làm mới dữ liệu</button>
+            <button id="refresh-data-button" onclick="fetchDataFromGoogleSheet(true)" class="flex-1 sm:flex-none bg-slate-100 hover:bg-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-[0.98]">🔄 Làm mới dữ liệu</button>
             <button onclick="exportAttendanceExcel()" class="flex-1 sm:flex-none bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow transition flex items-center justify-center gap-1.5 active:scale-[0.98]">📊 Xuất bảng điểm danh (40 buổi)</button>
             <button onclick="openAddStudentModal()" class="flex-1 sm:flex-none bg-[#8B1515] hover:bg-red-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition flex items-center justify-center gap-1.5 active:scale-[0.98]">➕ Thêm học viên</button>
           </div>

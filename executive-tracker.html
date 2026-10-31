@@ -11,16 +11,19 @@
   <style>
     :root {
       color-scheme: light;
-      --wine: #71313a;
-      --wine-dark: #51242b;
-      --ink: #263241;
+      --wine: #861b28;
+      --wine-dark: #5f111b;
+      --brand-soft: #f9ebed;
+      --ink: #253142;
       --muted: #687587;
-      --line: #e2e7ed;
+      --line: #e3e7ed;
       --surface: #fff;
-      --canvas: #f3f5f7;
+      --canvas: #f6f7fa;
+      --gold: #e5a93c;
       --green: #4e806d;
       --amber: #98743d;
       --red: #a95057;
+      --coral: #d96b5f;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
     * { box-sizing: border-box; }
@@ -94,6 +97,7 @@
     .status-COMPLETED, .status-APPROVED { color: #426b58; background: #eaf2ee; }
     .status-REJECTED { color: #a42b37; background: #ffeaec; }
     .status-ARCHIVED { color: #586273; background: #e9edf2; }
+    .status-OVERDUE { color: #a42b37; background: #ffeaec; }
     .task-title { max-width: 240px; font-weight: 850; line-height: 1.35; }
     .muted { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.4; }
     .assignee-list { max-width: 190px; line-height: 1.5; }
@@ -294,19 +298,6 @@
       .teacher-request-card { grid-template-columns: auto 1fr; }
       .teacher-request-status { grid-column: 2; justify-self: start; }
     }
-    :root {
-      --wine: #812d49;
-      --wine-dark: #4b203f;
-      --ink: #252b3b;
-      --muted: #68758a;
-      --line: #e4e6ef;
-      --canvas: #f5f6fa;
-      --green: #238a75;
-      --amber: #d9972f;
-      --red: #cf5962;
-      --blue: #5879c8;
-      --coral: #e77968;
-    }
     body {
       background:
         radial-gradient(ellipse at 2% 0%, #e7796812, transparent 30rem),
@@ -472,6 +463,55 @@
       .kpi-value { font-size: 21px; }
       .button { min-height: 40px; }
     }
+    body {
+      background:
+        radial-gradient(ellipse at 2% 0%, #e5a93c12, transparent 30rem),
+        radial-gradient(ellipse at 98% 8%, #861b2808, transparent 28rem),
+        var(--canvas);
+    }
+    .topbar { background: linear-gradient(108deg, #5f111b, #861b28 72%, #94242d); }
+    .brand-mark { border-color: var(--gold); }
+    .button-primary, .small-button.primary {
+      background: linear-gradient(135deg, #922532, #68131f);
+      box-shadow: 0 3px 8px #68131f24;
+    }
+    .button-primary:hover, .small-button.primary:hover { background: linear-gradient(135deg, #7d1b27, #5f111b); }
+    .page-heading h2, .section-heading h3 { color: #30221e; }
+    .role-intro {
+      border-color: var(--line);
+      border-left-color: var(--wine);
+      background: linear-gradient(115deg, #fff, #fffaf0);
+    }
+    #tracker-screen[data-role="director"] .role-intro { border-left-color: var(--wine); }
+    #tracker-screen[data-role="manager"] .role-intro { border-left-color: var(--gold); }
+    #tracker-screen[data-role="teacher"] .role-intro { border-left-color: var(--green); }
+    .role-pill { color: var(--wine-dark); background: var(--brand-soft); }
+    .kpi, .teacher-summary-card, .calendar-stat, .teacher-panel,
+    .toolbar, .manager-config, .table-wrap {
+      border-color: var(--line);
+      box-shadow: 0 3px 12px rgba(37, 49, 66, .055);
+    }
+    .kpi { border-top-color: var(--wine); background: linear-gradient(145deg, #fff, #fff9f7); }
+    .kpi:nth-child(4n + 2), .kpi:nth-child(4n + 4) {
+      border-top-color: var(--gold);
+      background: linear-gradient(145deg, #fff, #fffaf0);
+    }
+    .kpi:nth-child(4n + 3) { border-top-color: var(--green); }
+    .kpi-label, .teacher-summary-label, .calendar-stat-label { color: #5f6877; }
+    .kpi-value, .teacher-summary-value { color: #30221e; }
+    th { color: #4a5565; background: #f3f5f8; border-bottom-color: var(--line); }
+    tbody tr:nth-child(even) { background: #fafbfc; }
+    tbody tr:hover { background: #fff8f1; }
+    .dialog-head { background: linear-gradient(108deg, #5f111b, #861b28); }
+    .field input, .field select, .field textarea { font-size: 13px; }
+    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 3px solid #861b2840;
+      outline-offset: 2px;
+    }
+    @media (max-width: 700px) {
+      .button { min-height: 44px; }
+      .small-button { min-height: 38px; }
+    }
   </style>
 </head>
 <body>
@@ -517,11 +557,51 @@
         <article class="kpi"><div class="kpi-label">Tổng sao tích lũy</div><div id="kpi-stars" class="kpi-value">0</div><span class="kpi-icon fa-solid fa-star" aria-hidden="true"></span></article>
       </section>
 
+      <section id="overdue-task-section" aria-labelledby="overdue-task-heading">
+        <div class="section-heading">
+          <div><h3 id="overdue-task-heading">Task đang bị trì hoãn</h3><p>Các nhiệm vụ quá hạn luôn hiển thị tại đây, không phụ thuộc bộ lọc.</p></div>
+        </div>
+        <section class="table-wrap" aria-label="Danh sách task đang bị trì hoãn">
+          <table>
+            <thead><tr><th>Nhiệm vụ</th><th>Trợ giảng</th><th>Người giao</th><th>Hạn hoàn thành</th><th>Trạng thái</th><th>Tiến độ / vấn đề</th></tr></thead>
+            <tbody id="overdue-task-body"></tbody>
+          </table>
+        </section>
+      </section>
+
+      <section id="team-penalty-section" aria-labelledby="team-penalty-heading">
+        <div class="section-heading">
+          <div><h3 id="team-penalty-heading">Lần trễ hạn đã bị phạt trong tháng</h3><p>Thống kê theo cùng dữ liệu phạt hiển thị ở tài khoản trợ giảng.</p></div>
+        </div>
+        <section class="table-wrap" aria-label="Thống kê phạt trễ hạn của trợ giảng">
+          <table>
+            <thead><tr><th>Trợ giảng</th><th>Nhiệm vụ</th><th>Hạn hoàn thành</th><th>Ngày ghi nhận phạt</th><th>Thống kê</th></tr></thead>
+            <tbody id="team-penalty-body"></tbody>
+          </table>
+        </section>
+      </section>
+
+      <section id="archive-section" aria-labelledby="archive-heading">
+        <div class="section-heading">
+          <div><h3 id="archive-heading">Lưu trữ công việc theo tháng</h3><p>Task đã hoàn thành hoặc quá hạn được chuyển khỏi bảng công việc hiện tại sau khi kết thúc tuần.</p></div>
+          <div class="section-actions">
+            <div class="field"><label for="archive-month-filter">Tháng lưu trữ</label><select id="archive-month-filter"><option value="">Tất cả tháng</option></select></div>
+            <button id="clear-previous-archive" class="button button-danger" type="button">Xóa lưu trữ tháng trước</button>
+          </div>
+        </div>
+        <section class="table-wrap" aria-label="Danh sách công việc đã lưu trữ">
+          <table>
+            <thead><tr><th>Loại</th><th>Công việc</th><th>Trợ giảng</th><th>Hạn</th><th>Trạng thái</th><th>Kết quả / ghi chú</th></tr></thead>
+            <tbody id="archive-task-body"></tbody>
+          </table>
+        </section>
+      </section>
+
       <section class="toolbar" aria-label="Bộ lọc và thao tác">
         <div class="filters">
           <div id="priority-filter-field" class="field"><label for="filter-priority">Loại nhiệm vụ</label><select id="filter-priority"><option value="">Tất cả</option><option value="1">Nhiệm vụ tuần · Giám đốc giao</option><option value="2">Nhiệm vụ tuần · Quản lý giao</option><option value="3">Việc cá nhân · ưu tiên trước</option><option value="4">Việc cá nhân · có thể làm sau</option></select></div>
           <div id="teacher-filter-field" class="field"><label for="filter-teacher">Trợ giảng</label><select id="filter-teacher"><option value="">Tất cả</option></select></div>
-          <div class="field"><label for="filter-status">Trạng thái</label><select id="filter-status"><option value="">Tất cả</option><option value="NEW">Mới giao</option><option value="IN_PROGRESS">Đang làm</option><option value="PENDING">Chờ duyệt</option><option value="COMPLETED">Hoàn thành</option><option value="OVERDUE">Quá hạn</option><option value="ARCHIVED">Lưu trữ</option></select></div>
+          <div class="field"><label for="filter-status">Trạng thái</label><select id="filter-status"><option value="">Tất cả</option><option value="NEW">Mới giao</option><option value="IN_PROGRESS">Đang làm</option><option value="PENDING">Chờ duyệt</option><option value="COMPLETED">Hoàn thành</option><option value="OVERDUE">Quá hạn</option></select></div>
           <div class="field"><label for="task-search">Tìm nhiệm vụ</label><input id="task-search" placeholder="Tên việc, người giao..."></div>
         </div>
         <div class="toolbar-actions">
@@ -688,8 +768,9 @@
 
   <script>
     (() => {
-      const API_URL = 'https://script.google.com/macros/s/AKfycbx-cWpN7l7Op0w_kjA6PWKWDVzv2aumF3gwFuib1JJRLZJEf_CdQnUAPUXwk9LbeeoX/exec';
+      const API_URL = 'https://script.google.com/macros/s/AKfycbx5YketQNQNlCDseM4ghZ_O6uhaa5CU2ln3RigQni69uvF4SanC-85CyUEOsFyFdu7E/exec';
       const TOKEN_KEY = 'TV_GLOBAL_TRACKER_TOKEN';
+      const TRACKER_REFRESH_INTERVAL_MS = 15000;
       const entryMode = new URLSearchParams(window.location.search).get('view') || '';
       const entryRoles = { director: 'director', manager: 'manager', teacher: 'teacher' };
       const $ = id => document.getElementById(id);
@@ -701,6 +782,7 @@
       let teachers = [];
       let manager = '';
       let toastTimer;
+      let trackerRefreshTimer = null;
       const inFlightApiCalls = new Map();
       let bootstrapInFlight = null;
       let localProxyUnavailableUntil = 0;
@@ -719,6 +801,12 @@
         return Number.isFinite(parsed.getTime()) ? new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()) : null;
       };
       const dateInputValue = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const monthLabel = value => {
+        const month = String(value || '');
+        return /^\d{4}-\d{2}$/.test(month)
+          ? new Date(`${month}-01T00:00:00`).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+          : '—';
+      };
       const dateLabel = value => {
         const date = localDate(value);
         return date ? date.toLocaleDateString('vi-VN') : '—';
@@ -770,10 +858,12 @@
           'save-manager': 'shield-halved',
           'show-approved-calendar': 'calendar-check',
           'teacher-submit-schedule': 'calendar-plus',
-          'tracker-retry': 'arrows-rotate'
+          'tracker-retry': 'arrows-rotate',
+          'clear-previous-archive': 'trash'
         };
         const headingIcons = {
           'accepted-heading': 'clipboard-check',
+          'archive-heading': 'box-archive',
           'management-heading': 'diagram-project',
           'teacher-request-heading': 'calendar-check',
           'teacher-task-heading': 'list-check',
@@ -926,7 +1016,7 @@
       function teacherOverdueItems(name, currentMonth) {
         const overdueItems = new Map();
         const addOverdueItem = (task, cycleKey, message) => {
-          overdueItems.set(`${task.id}:${cycleKey || task.id}`, `${task.title || 'Nhiệm vụ'} · ${message}`);
+          overdueItems.set(`${task.sourceTaskId || task.id}:${cycleKey || task.id}`, `${task.title || 'Nhiệm vụ'} · ${message}`);
         };
 
         tasks.forEach(task => {
@@ -939,6 +1029,7 @@
             }
           });
 
+          if (task.archiveMonth) return;
           const deadline = taskDeadline(task);
           const submission = task.completionSubmissions?.[name];
           const hasSubmittedOutput = Boolean(submission?.submitted && String(submission.note || '').trim());
@@ -957,16 +1048,53 @@
         return overdueItems;
       }
 
+      function teamPenaltyRecords(currentMonth) {
+        const records = new Map();
+        tasks.forEach(task => {
+          if (!Array.isArray(task.assignees)) return;
+          task.assignees.forEach(name => {
+            const performance = task.performanceByAssignee?.[name] || {};
+            const penalties = Array.isArray(performance.penalties) ? performance.penalties : [];
+            penalties.forEach(penalty => {
+              const penalizedDate = localDate(penalty.penalizedAt);
+              if (!penalizedDate || dateInputValue(penalizedDate).slice(0, 7) !== currentMonth) return;
+              const cycleKey = penalty.cycleKey || task.repeatWeek || task.id;
+              records.set(`${name}:${task.sourceTaskId || task.id}:${cycleKey}`, {
+                teacher: name,
+                task,
+                penalizedAt: penalty.penalizedAt
+              });
+            });
+
+            const submission = task.completionSubmissions?.[name];
+            const hasSubmittedOutput = Boolean(submission?.submitted && String(submission.note || '').trim());
+            const submittedAt = submission?.submittedAt ? new Date(submission.submittedAt) : null;
+            const deadline = taskDeadline(task);
+            if (!deadline || !hasSubmittedOutput || !submittedAt || !Number.isFinite(submittedAt.getTime())
+              || submittedAt <= deadline || dateInputValue(submittedAt).slice(0, 7) !== currentMonth) return;
+            const cycleKey = task.repeatWeek || task.id;
+            const recordKey = `${name}:${task.sourceTaskId || task.id}:${cycleKey}`;
+            if (!records.has(recordKey)) {
+              records.set(recordKey, { teacher: name, task, penalizedAt: submission.submittedAt });
+            }
+          });
+        });
+        return [...records.values()].sort((a, b) => a.teacher.localeCompare(b.teacher, 'vi')
+          || String(a.task.deadline || '').localeCompare(String(b.task.deadline || ''))
+          || String(a.task.title || '').localeCompare(String(b.task.title || ''), 'vi'));
+      }
+
       function visibleTasks() {
         const priority = $('filter-priority').value;
         const teacher = $('filter-teacher').value;
         const status = $('filter-status').value;
         const query = $('task-search').value.trim().toLocaleLowerCase('vi');
         return tasks.filter(task => {
+          if (task.archiveMonth || task.status === 'ARCHIVED') return false;
           const currentStatus = getStatus(task);
           const matchesStatus = status
             ? (status === 'OVERDUE' ? currentStatus === 'OVERDUE' : task.status === status)
-            : task.status !== 'ARCHIVED';
+            : true;
           const personText = [...(task.assignees || []), task.createdBy].join(' ').toLocaleLowerCase('vi');
           const content = `${task.title} ${task.note} ${personText}`.toLocaleLowerCase('vi');
           return (!priority || String(task.priority) === priority)
@@ -1148,28 +1276,89 @@
           ? 'Theo dõi tiến độ, duyệt hoàn thành hoặc trả nhiệm vụ để trợ giảng cập nhật.'
           : 'Kiểm tra nhiệm vụ chờ duyệt và trả lại để trợ giảng cập nhật; quản lý không duyệt đơn nghỉ / tăng ca.';
         $('create-task').textContent = role === 'director' ? 'Giao nhiệm vụ tuần' : role === 'manager' ? 'Giao nhiệm vụ tuần / việc cá nhân' : 'Thêm việc cá nhân';
-        const activeTasks = tasks.filter(task => task.status !== 'ARCHIVED');
+        const activeTasks = tasks.filter(task => !task.archiveMonth && task.status !== 'ARCHIVED');
         const currentMonth = dateInputValue(new Date()).slice(0, 7);
+        const archivedTasks = tasks.filter(task => Boolean(task.archiveMonth));
+        const archiveMonthFilter = $('archive-month-filter');
+        const selectedArchiveMonth = archiveMonthFilter.value;
+        const archiveMonths = [...new Set(archivedTasks.map(task => task.archiveMonth))]
+          .sort((a, b) => b.localeCompare(a));
+        archiveMonthFilter.innerHTML = '<option value="">Tất cả tháng</option>'
+          + archiveMonths.map(month => {
+            return `<option value="${escapeHtml(month)}">${escapeHtml(monthLabel(month))}</option>`;
+          }).join('');
+        archiveMonthFilter.value = archiveMonths.includes(selectedArchiveMonth) ? selectedArchiveMonth : '';
+        const archivedTasksInMonth = archivedTasks
+          .filter(task => !archiveMonthFilter.value || task.archiveMonth === archiveMonthFilter.value)
+          .sort((a, b) => String(b.archiveMonth).localeCompare(String(a.archiveMonth))
+            || String(b.deadline || '').localeCompare(String(a.deadline || '')));
+        const previousArchiveMonth = String(session.previousArchiveMonth || '');
+        const previousArchiveLabel = previousArchiveMonth ? monthLabel(previousArchiveMonth) : 'tháng trước';
+        $('clear-previous-archive').hidden = role === 'teacher';
+        $('clear-previous-archive').textContent = `Xóa lưu trữ ${previousArchiveLabel}`;
+        $('archive-task-body').innerHTML = archivedTasksInMonth.length
+          ? archivedTasksInMonth.map(task => {
+            const status = getStatus(task);
+            return `<tr>
+              <td data-label="Loại"><span class="priority priority-${Number(task.priority)}">${Number(task.priority) <= 2 ? 'Nhiệm vụ tuần' : `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}`}</span>${task.repeatWeekly ? '<div class="muted">Lặp hàng tuần</div>' : ''}<div class="muted">${escapeHtml(monthLabel(task.archiveMonth))}</div></td>
+              <td data-label="Công việc"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy || '—')} giao</div>${task.note ? `<div class="muted">${escapeHtml(task.note)}</div>` : ''}${task.output ? `<div class="muted">Kết quả cần đạt: ${escapeHtml(task.output)}</div>` : ''}</td>
+              <td data-label="Trợ giảng"><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || 'Việc cá nhân')}</div></td>
+              <td data-label="Hạn"><strong>${dateLabel(task.deadline)}</strong><div class="muted">${escapeHtml(timeLabel(task.deadlineTime) || '23:59')}</div></td>
+              <td data-label="Trạng thái"><span class="status-pill status-${status}">${statusLabel(status)}</span>${task.status === 'COMPLETED' ? '<div class="muted">Đã duyệt hoàn thành</div>' : ''}</td>
+              <td data-label="Kết quả / ghi chú">${task.completionNote ? `<div>${escapeHtml(task.completionNote)}</div>` : ''}${task.completionSubmissions ? completionSubmissionsMarkup(task) : ''}${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}${!task.completionNote && !task.reviewNote && !Object.keys(task.completionSubmissions || {}).length ? '<span class="muted">—</span>' : ''}</td>
+            </tr>`;
+          }).join('')
+          : '<tr><td colspan="6"><div class="empty-state"><strong>Chưa có công việc lưu trữ</strong>Các task đã hoàn thành hoặc quá hạn sẽ xuất hiện tại đây sau khi kết thúc tuần.</div></td></tr>';
         const overdueCount = role === 'teacher'
           ? teacherOverdueItems(session.actor.name, currentMonth).size
           : activeTasks.filter(task => getStatus(task) === 'OVERDUE').length;
+        const overdueTasks = activeTasks
+          .filter(task => getStatus(task) === 'OVERDUE')
+          .sort((a, b) => String(a.deadline || '').localeCompare(String(b.deadline || ''))
+            || String(a.deadlineTime || '').localeCompare(String(b.deadlineTime || '')));
+        $('overdue-task-section').hidden = role === 'teacher';
+        $('team-penalty-section').hidden = role === 'teacher';
+        $('overdue-task-body').innerHTML = overdueTasks.length
+          ? overdueTasks.map(task => `<tr>
+            <td data-label="Nhiệm vụ"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${Number(task.priority) <= 2 ? 'Nhiệm vụ tuần' : `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}`}</div></td>
+            <td data-label="Trợ giảng"><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || '—')}</div></td>
+            <td data-label="Người giao">${escapeHtml(task.createdBy || '—')}</td>
+            <td data-label="Hạn hoàn thành"><strong>${dateLabel(task.deadline)}</strong><div class="muted">${escapeHtml(timeLabel(task.deadlineTime) || '23:59')}</div></td>
+            <td data-label="Trạng thái"><span class="status-pill status-OVERDUE">Đang bị trì hoãn</span></td>
+            <td data-label="Tiến độ / vấn đề">${task.progressReport ? `<div class="task-report-text">${escapeHtml(task.progressReport)}</div>` : '<span class="muted">Chưa có cập nhật tiến độ</span>'}${task.blocker ? `<div class="muted task-report-text"><strong>Vấn đề:</strong> ${escapeHtml(task.blocker)}</div>` : ''}</td>
+          </tr>`).join('')
+          : '<tr><td colspan="6"><div class="empty-state"><strong>Không có task đang bị trì hoãn</strong>Các task quá hạn sẽ tự động hiển thị tại đây.</div></td></tr>';
+        const teamPenalties = teamPenaltyRecords(currentMonth);
+        const penaltyCounts = new Map();
+        teamPenalties.forEach(record => penaltyCounts.set(record.teacher, (penaltyCounts.get(record.teacher) || 0) + 1));
+        $('team-penalty-body').innerHTML = teamPenalties.length
+          ? teamPenalties.map(record => `<tr>
+            <td data-label="Trợ giảng"><strong>${escapeHtml(record.teacher)}</strong></td>
+            <td data-label="Nhiệm vụ"><div class="task-title">${escapeHtml(record.task.title || 'Nhiệm vụ')}</div></td>
+            <td data-label="Hạn hoàn thành">${dateLabel(record.task.deadline)} · ${escapeHtml(timeLabel(record.task.deadlineTime) || '23:59')}</td>
+            <td data-label="Ngày ghi nhận phạt">${dateLabel(record.penalizedAt)}</td>
+            <td data-label="Thống kê"><span class="status-pill status-OVERDUE">Phạt trễ hạn</span><div class="muted">${penaltyCounts.get(record.teacher)} lần trong tháng</div></td>
+          </tr>`).join('')
+          : '<tr><td colspan="5"><div class="empty-state"><strong>Chưa có lần trễ hạn bị phạt trong tháng này</strong>Các lần phạt được ghi nhận tại đây và đồng bộ với thống kê trợ giảng.</div></td></tr>';
         $('kpi-total').textContent = activeTasks.length;
         const pendingTasks = activeTasks.filter(task => task.status === 'PENDING').length;
         $('kpi-overdue').textContent = overdueCount;
         $('kpi-overdue-label').textContent = role === 'teacher' ? 'Trễ hạn' : 'Quá hạn';
         const starRecipient = role === 'teacher' ? session.actor.name : '';
-        $('kpi-stars').textContent = tasks.reduce((sum, task) => {
+        const recordedRewards = new Map();
+        tasks.forEach(task => {
           const performance = task.performanceByAssignee || {};
-          return sum + Object.entries(performance).reduce((taskSum, [teacherName, teacherPerformance]) => {
-            if (starRecipient && teacherName !== starRecipient) return taskSum;
+          Object.entries(performance).forEach(([teacherName, teacherPerformance]) => {
+            if (starRecipient && teacherName !== starRecipient) return;
             const rewards = Array.isArray(teacherPerformance.rewards) ? teacherPerformance.rewards : [];
-            return taskSum + rewards.reduce((rewardSum, reward) => (
-              String(reward.rewardedAt || '').slice(0, 7) === currentMonth
-                ? rewardSum + (Number(reward.stars) || 0)
-                : rewardSum
-            ), 0);
-          }, 0);
-        }, 0);
+            rewards.forEach(reward => {
+              if (String(reward.rewardedAt || '').slice(0, 7) !== currentMonth) return;
+              const cycleKey = reward.cycleKey || task.repeatWeek || task.id;
+              recordedRewards.set(`${teacherName}:${task.sourceTaskId || task.id}:${cycleKey}`, Number(reward.stars) || 0);
+            });
+          });
+        });
+        $('kpi-stars').textContent = [...recordedRewards.values()].reduce((sum, stars) => sum + stars, 0);
         const pendingRequests = requests.filter(request => request.status === 'PENDING').length;
         $('kpi-pending').textContent = role === 'manager' ? pendingTasks : `${pendingTasks} / ${pendingRequests}`;
         if (role === 'manager') {
@@ -1312,18 +1501,31 @@
         decorateTrackerIcons($('tracker-screen'));
       }
 
-      function refresh() {
+      function refresh(isBackground = false) {
         if (bootstrapInFlight) return bootstrapInFlight;
-        bootstrapInFlight = loadTrackerBootstrap().finally(() => {
+        bootstrapInFlight = loadTrackerBootstrap(isBackground).finally(() => {
           bootstrapInFlight = null;
         });
         return bootstrapInFlight;
       }
 
-      async function loadTrackerBootstrap() {
+      function scheduleTrackerRefresh(delay = TRACKER_REFRESH_INTERVAL_MS) {
+        clearTimeout(trackerRefreshTimer);
+        trackerRefreshTimer = setTimeout(async () => {
+          trackerRefreshTimer = null;
+          if (document.visibilityState === 'visible' && inFlightApiCalls.size === 0) {
+            await refresh(true);
+          }
+          scheduleTrackerRefresh();
+        }, delay);
+      }
+
+      async function loadTrackerBootstrap(isBackground = false) {
         let invalidSession = false;
         try {
-          session = await apiCall('trackerBootstrap', { token });
+          const nextSession = await apiCall('trackerBootstrap', { token });
+          const previousSnapshot = JSON.stringify({ session, tasks, requests, teachers, manager });
+          session = nextSession;
           const role = actorRole();
           const canOpenEntry = role === entryRoles[entryMode]
             || (['teacher', 'manager'].includes(entryMode) && ['teacher', 'manager'].includes(role));
@@ -1344,9 +1546,10 @@
           $('tracker-screen').hidden = false;
           $('logout-button').hidden = false;
           $('create-task').hidden = false;
-          render();
+          if (previousSnapshot !== JSON.stringify({ session, tasks, requests, teachers, manager })) render();
         } catch (error) {
-          console.error('Tracker bootstrap failed:', error);
+          if (isBackground) console.warn('Tracker background refresh failed:', error);
+          else console.error('Tracker bootstrap failed:', error);
           const message = error instanceof Error ? error.message : String(error);
           const expiredSession = /phiên đăng nhập Tracker đã hết hạn|phiên đăng nhập không hợp lệ/i.test(message);
           if (invalidSession || expiredSession) {
@@ -1354,12 +1557,14 @@
             token = '';
             session = null;
           }
-          showTrackerError(
-            invalidSession || expiredSession ? 'Phiên theo dõi công việc không hợp lệ' : 'Chưa kết nối được với hệ thống theo dõi công việc',
-            invalidSession || expiredSession
-              ? `${message} Hãy quay lại hệ thống và đăng nhập lại.`
-              : `${message} Phiên đăng nhập vẫn được giữ; hãy thử lại sau.`
-          );
+          if (!isBackground || invalidSession || expiredSession) {
+            showTrackerError(
+              invalidSession || expiredSession ? 'Phiên theo dõi công việc không hợp lệ' : 'Chưa kết nối được với hệ thống theo dõi công việc',
+              invalidSession || expiredSession
+                ? `${message} Hãy quay lại hệ thống và đăng nhập lại.`
+                : `${message} Phiên đăng nhập vẫn được giữ; hãy thử lại sau.`
+            );
+          }
         }
       }
 
@@ -1613,6 +1818,7 @@
             selectedTask.status = result.taskStatus || selectedTask.status;
             selectedTask.completionSubmissions = result.completionSubmissions || selectedTask.completionSubmissions;
             selectedTask.syncing = false;
+            render();
             notify(result.taskStatus === 'PENDING'
               ? 'Đã đủ kết quả, nhiệm vụ đang chờ quản lý duyệt.'
               : `Đã gửi kết quả của bạn (${result.submittedCount || 1}/${result.requiredCount || selectedTask.assignees.length}); chờ các trợ giảng còn lại.`);
@@ -1697,6 +1903,7 @@
         try {
           await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '' });
           task.syncing = false;
+          render();
           notify('Đã xác nhận nhiệm vụ hoàn thành.');
         } catch (error) {
           task.status = 'PENDING';
@@ -1869,6 +2076,27 @@
         } catch (error) { notify(error.message); }
       }
 
+      async function clearPreviousArchive() {
+        const month = String(session?.previousArchiveMonth || '');
+        if (!month) {
+          notify('Không xác định được tháng lưu trữ cần xóa.');
+          return;
+        }
+        const label = monthLabel(month);
+        if (!window.confirm(`Xóa toàn bộ task đã lưu trữ của ${label}? Thao tác này không thể hoàn tác.`)) return;
+        const button = $('clear-previous-archive');
+        button.disabled = true;
+        try {
+          const result = await apiCall('trackerClearArchivedMonth', { token, month });
+          notify(`Đã xóa ${Number(result.deletedCount) || 0} task lưu trữ của ${label}.`);
+          await refresh();
+        } catch (error) {
+          notify(error.message);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
       function logout() {
         window.location.href = 'index.html';
       }
@@ -1884,6 +2112,11 @@
       $('manager-submit-schedule').addEventListener('click', openScheduleDialog);
       $('save-manager').addEventListener('click', saveManager);
       $('tracker-retry').addEventListener('click', refresh);
+      $('clear-previous-archive').addEventListener('click', clearPreviousArchive);
+      $('archive-month-filter').addEventListener('change', render);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && token) scheduleTrackerRefresh(0);
+      });
       $('logout-button').addEventListener('click', logout);
       $('management-body').addEventListener('click', event => {
         taskAction(event);
@@ -1939,6 +2172,7 @@
         );
       } else {
         refresh();
+        scheduleTrackerRefresh();
       }
     })();
   </script>

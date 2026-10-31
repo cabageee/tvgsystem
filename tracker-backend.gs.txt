@@ -287,7 +287,7 @@ function initDatabase() {
         'Ngày bắt đầu', 'Deadline', 'Giờ deadline', 'Trạng thái', 'Ghi chú',
         'Hình thức phạt', 'Số sao', 'Ghi chú duyệt', 'Ngày tạo', 'Cập nhật lần cuối', 'Output', 'Ghi chú hoàn thành',
         'Lặp lại hàng tuần', 'Tuần lặp gần nhất', 'Tiến độ đã báo cáo', 'Vấn đề cần hỗ trợ', 'Ngày báo cáo tiến độ',
-        'Output theo trợ giảng (JSON)'
+        'Output theo trợ giảng (JSON)', 'Thưởng/phạt theo trợ giảng (JSON)', 'Tháng lưu trữ'
       ]
     },
     {
@@ -341,6 +341,7 @@ function initDatabase() {
 const API_WRITE_ACTIONS_ = new Set([
   'trackerSetManager', 'trackerCreateTask', 'trackerUpdateTask', 'trackerAcceptTask',
   'trackerRequestCompletion', 'trackerCompletePersonalTask', 'trackerReviewTask', 'trackerDeleteTask',
+  'trackerClearArchivedMonth',
   'trackerSaveNote', 'trackerReportProgress', 'trackerSubmitSchedule',
   'trackerReviewSchedule', 'updateFeeStatus', 'processPayment', 'addLevel',
   'deleteLevel', 'changePassword', 'addStudent', 'updateAttendance',
@@ -396,6 +397,8 @@ function dispatchApiAction_(payload) {
       return trackerReviewSchedule_(payload.token, payload.requestId, payload.decision, payload.note);
     case 'trackerExportSchedules':
       return trackerExportSchedules_(payload.token);
+    case 'trackerClearArchivedMonth':
+      return trackerClearArchivedMonth_(payload.token, payload.month);
     case 'getData':
     case 'getAllData':
       return getAllData();
@@ -569,6 +572,7 @@ function trackerEnsureOutputColumn_(sheet) {
   trackerEnsureTaskColumn_(sheet, 22, 'Ngày báo cáo tiến độ');
   trackerEnsureTaskColumn_(sheet, 23, 'Output theo trợ giảng (JSON)');
   trackerEnsureTaskColumn_(sheet, 24, 'Thưởng/phạt theo trợ giảng (JSON)');
+  trackerEnsureTaskColumn_(sheet, 25, 'Tháng lưu trữ');
 }
 
 function trackerParseTaskObject_(value, description, taskId) {
@@ -605,7 +609,7 @@ function trackerTaskRecords_() {
   trackerEnsureOutputColumn_(sheet);
   if (sheet.getLastRow() < 2) return [];
   const timezone = getSpreadsheet().getSpreadsheetTimeZone();
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 24).getValues()
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 25).getValues()
     .map((row, index) => ({ row, rowNumber: index + 2 }))
     .filter(record => String(record.row[0] || '').trim())
     .map(({ row, rowNumber }) => {
@@ -637,7 +641,8 @@ function trackerTaskRecords_() {
         blocker: String(row[20] || ''),
         progressReportedAt: String(row[21] || ''),
         completionSubmissions: trackerParseCompletionSubmissions_(row[22], row[0]),
-        performanceByAssignee: trackerParseTaskObject_(row[23], 'teacher performance', row[0])
+        performanceByAssignee: trackerParseTaskObject_(row[23], 'teacher performance', row[0]),
+        archiveMonth: String(row[24] || '')
       };
       Object.defineProperty(task, 'rowNumber', { value: rowNumber });
       return task;
@@ -697,6 +702,7 @@ function trackerBootstrap_(token) {
     status: 'success',
     actor: actor,
     manager: manager,
+    previousArchiveMonth: trackerPreviousArchiveMonth_(),
     teachers: teachers,
     tasks: tasks,
     requests: requests
@@ -869,6 +875,31 @@ function trackerCurrentWeekStart_() {
   return Utilities.formatDate(date, 'GMT', 'yyyy-MM-dd');
 }
 
+function trackerPreviousArchiveMonth_() {
+  const timezone = getSpreadsheet().getSpreadsheetTimeZone();
+  const today = Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd').split('-').map(Number);
+  const previousMonth = new Date(Date.UTC(today[0], today[1] - 2, 1));
+  return Utilities.formatDate(previousMonth, 'GMT', 'yyyy-MM');
+}
+
+function trackerClearArchivedMonth_(token, month) {
+  const actor = trackerActor_(token);
+  if (actor.role === 'teacher') throw new Error('Chỉ Giám đốc hoặc Manager được xóa lưu trữ.');
+
+  const selectedMonth = String(month || '').trim();
+  const previousMonth = trackerPreviousArchiveMonth_();
+  if (!/^\d{4}-\d{2}$/.test(selectedMonth) || selectedMonth !== previousMonth) {
+    throw new Error('Chỉ có thể xóa lưu trữ của tháng trước.');
+  }
+
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
+  const tasks = trackerTaskRecords_()
+    .filter(task => task.archiveMonth === selectedMonth)
+    .sort((left, right) => right.rowNumber - left.rowNumber);
+  tasks.forEach(task => sheet.deleteRow(task.rowNumber));
+  return { status: 'success', month: selectedMonth, deletedCount: tasks.length };
+}
+
 function trackerApplyWeeklyTaskChanges_(sheet, tasks) {
   const currentWeek = trackerCurrentWeekStart_();
   const currentWeekStart = new Date(`${currentWeek}T00:00:00Z`);
@@ -902,12 +933,16 @@ function trackerApplyWeeklyTaskChanges_(sheet, tasks) {
       sheet.getRange(task.rowNumber, 17).clearContent();
       sheet.getRange(task.rowNumber, 19).setValue(currentWeek);
       sheet.getRange(task.rowNumber, 23).clearContent();
+      sheet.getRange(task.rowNumber, 25).clearContent();
       return;
     }
 
     if (task.status === 'COMPLETED' && task.deadline && task.deadline < currentWeek) {
       sheet.getRange(task.rowNumber, 9).setValue('ARCHIVED');
+      sheet.getRange(task.rowNumber, 25).setValue(task.deadline.slice(0, 7));
       sheet.getRange(task.rowNumber, 15).setValue(now);
+    } else if (task.status === 'ARCHIVED' && !task.archiveMonth && /^\d{4}-\d{2}-\d{2}$/.test(task.deadline)) {
+      sheet.getRange(task.rowNumber, 25).setValue(task.deadline.slice(0, 7));
     }
   });
 }

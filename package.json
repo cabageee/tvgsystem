@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build:css": "tailwindcss -c tailwind.config.js -i tailwind.input.css -o tailwind.css --minify",
-    "test": "node --check app.js && node verify_syntax.js"
+    "test": "node --check app.js && node verify_syntax.js && node build-apps-script.js && node verify_apps_script.js"
   },
   "keywords": [],
   "author": "",

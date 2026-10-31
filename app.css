@@ -71,15 +71,21 @@
     /* Shared product styling */
     :root {
       color-scheme: light;
-      --brand: #761e2b;
-      --brand-dark: #54131d;
-      --brand-soft: #f8ecee;
-      --ink: #202b3c;
-      --muted: #697586;
-      --line: #e5e9ef;
+      --brand: #861b28;
+      --brand-dark: #5f111b;
+      --brand-soft: #f9ebed;
+      --brand-gold: #e5a93c;
+      --brand-gold-soft: #fdf6e2;
+      --ink: #253142;
+      --muted: #687587;
+      --line: #e3e7ed;
       --surface: #ffffff;
-      --canvas: #f5f6f8;
-      --shadow-card: 0 2px 8px rgba(27, 39, 54, .045), 0 12px 28px rgba(27, 39, 54, .035);
+      --canvas: #f6f7fa;
+      --shadow-card: 0 2px 8px rgba(37, 49, 66, .045), 0 12px 28px rgba(37, 49, 66, .045);
+      --shadow-card-hover: 0 9px 24px rgba(37, 49, 66, .1);
+      --accent-coral: #d96b5f;
+      --accent-teal: #2b8c78;
+      --accent-blue: #5975b8;
     }
 
     html { scroll-behavior: smooth; }
@@ -509,18 +515,6 @@
     }
 
     /* Consistent product UI across admin and assistant pages */
-    :root {
-      --brand: #741d2a;
-      --brand-dark: #50131c;
-      --brand-soft: #f7edef;
-      --canvas: #f3f5f8;
-      --ink: #1d2939;
-      --muted: #667085;
-      --line: #e4e8ef;
-      --shadow-card: 0 2px 6px rgba(16, 24, 40, .035), 0 10px 24px rgba(16, 24, 40, .045);
-      --shadow-card-hover: 0 8px 24px rgba(16, 24, 40, .09);
-    }
-
     body {
       background:
         radial-gradient(ellipse at 2% 0%, rgba(116, 29, 42, .035), transparent 34rem),
@@ -1161,21 +1155,6 @@
       #app-container a { -webkit-tap-highlight-color: transparent; }
     }
 
-    :root {
-      --brand: #8b1515;
-      --brand-dark: #650d12;
-      --brand-soft: #fbefec;
-      --brand-gold: #e5a93c;
-      --brand-gold-soft: #fff5df;
-      --canvas: #f8f6f1;
-      --ink: #292520;
-      --muted: #71695f;
-      --line: #e9e2d7;
-      --surface: #fffefa;
-      --shadow-card: 0 2px 6px rgba(58, 34, 20, .04), 0 12px 28px rgba(58, 34, 20, .055);
-      --shadow-card-hover: 0 10px 28px rgba(74, 34, 20, .12);
-    }
-
     body {
       background:
         radial-gradient(ellipse at 2% 0%, rgba(229, 169, 60, .09), transparent 34rem),
@@ -1593,21 +1572,6 @@
       .master-mobile-student-name { font-size: 13px; }
     }
 
-    :root {
-      --brand: #71313a;
-      --brand-dark: #51242b;
-      --brand-soft: #f3e9eb;
-      --brand-gold: #b99a66;
-      --brand-gold-soft: #f8f3e8;
-      --canvas: #f3f5f7;
-      --ink: #263241;
-      --muted: #687587;
-      --line: #e2e7ed;
-      --surface: #fff;
-      --shadow-card: 0 2px 6px rgba(27, 39, 54, .04), 0 10px 24px rgba(27, 39, 54, .045);
-      --shadow-card-hover: 0 8px 22px rgba(27, 39, 54, .09);
-    }
-
     body { background: var(--canvas); color: var(--ink); }
     #screen-login {
       background:
@@ -1712,24 +1676,6 @@
     #toast-container > div { box-shadow: 0 8px 22px rgba(27, 39, 54, .15); }
 
     /* Refined, colorful system-wide visual layer */
-    :root {
-      --brand: #7a2942;
-      --brand-dark: #4d203e;
-      --brand-soft: #f9eaf0;
-      --brand-gold: #e2a840;
-      --brand-gold-soft: #fff5df;
-      --canvas: #f5f6fa;
-      --ink: #202a3a;
-      --muted: #68758a;
-      --line: #e5e8f0;
-      --surface: #fff;
-      --shadow-card: 0 3px 10px rgba(31, 41, 55, .045), 0 14px 32px rgba(59, 35, 58, .055);
-      --shadow-card-hover: 0 9px 24px rgba(59, 35, 58, .12);
-      --accent-coral: #e77968;
-      --accent-teal: #208b7d;
-      --accent-blue: #5879c8;
-    }
-
     body {
       background:
         radial-gradient(ellipse at 2% 0%, rgba(231, 121, 104, .075), transparent 30rem),
@@ -1902,25 +1848,6 @@
       }
       #app-container main button:not(.action-button) { min-height: 40px; }
       div[id^="modal-"] > div { border-radius: 17px; }
-    }
-
-    /* Unified wine-and-gold brand palette and balanced control sizing */
-    :root {
-      --brand: #861b28;
-      --brand-dark: #5f111b;
-      --brand-soft: #f9ebed;
-      --brand-gold: #e5a93c;
-      --brand-gold-soft: #fdf6e2;
-      --canvas: #f6f7fa;
-      --ink: #253142;
-      --muted: #687587;
-      --line: #e3e7ed;
-      --surface: #fff;
-      --shadow-card: 0 2px 8px rgba(37, 49, 66, .045), 0 12px 28px rgba(37, 49, 66, .045);
-      --shadow-card-hover: 0 9px 24px rgba(37, 49, 66, .1);
-      --accent-coral: #d96b5f;
-      --accent-teal: #2b8c78;
-      --accent-blue: #5975b8;
     }
 
     body {
@@ -2717,4 +2644,98 @@
     }
     @media (prefers-reduced-motion: reduce) {
       .ui-icon-wrap { transition: none; }
+    }
+
+    /* Final shared system layer: one wine-and-gold visual language across pages. */
+    body[data-app-page] {
+      background:
+        radial-gradient(ellipse at 2% 0%, rgba(229, 169, 60, .07), transparent 30rem),
+        radial-gradient(ellipse at 98% 8%, rgba(134, 27, 40, .035), transparent 28rem),
+        var(--canvas);
+      color: var(--ink);
+    }
+    #app-container header {
+      background: linear-gradient(108deg, #5f111b 0%, #7a1825 58%, #861b28 100%);
+      border-bottom: 2px solid rgba(229, 169, 60, .68);
+    }
+    #app-container main { color: var(--ink); }
+    #app-container .page-heading {
+      border-color: var(--line);
+      padding-bottom: 12px;
+    }
+    #app-container .page-heading h2 {
+      color: var(--ink);
+      font-size: clamp(1.15rem, 2vw, 1.5rem);
+      line-height: 1.25;
+      letter-spacing: -.025em;
+    }
+    #app-container .page-heading .eyebrow {
+      color: var(--brand);
+      letter-spacing: .12em;
+    }
+    #app-container .page-heading p,
+    #app-container .section-heading p { color: var(--muted); }
+    #app-container .dashboard-toolbar,
+    #app-container .manager-config {
+      border-color: var(--line);
+      border-radius: 14px;
+      background: var(--surface);
+      box-shadow: var(--shadow-card);
+    }
+    #app-container .bg-white.rounded-2xl.shadow-sm.border,
+    #app-container .bg-white.rounded-xl.shadow-sm.border,
+    #app-container [id$="-cards-container"] > article,
+    #app-container [id$="-cards-container"] > .bg-white,
+    #app-container #teacher-cards-container > div {
+      border-color: var(--line) !important;
+      border-radius: 14px;
+      box-shadow: var(--shadow-card);
+    }
+    #app-container .grid > .bg-white.rounded-2xl.shadow-sm.border {
+      box-shadow: inset 0 3px 0 var(--brand), var(--shadow-card);
+    }
+    #app-container .grid > .bg-white.rounded-2xl.shadow-sm.border:nth-child(4n + 2),
+    #app-container .grid > .bg-white.rounded-2xl.shadow-sm.border:nth-child(4n + 4) {
+      box-shadow: inset 0 3px 0 var(--brand-gold), var(--shadow-card);
+    }
+    #app-container table thead th {
+      color: #4a5565;
+      background: #f3f5f8;
+      border-bottom-color: var(--line);
+    }
+    #app-container table tbody tr:nth-child(even) { background-color: #fafbfc; }
+    #app-container table tbody tr:hover { background-color: #fff8f1; }
+    #app-container input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    #app-container select,
+    #app-container textarea {
+      color: var(--ink);
+      border-color: #d7dee8;
+      border-radius: 10px;
+    }
+    #app-container input:focus,
+    #app-container select:focus,
+    #app-container textarea:focus,
+    #screen-login input:focus,
+    #screen-login select:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(134, 27, 40, .12);
+    }
+    #app-container button:not(.action-button),
+    #screen-login button {
+      transition: background-color .16s ease, box-shadow .16s ease, transform .16s ease;
+    }
+    #app-container button:disabled,
+    #screen-login button:disabled { cursor: not-allowed; opacity: .68; }
+    #app-container button:focus-visible,
+    #app-container a:focus-visible,
+    #screen-login button:focus-visible {
+      outline: 3px solid rgba(134, 27, 40, .28);
+      outline-offset: 2px;
+    }
+    @media (max-width: 639px) {
+      #app-container .page-heading { gap: 10px; }
+      #app-container .page-heading-actions { justify-content: flex-start; }
+      #app-container .dashboard-toolbar { align-items: stretch; }
+      #app-container table th,
+      #app-container table td { font-size: 11px; }
     }

@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-cWpN7l7Op0w_kjA6PWKWDVzv2aumF3gwFuib1JJRLZJEf_CdQnUAPUXwk9LbeeoX/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx5YketQNQNlCDseM4ghZ_O6uhaa5CU2ln3RigQni69uvF4SanC-85CyUEOsFyFdu7E/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -169,6 +169,18 @@
       });
     }
 
+    function labelIconOnlyButtons(root = document) {
+      const buttons = [];
+      if (root.matches?.('button')) buttons.push(root);
+      buttons.push(...root.querySelectorAll('button'));
+      buttons.forEach(button => {
+        if (button.hasAttribute('aria-label') || button.hasAttribute('aria-labelledby') || button.title.trim()) return;
+        if (['×', '✕', '✖'].includes(button.textContent.trim())) {
+          button.setAttribute('aria-label', 'Đóng');
+        }
+      });
+    }
+
     function configureAccessibleDialog(dialog) {
       if (!dialog.id.startsWith('modal-')) return;
       dialog.setAttribute('role', 'dialog');
@@ -260,6 +272,7 @@
     function initializeAccessibility() {
       document.querySelectorAll('div[id^="modal-"]').forEach(configureAccessibleDialog);
       labelFormControls();
+      labelIconOnlyButtons();
       document.addEventListener('keydown', handleAccessibleDialogKeydown);
 
       modalObserver = new MutationObserver(mutations => {
@@ -273,6 +286,7 @@
             if (node.matches('div[id^="modal-"]')) configureAccessibleDialog(node);
             node.querySelectorAll?.('div[id^="modal-"]').forEach(configureAccessibleDialog);
             labelFormControls(node);
+            labelIconOnlyButtons(node);
           });
         });
       });
@@ -412,8 +426,10 @@
     let localProxyUnavailableUntil = 0;
     let dataRefreshPromise = null;
     let dataRefreshVersion = 0;
+    let dataFetchPromise = null;
 
     let profileCurrentPage = 1, masterCurrentPage = 1;
+    let masterFilterTimer = null;
     const PAGE_SIZE = 12;
     const MASTER_PAGE_SIZE = 50;
     const MASTER_MOBILE_PAGE_SIZE = 10;
@@ -720,72 +736,114 @@
     // Tải dữ liệu từ Google Sheet
     async function fetchDataFromGoogleSheet(isManual = false) {
       const loading = document.getElementById('loading-state');
-      if (loading) loading.classList.remove('hidden');
+      const refreshButton = document.getElementById('refresh-data-button');
+      const hasCachedData = Boolean(localStorage.getItem(STORAGE_KEYS.STUDENTS));
 
-      try {
-        const res = await apiCall('getData');
-
-        console.log('Dữ liệu nhận từ Google Apps Script:', res);
-
-        if (!res || res.status !== 'success') {
-          throw new Error(res?.message || 'Google Apps Script không trả về success');
+      if (dataFetchPromise) {
+        const refreshed = await dataFetchPromise;
+        if (isManual) {
+          showToast(refreshed
+            ? `Đã tải ${studentsData.length} học viên từ Google Sheet`
+            : 'Không tải được dữ liệu mới nhất. Vui lòng thử lại.', refreshed ? 'success' : 'error');
         }
+        return refreshed;
+      }
 
-        const students = Array.isArray(res.students)
-          ? res.students
-          : Array.isArray(res.data)
-            ? res.data
+      const showInitialLoading = !studentDataLoadSucceeded && !hasCachedData;
+      if (loading && showInitialLoading) loading.classList.remove('hidden');
+      if (refreshButton) {
+        refreshButton.disabled = true;
+        refreshButton.setAttribute('aria-busy', 'true');
+      }
+
+      dataFetchPromise = (async () => {
+        try {
+          const res = await apiCall('getData');
+
+          if (!res || res.status !== 'success') {
+            throw new Error(res?.message || 'Google Apps Script không trả về success');
+          }
+
+          const previousData = JSON.stringify([
+            studentsData,
+            inactiveStudentsData,
+            assistantTeachers,
+            customLevelsList,
+            trackerManagerName
+          ]);
+          const students = Array.isArray(res.students)
+            ? res.students
+            : Array.isArray(res.data)
+              ? res.data
+              : [];
+
+          studentsData = students;
+          studentDataLoadSucceeded = true;
+          recalculateCompletedSessions();
+
+          inactiveStudentsData = Array.isArray(res.inactive)
+            ? res.inactive
             : [];
 
-        studentsData = students;
-        studentDataLoadSucceeded = true;
-        recalculateCompletedSessions();
+          const fetchedTeachers = Array.isArray(res.teachers)
+            ? res.teachers
+              .map(teacher => {
+                if (typeof teacher === 'string') return teacher;
+                return teacher?.name || '';
+              })
+              .filter(Boolean)
+            : [];
 
-        inactiveStudentsData = Array.isArray(res.inactive)
-          ? res.inactive
-          : [];
+          if (Array.isArray(res.teachers)) {
+            assistantTeachers = fetchedTeachers;
+          }
 
-        const fetchedTeachers = Array.isArray(res.teachers)
-          ? res.teachers
-            .map(teacher => {
-              if (typeof teacher === 'string') return teacher;
-              return teacher?.name || '';
-            })
-            .filter(Boolean)
-          : [];
+          if (Array.isArray(res.levels)) {
+            customLevelsList = res.levels;
+          } else if (Array.isArray(res.config?.customLevels)) {
+            customLevelsList = res.config.customLevels;
+          }
+          trackerManagerName = String(res.config?.trackerManager || '').trim();
+          trackerManagerLoaded = true;
 
-        if (Array.isArray(res.teachers)) {
-          assistantTeachers = fetchedTeachers;
+          const hasChanged = previousData !== JSON.stringify([
+            studentsData,
+            inactiveStudentsData,
+            assistantTeachers,
+            customLevelsList,
+            trackerManagerName
+          ]);
+          if (hasChanged) {
+            updateAllViews(true);
+          }
+          updateTrackerNavigation();
+
+          return true;
+        } catch (err) {
+          console.error('Lỗi tải dữ liệu từ Google Sheet:', err);
+
+          if (isManual) {
+            showToast(`Không tải được dữ liệu: ${err.message}`, 'error');
+          }
+          return false;
+        } finally {
+          if (loading && showInitialLoading) loading.classList.add('hidden');
+          if (refreshButton) {
+            refreshButton.disabled = false;
+            refreshButton.removeAttribute('aria-busy');
+          }
+          studentDataLoadComplete = true;
+          maybeShowTeacherLoginSummary();
+          if (!isManual && currentUserRole) showUpcomingBirthdays();
+          dataFetchPromise = null;
         }
+      })();
 
-        if (Array.isArray(res.levels)) {
-          customLevelsList = res.levels;
-        } else if (Array.isArray(res.config?.customLevels)) {
-          customLevelsList = res.config.customLevels;
-        }
-        trackerManagerName = String(res.config?.trackerManager || '').trim();
-        trackerManagerLoaded = true;
-
-        updateAllViews();
-        updateTrackerNavigation();
-
-        if (isManual) {
-          showToast(`Đã tải ${studentsData.length} học viên từ Google Sheet`);
-        }
-        return true;
-      } catch (err) {
-        console.error('Lỗi tải dữ liệu từ Google Sheet:', err);
-
-        if (isManual) {
-          showToast(`Không tải được dữ liệu: ${err.message}`, 'error');
-        }
-        return false;
-      } finally {
-        if (loading) loading.classList.add('hidden');
-        studentDataLoadComplete = true;
-        maybeShowTeacherLoginSummary();
-        if (!isManual && currentUserRole) showUpcomingBirthdays();
+      const refreshed = await dataFetchPromise;
+      if (isManual && refreshed) {
+        showToast(`Đã tải ${studentsData.length} học viên từ Google Sheet`);
       }
+      return refreshed;
     }
 
     function refreshDataAfterMutation() {
@@ -796,6 +854,7 @@
           let processedVersion = 0;
           while (processedVersion < dataRefreshVersion) {
             processedVersion = dataRefreshVersion;
+            if (dataFetchPromise) await dataFetchPromise;
             refreshed = await fetchDataFromGoogleSheet();
           }
           dataRefreshPromise = null;
@@ -2136,8 +2195,8 @@
         .filter(item => item && !/^https?:\/\//i.test(item));
     }
 
-    function updateAllViews() {
-      recalculateCompletedSessions();
+    function updateAllViews(dataIsNormalized = false) {
+      if (!dataIsNormalized) recalculateCompletedSessions();
       saveAllDataToLocalStorage();
       populateTeacherFilterSelects();
       populateAllLevelDropdowns();
@@ -2146,6 +2205,7 @@
       renderDailySummaryCards();
       renderDirectorAttendance();
       renderStudentProfileCards();
+      updateMasterStats();
       renderMasterPage();
       renderInactiveStudentsTable();
       renderTeacherManagementPage();
@@ -2179,6 +2239,25 @@
       const allLevels = getAllLevels();
       let optionsHtml = allLevels.map(lvl => `<option value="${lvl}" ${currentLevel === lvl ? 'selected' : ''}>${lvl}</option>`).join('');
       return `<select onchange="${onChangeFnString}" class="text-xs font-semibold bg-white border border-slate-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-[#8B1515] text-slate-800 cursor-pointer w-full">${optionsHtml}</select>`;
+    }
+
+    function updateMasterStats() {
+      const statTotal = document.getElementById('stat-total-students');
+      const statUnassigned = document.getElementById('stat-unassigned-assistants');
+      const statOverdue = document.getElementById('stat-overdue-students');
+      const statInactive = document.getElementById('stat-inactive-students');
+      if (statTotal) statTotal.innerText = studentsData.length;
+      if (statInactive) statInactive.innerText = inactiveStudentsData.length;
+      if (!statUnassigned && !statOverdue) return;
+
+      let unassignedCount = 0;
+      let overdueCount = 0;
+      studentsData.forEach(student => {
+        if (!student.assistants || student.assistants.length === 0) unassignedCount++;
+        if (isStudentOverdue(student)) overdueCount++;
+      });
+      if (statUnassigned) statUnassigned.innerText = unassignedCount;
+      if (statOverdue) statOverdue.innerText = overdueCount;
     }
 
     // Cập nhật Cấp độ Auto-sync lên Sheet
@@ -2418,39 +2497,31 @@
 
       let filtered = getMasterFilteredStudents();
 
-            // --- SẮP XẾP ƯU TIÊN (Đỏ -> Vàng -> Xanh) ---
-            filtered.sort((a, b) => {
-              const getScore = (s) => {
-                const count = s.sessions ? s.sessions.filter(hasRecordedAttendance).length : (s.completedSessions || 0);
-                const levelName = s.level ? s.level.toLowerCase() : "";
-                
-                if (levelName.includes("combo")) {
-                  if (count >= 30) return 4; // Đỏ
-                  if (count >= 24) return 3; // Vàng
-                  if (count >= 12) return 2; // Xanh
-                  return 1;
-                } else if (levelName.includes("full")) {
-                  if (count >= 22) return 4; // Đỏ
-                  if (count >= 12) return 3; // Vàng
-                  return 1;
-                } else {
-                  if (count >= 10) return 4; // Đỏ
-                  if (count >= 6) return 3;  // Vàng
-                  return 1;
-                }
-              };
-              return getScore(b) - getScore(a); 
-            });
-            // ---------------------------------------------            // ---------------------------------------------
+      const getPriorityScore = student => {
+        const count = Number.isFinite(student.completedSessions)
+          ? student.completedSessions
+          : Array.isArray(student.sessions)
+            ? student.sessions.filter(hasRecordedAttendance).length
+            : 0;
+        const levelName = String(student.level || '').toLowerCase();
 
-      const statTotal = document.getElementById('stat-total-students');
-      if (statTotal) statTotal.innerText = studentsData.length;
-      const statUnassigned = document.getElementById('stat-unassigned-assistants');
-      if (statUnassigned) statUnassigned.innerText = studentsData.filter(s => !s.assistants || s.assistants.length === 0).length;
-      const statOverdue = document.getElementById('stat-overdue-students');
-      if (statOverdue) statOverdue.innerText = studentsData.filter(s => isStudentOverdue(s)).length;
-      const statInactive = document.getElementById('stat-inactive-students');
-      if (statInactive) statInactive.innerText = inactiveStudentsData.length;
+        if (levelName.includes('combo')) {
+          if (count >= 30) return 4;
+          if (count >= 24) return 3;
+          if (count >= 12) return 2;
+        } else if (levelName.includes('full')) {
+          if (count >= 22) return 4;
+          if (count >= 12) return 3;
+        } else {
+          if (count >= 10) return 4;
+          if (count >= 6) return 3;
+        }
+        return 1;
+      };
+      filtered = filtered
+        .map((student, index) => ({ student, index, score: getPriorityScore(student) }))
+        .sort((a, b) => b.score - a.score || a.index - b.index)
+        .map(item => item.student);
 
       let headerHtml = `
         <tr class="text-slate-700 font-bold uppercase text-[10px] sm:text-xs tracking-wider border-b">
@@ -2593,9 +2664,18 @@
         </article>`;
     }
 
-    function filterMasterData() {
-      masterCurrentPage = 1;
-      renderMasterPage();
+    function filterMasterData(debounce = false) {
+      if (masterFilterTimer) clearTimeout(masterFilterTimer);
+      const applyFilter = () => {
+        masterFilterTimer = null;
+        masterCurrentPage = 1;
+        renderMasterPage();
+      };
+      if (debounce) {
+        masterFilterTimer = setTimeout(applyFilter, 120);
+      } else {
+        applyFilter();
+      }
     }
 
     function getMasterFilteredStudents() {
@@ -3752,7 +3832,20 @@
 
     function logout() {
       sessionStorage.clear();
-      location.reload();
+      document.querySelectorAll('div[id^="modal-"]:not(.hidden)').forEach(dialog => closeModal(dialog.id));
+      document.getElementById('notification-center-dialog')?.close();
+      document.querySelectorAll('main section[id^="page-"]').forEach(page => page.classList.add('hidden'));
+      document.getElementById('app-container')?.classList.add('hidden');
+      document.getElementById('screen-login')?.classList.remove('hidden');
+      document.getElementById('login-pwd-director').value = '';
+      document.getElementById('login-pwd-teacher').value = '';
+      document.getElementById('login-error-msg').classList.add('hidden');
+      currentUserRole = null;
+      currentUserName = '';
+      teacherTrackerTasks = [];
+      teacherLoginSummaryPending = false;
+      birthdayNotificationShown = false;
+      updateTrackerNavigation();
     }
 
     function restoreSession() {

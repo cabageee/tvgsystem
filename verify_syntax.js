@@ -49,6 +49,10 @@ if (!writeActions.has('trackerRequestCompletion')) {
   console.error(backendFile, 'ERROR: trackerRequestCompletion must use the write lock.');
   process.exit(1);
 }
+if (!writeActions.has('trackerClearArchivedMonth')) {
+  console.error(backendFile, 'ERROR: trackerClearArchivedMonth must use the write lock.');
+  process.exit(1);
+}
 
 const backendActions = new Set([...backendSource.matchAll(/case\s+'([^']+)'\s*:/g)].map(match => match[1]));
 const frontendSource = [
