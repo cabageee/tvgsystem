@@ -2102,6 +2102,19 @@
       text-align: center;
       filter: drop-shadow(0 1px 1px rgba(30, 25, 30, .12));
     }
+    .ui-icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .35em;
+    }
+    .ui-button-icon {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
     #app-container button .ui-icon-wrap {
       width: auto;
       height: auto;

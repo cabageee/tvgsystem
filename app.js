@@ -369,7 +369,8 @@
         if (!icon && /đóng|hủy|×/.test(label)) icon = 'close';
         if (!icon && /quay lại|về trang/.test(label)) icon = 'back';
         if (!icon) return;
-        element.insertAdjacentHTML('afterbegin', renderUiIcon(icon));
+        element.classList.add('ui-icon-button');
+        element.insertAdjacentHTML('afterbegin', `<span class="ui-button-icon">${renderUiIcon(icon)}</span>`);
       });
     }
 
@@ -3248,6 +3249,68 @@
       upgradeUiEmojis(container);
     }
 
+    function openTeacherPriorityStudentsPopup(priority) {
+      if (currentUserRole !== 'teacher') {
+        showToast('Danh sách này chỉ dành cho tài khoản trợ giảng.', 'error');
+        return;
+      }
+
+      const modal = document.getElementById('modal-teacher-priority-students');
+      const list = document.getElementById('teacher-priority-student-list');
+      const title = document.getElementById('teacher-priority-students-title');
+      const summary = document.getElementById('teacher-priority-students-summary');
+      if (!modal || !list || !title || !summary) {
+        showToast('Không mở được danh sách ưu tiên: giao diện chưa tải đầy đủ.', 'error');
+        return;
+      }
+      if (priority !== 2 && priority !== 3) {
+        showToast('Loại danh sách ưu tiên không hợp lệ.', 'error');
+        return;
+      }
+
+      const students = studentsData
+        .filter(student => normalizeAssistants(student.assistants).includes(currentUserName)
+          && getProgressWarningPriority(student.completedSessions || 0, student.level) === priority)
+        .sort((left, right) => (Number(right.completedSessions) || 0) - (Number(left.completedSessions) || 0)
+          || String(left.name || '').localeCompare(String(right.name || ''), 'vi'));
+      const isRenewal = priority === 3;
+      title.textContent = isRenewal ? 'Học viên cần gia hạn' : 'Học viên cần chăm sóc';
+      summary.textContent = students.length
+        ? `${students.length} học viên được phân công cho ${currentUserName}. Bấm Chi tiết để xem tiến độ hoặc Gia hạn để mở thanh toán.`
+        : 'Không có học viên nào trong danh sách này.';
+      list.innerHTML = students.map(student => {
+        const studentId = escapeHtml(student.id);
+        const phone = String(student.parentPhone || student.phone || '').trim();
+        const phoneHref = phone.replace(/[^\d+]/g, '');
+        return `<article class="rounded-xl border ${isRenewal ? 'border-red-200 bg-red-50/50' : 'border-amber-200 bg-amber-50/50'} p-3 sm:p-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h4 class="font-bold text-sm text-slate-800">${escapeHtml(student.name || 'Chưa có tên')}</h4>
+              <p class="mt-1 text-[11px] text-slate-500">Mã: ${studentId || '—'} · Lớp: ${escapeHtml(student.level || 'Chưa xếp lớp')}</p>
+              <p class="mt-1 text-xs font-semibold ${isRenewal ? 'text-red-700' : 'text-amber-800'}">${Number(student.completedSessions) || 0} buổi đã học · ${isRenewal ? 'Cần gia hạn' : 'Cần chăm sóc'}</p>
+              <p class="mt-1 text-[11px] text-slate-600">Phụ huynh: ${escapeHtml(student.parentName || 'Chưa cập nhật')}${phone ? ` · ${escapeHtml(phone)}` : ''}</p>
+            </div>
+            <div class="flex shrink-0 flex-wrap gap-2">
+              <button type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50" data-priority-student-action="details" data-student-id="${studentId}">Chi tiết</button>
+              <button type="button" class="rounded-lg bg-[#8B1515] px-3 py-2 text-xs font-bold text-white hover:bg-red-900" data-priority-student-action="payment" data-student-id="${studentId}">Gia hạn</button>
+              ${phoneHref ? `<a class="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-50" href="tel:${escapeHtml(phoneHref)}">Gọi phụ huynh</a>` : ''}
+            </div>
+          </div>
+        </article>`;
+      }).join('');
+      modal.classList.remove('hidden');
+    }
+
+    function handleTeacherPriorityStudentAction(event) {
+      const button = event.target.closest('[data-priority-student-action]');
+      if (!button) return;
+      const studentId = button.dataset.studentId;
+      const action = button.dataset.priorityStudentAction;
+      closeModal('modal-teacher-priority-students');
+      if (action === 'details') openTeacherStudentDetails(studentId);
+      else if (action === 'payment') openPaymentPopup(studentId);
+    }
+
     async function markTeacherAttendance(studentIndex) {
       if (currentUserRole !== 'teacher') {
         showToast('Chức năng này chỉ dành cho tài khoản trợ giảng.', 'error');
@@ -3877,6 +3940,7 @@
     window.onload = async function() {
       initializeAccessibility();
       document.getElementById('teacher-task-list')?.addEventListener('click', handleTeacherTrackerAction);
+      document.getElementById('teacher-priority-student-list')?.addEventListener('click', handleTeacherPriorityStudentAction);
       document.getElementById('teacher-progress-report-form')?.addEventListener('submit', submitTeacherProgressReport);
       document.getElementById('teacher-task-toggle')?.addEventListener('click', event => {
         const toggle = event.currentTarget;

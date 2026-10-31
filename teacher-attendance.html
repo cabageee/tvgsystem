@@ -536,20 +536,22 @@
           </div>
         </section>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-red-100 flex items-center justify-between">
+          <button type="button" onclick="openTeacherPriorityStudentsPopup(3)" aria-controls="modal-teacher-priority-students" class="w-full text-left bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-red-100 flex items-center justify-between gap-3 hover:border-red-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500">
             <div>
               <p class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Cần Gia Hạn (Đỏ)</p>
               <h3 id="teacher-renewal-count" class="text-xl sm:text-2xl font-black text-red-600 mt-0.5">0</h3>
+              <p class="mt-1 text-[10px] font-semibold text-slate-500">Nhấn để xem danh sách và thao tác</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center text-lg font-bold">🚨</div>
-          </div>
-          <div class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-amber-100 flex items-center justify-between">
+            <span aria-hidden="true" class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center text-lg font-bold">🚨</span>
+          </button>
+          <button type="button" onclick="openTeacherPriorityStudentsPopup(2)" aria-controls="modal-teacher-priority-students" class="w-full text-left bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-amber-100 flex items-center justify-between gap-3 hover:border-amber-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500">
             <div>
               <p class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Cần Chăm Sóc (Vàng)</p>
               <h3 id="teacher-care-count" class="text-xl sm:text-2xl font-black text-amber-600 mt-0.5">0</h3>
+              <p class="mt-1 text-[10px] font-semibold text-slate-500">Nhấn để xem danh sách và thao tác</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg font-bold">⚠️</div>
-          </div>
+            <span aria-hidden="true" class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg font-bold">⚠️</span>
+          </button>
         </div>
         <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2">
           <span class="text-slate-400 text-sm pl-2">🔍</span>
@@ -558,7 +560,21 @@
         <div id="teacher-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"></div>
       </section>
 
-      
+      <div id="modal-teacher-priority-students" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+        <section role="dialog" aria-modal="true" aria-labelledby="teacher-priority-students-title" class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full sm:max-w-3xl max-h-[92vh] overflow-hidden flex flex-col">
+          <div class="bg-[#8B1515] text-white p-4 flex justify-between items-center shrink-0">
+            <div>
+              <h3 id="teacher-priority-students-title" class="font-bold text-sm uppercase tracking-wider">Học viên cần ưu tiên</h3>
+              <p id="teacher-priority-students-summary" class="text-xs text-white/80 mt-1"></p>
+            </div>
+            <button type="button" onclick="closeModal('modal-teacher-priority-students')" aria-label="Đóng danh sách học viên" class="text-white/80 hover:text-white text-2xl leading-none p-1">&times;</button>
+          </div>
+          <div id="teacher-priority-student-list" class="p-3 sm:p-4 space-y-3 overflow-y-auto"></div>
+          <div class="p-3 sm:p-4 pt-0 shrink-0">
+            <button type="button" onclick="closeModal('modal-teacher-priority-students')" class="w-full py-2.5 border rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50">Đóng</button>
+          </div>
+        </section>
+      </div>
 
       <!-- PAGE 2: HỒ SƠ THÔNG TIN HỌC VIÊN -->
 
