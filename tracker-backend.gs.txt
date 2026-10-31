@@ -383,7 +383,7 @@ function dispatchApiAction_(payload) {
     case 'trackerCompletePersonalTask':
       return trackerCompletePersonalTask_(payload.token, payload.taskId);
     case 'trackerReviewTask':
-      return trackerReviewTask_(payload.token, payload.taskId, payload.decision, payload.note, payload.stars);
+      return trackerReviewTask_(payload.token, payload.taskId, payload.decision, payload.note);
     case 'trackerDeleteTask':
       return trackerDeleteTask_(payload.token, payload.taskId);
     case 'trackerSaveNote':
@@ -568,17 +568,24 @@ function trackerEnsureOutputColumn_(sheet) {
   trackerEnsureTaskColumn_(sheet, 21, 'Vấn đề cần hỗ trợ');
   trackerEnsureTaskColumn_(sheet, 22, 'Ngày báo cáo tiến độ');
   trackerEnsureTaskColumn_(sheet, 23, 'Output theo trợ giảng (JSON)');
+  trackerEnsureTaskColumn_(sheet, 24, 'Thưởng/phạt theo trợ giảng (JSON)');
 }
 
-function trackerParseCompletionSubmissions_(value, taskId) {
+function trackerParseTaskObject_(value, description, taskId) {
   if (!value) return {};
   try {
     const parsed = JSON.parse(String(value));
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
   } catch (error) {
-    console.error('Invalid tracker completion submissions JSON for task ' + taskId, error);
-    return { __invalidTrackerCompletionJson__: true };
+    console.error(`Invalid tracker ${description} JSON for task ${taskId}`, error);
+    return { __invalidTrackerTaskJson__: true };
   }
+}
+
+function trackerParseCompletionSubmissions_(value, taskId) {
+  const parsed = trackerParseTaskObject_(value, 'completion submissions', taskId);
+  if (parsed.__invalidTrackerTaskJson__) return { __invalidTrackerCompletionJson__: true };
+  return parsed;
 }
 
 function trackerEnsureTaskColumn_(sheet, column, label) {
@@ -598,7 +605,7 @@ function trackerTaskRecords_() {
   trackerEnsureOutputColumn_(sheet);
   if (sheet.getLastRow() < 2) return [];
   const timezone = getSpreadsheet().getSpreadsheetTimeZone();
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 23).getValues()
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 24).getValues()
     .map((row, index) => ({ row, rowNumber: index + 2 }))
     .filter(record => String(record.row[0] || '').trim())
     .map(({ row, rowNumber }) => {
@@ -629,7 +636,8 @@ function trackerTaskRecords_() {
         progressReport: String(row[19] || ''),
         blocker: String(row[20] || ''),
         progressReportedAt: String(row[21] || ''),
-        completionSubmissions: trackerParseCompletionSubmissions_(row[22], row[0])
+        completionSubmissions: trackerParseCompletionSubmissions_(row[22], row[0]),
+        performanceByAssignee: trackerParseTaskObject_(row[23], 'teacher performance', row[0])
       };
       Object.defineProperty(task, 'rowNumber', { value: rowNumber });
       return task;
@@ -943,13 +951,18 @@ function trackerSubmitAssigneeCompletion_(actor, taskId, note) {
     if (!task.assignees.length) throw new Error('Task chưa có trợ giảng được giao.');
 
     const submissions = task.completionSubmissions || {};
-    const now = new Date().toISOString();
+    const nowDate = new Date();
+    const now = nowDate.toISOString();
     submissions[actor.name] = { note: output, submitted: true, submittedAt: now };
     const submittedCount = task.assignees.filter(name => (
       submissions[name] && submissions[name].submitted && String(submissions[name].note || '').trim()
     )).length;
     const allSubmitted = submittedCount === task.assignees.length;
     sheet.getRange(task.rowNumber, 23).setValue(JSON.stringify(submissions));
+    const deadline = trackerTaskDeadline_(task);
+    if (deadline && nowDate > deadline) {
+      trackerRecordTaskPenalty_(sheet, task, actor.name, task.deadline);
+    }
     sheet.getRange(task.rowNumber, 15).setValue(now);
     if (allSubmitted) sheet.getRange(task.rowNumber, 9).setValue('PENDING');
     return {
@@ -982,13 +995,44 @@ function trackerCompletePersonalTask_(token, taskId) {
   }
   if (task.status === 'COMPLETED') throw new Error('Task cá nhân này đã hoàn thành.');
   const row = task.rowNumber;
+  const now = new Date();
+  const deadline = trackerTaskDeadline_(task);
+  if (deadline && now > deadline) {
+    trackerRecordTaskPenalty_(sheet, task, actor.name, task.deadline);
+  }
   sheet.getRange(row, 9).setValue('COMPLETED');
   sheet.getRange(row, 12).setValue(0);
-  sheet.getRange(row, 15).setValue(new Date().toISOString());
+  sheet.getRange(row, 15).setValue(now.toISOString());
   return { status: 'success' };
 }
 
-function trackerReviewTask_(token, taskId, decision, note, stars) {
+function trackerTaskDeadline_(task) {
+  if (!task || !trackerValidDate_(task.deadline)) return null;
+  const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(task.deadlineTime)
+    ? task.deadlineTime
+    : '23:59';
+  return Utilities.parseDate(
+    `${task.deadline} ${time}`,
+    getSpreadsheet().getSpreadsheetTimeZone(),
+    'yyyy-MM-dd HH:mm'
+  );
+}
+
+function trackerRecordTaskPenalty_(sheet, task, teacherName, penalizedAt) {
+  const performance = task.performanceByAssignee || {};
+  const teacherPerformance = performance[teacherName] || { rewards: [], penalties: [] };
+  const penalties = Array.isArray(teacherPerformance.penalties) ? teacherPerformance.penalties : [];
+  const cycleKey = task.repeatWeekly ? task.repeatWeek : task.id;
+  if (penalties.some(penalty => penalty.cycleKey === cycleKey)) return;
+  performance[teacherName] = {
+    ...teacherPerformance,
+    rewards: Array.isArray(teacherPerformance.rewards) ? teacherPerformance.rewards : [],
+    penalties: [...penalties, { cycleKey, penalizedAt }]
+  };
+  sheet.getRange(task.rowNumber, 24).setValue(JSON.stringify(performance));
+}
+
+function trackerReviewTask_(token, taskId, decision, note) {
   const actor = trackerActor_(token);
   if (actor.role === 'teacher') throw new Error('Chỉ Giám đốc hoặc Manager được duyệt nhiệm vụ.');
   if (decision !== 'approve' && decision !== 'reject') throw new Error('Lựa chọn duyệt không hợp lệ.');
@@ -1008,13 +1052,31 @@ function trackerReviewTask_(token, taskId, decision, note, stars) {
   if (actor.role === 'manager' && task.createdBy !== actor.name && task.assignees.indexOf(actor.name) === -1 && manager !== actor.name) {
     throw new Error('Bạn không có quyền duyệt nhiệm vụ này.');
   }
-  const rating = Number(stars || 0);
-  if (decision === 'approve' && rating && (rating < 1 || rating > 5 || Math.floor(rating) !== rating)) {
-    throw new Error('Số sao phải từ 1 đến 5.');
-  }
   const row = task.rowNumber;
+  if (decision === 'approve') {
+    const performance = task.performanceByAssignee || {};
+    const rewardedAt = Utilities.formatDate(
+      new Date(),
+      getSpreadsheet().getSpreadsheetTimeZone(),
+      'yyyy-MM-dd'
+    );
+    task.assignees.forEach(name => {
+      const submission = submissions[name];
+      if (!submission || !submission.submitted || !String(submission.note || '').trim()) return;
+      const teacherPerformance = performance[name] || { rewards: [], penalties: [] };
+      const rewards = Array.isArray(teacherPerformance.rewards) ? teacherPerformance.rewards : [];
+      const cycleKey = task.repeatWeekly ? task.repeatWeek : task.id;
+      if (rewards.some(reward => reward.cycleKey === cycleKey)) return;
+      performance[name] = {
+        ...teacherPerformance,
+        rewards: [...rewards, { cycleKey, stars: 1, rewardedAt }],
+        penalties: Array.isArray(teacherPerformance.penalties) ? teacherPerformance.penalties : []
+      };
+    });
+    sheet.getRange(row, 24).setValue(JSON.stringify(performance));
+  }
   sheet.getRange(row, 9).setValue(decision === 'approve' ? 'COMPLETED' : 'IN_PROGRESS');
-  sheet.getRange(row, 12).setValue(decision === 'approve' ? rating : 0);
+  sheet.getRange(row, 12).setValue(0);
   sheet.getRange(row, 13).setValue(String(note || '').slice(0, 1000));
   sheet.getRange(row, 15).setValue(new Date().toISOString());
   if (decision === 'reject') {

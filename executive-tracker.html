@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#71313a">
   <meta name="description" content="Hệ thống điều phối công việc, duyệt đơn nghỉ hoặc tăng ca và theo dõi nhiệm vụ trợ giảng Thiên Vy Global.">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="assets/fontawesome/css/all.min.css">
   <title>Thiên Vy Global | Điều phối công việc</title>
   <style>
     :root {
@@ -398,6 +399,67 @@
     .calendar-stat.is-total .calendar-stat-value { color: #208b7d; }
     .calendar-grid { border-color: #e4e2eb; border-radius: 14px; }
     .toast { border: 1px solid #ffffff80; border-radius: 13px; box-shadow: 0 12px 30px #2f1f3355; }
+    .tracker-icon {
+      display: inline-grid;
+      width: 1.8em;
+      height: 1.8em;
+      flex: 0 0 auto;
+      place-items: center;
+      border: 1px solid #ffffff35;
+      border-radius: .62em;
+      background: linear-gradient(145deg, #fff8f1, #f8e5e9);
+      color: #7d2739;
+      font-size: .92em;
+      vertical-align: middle;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    button:hover .tracker-icon, a:hover .tracker-icon { transform: translateY(-1px) scale(1.05); }
+    .topbar .tracker-icon, .button-primary .tracker-icon, .button-green .tracker-icon {
+      border-color: #ffffff35;
+      background: #ffffff1e;
+      color: #ffe6ad;
+    }
+    .button-light .tracker-icon { border-color: #e4e8ef; background: #fff; color: #59667a; }
+    .button-danger .tracker-icon, .small-button.danger .tracker-icon {
+      border-color: #f4cfd2;
+      background: #fff;
+      color: #b6383d;
+    }
+    .small-button.good .tracker-icon { background: #ffffff24; color: #fff; }
+    .kpi { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
+    .kpi-icon {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      width: 42px;
+      height: 42px;
+      border: 1px solid #efe4e5;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #fff, #faecee);
+      box-shadow: 0 4px 11px #71313a12;
+      color: #82303e;
+      display: grid;
+      place-items: center;
+      font-size: 17px;
+    }
+    .kpi:nth-child(2) .kpi-icon { color: #a87824; background: linear-gradient(145deg, #fffdf6, #fff0cf); }
+    .kpi:nth-child(3) .kpi-icon { color: #b64c52; background: linear-gradient(145deg, #fff8f6, #fde7e5); }
+    .kpi:nth-child(4) .kpi-icon { color: #a87824; background: linear-gradient(145deg, #fffdf6, #fff0cf); }
+    .role-intro { position: relative; overflow: hidden; }
+    .role-intro::after {
+      position: absolute;
+      top: -50px;
+      right: -25px;
+      width: 160px;
+      height: 160px;
+      border: 1px solid #ffffff24;
+      border-radius: 50%;
+      box-shadow: 0 0 0 20px #ffffff0a, 0 0 0 40px #ffffff08;
+      content: "";
+      pointer-events: none;
+    }
+    .button, .top-link, .small-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+    .dialog-head button[data-close] { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid #ffffff35; border-radius: 10px; background: #ffffff16; }
+    @media (prefers-reduced-motion: reduce) { .tracker-icon { transition: none; } }
     @media (max-width: 700px) {
       .kpi { padding: 11px 12px; }
       .kpi-value { font-size: 21px; }
@@ -442,10 +504,10 @@
       </section>
 
       <section class="kpis" aria-label="Tổng quan nhiệm vụ">
-        <article class="kpi"><div class="kpi-label">Tổng nhiệm vụ</div><div id="kpi-total" class="kpi-value">0</div></article>
-        <article class="kpi"><div class="kpi-label">Nhiệm vụ / đơn chờ duyệt</div><div id="kpi-pending" class="kpi-value">0 / 0</div></article>
-        <article class="kpi"><div class="kpi-label">Quá hạn</div><div id="kpi-overdue" class="kpi-value">0</div></article>
-        <article class="kpi"><div class="kpi-label">Tổng sao tích lũy</div><div id="kpi-stars" class="kpi-value">0</div></article>
+        <article class="kpi"><div class="kpi-label">Tổng nhiệm vụ</div><div id="kpi-total" class="kpi-value">0</div><span class="kpi-icon fa-solid fa-list-check" aria-hidden="true"></span></article>
+        <article class="kpi"><div class="kpi-label">Nhiệm vụ / đơn chờ duyệt</div><div id="kpi-pending" class="kpi-value">0 / 0</div><span class="kpi-icon fa-solid fa-clipboard-check" aria-hidden="true"></span></article>
+        <article class="kpi"><div class="kpi-label">Quá hạn</div><div id="kpi-overdue" class="kpi-value">0</div><span class="kpi-icon fa-solid fa-triangle-exclamation" aria-hidden="true"></span></article>
+        <article class="kpi"><div class="kpi-label">Tổng sao tích lũy</div><div id="kpi-stars" class="kpi-value">0</div><span class="kpi-icon fa-solid fa-star" aria-hidden="true"></span></article>
       </section>
 
       <section class="toolbar" aria-label="Bộ lọc và thao tác">
@@ -456,7 +518,7 @@
           <div class="field"><label for="task-search">Tìm nhiệm vụ</label><input id="task-search" placeholder="Tên việc, người giao..."></div>
         </div>
         <div class="toolbar-actions">
-          <button id="create-task" class="button button-primary" type="button" hidden>＋ Giao nhiệm vụ</button>
+          <button id="create-task" class="button button-primary" type="button" hidden>Giao nhiệm vụ</button>
         </div>
       </section>
 
@@ -475,7 +537,7 @@
           <div class="teacher-panel-heading">
             <div class="section-heading" style="margin:0">
               <div><h3 id="teacher-request-heading">Đơn nghỉ / tăng ca của tôi</h3><p>Theo dõi trạng thái các đơn bạn đã gửi.</p></div>
-              <button id="teacher-submit-schedule" class="button button-primary" type="button">＋ Đăng ký nghỉ / tăng ca</button>
+              <button id="teacher-submit-schedule" class="button button-primary" type="button">Đăng ký nghỉ / tăng ca</button>
             </div>
           </div>
           <div id="teacher-request-cards" class="teacher-card-list"></div>
@@ -503,7 +565,7 @@
           <div class="section-heading" style="margin:0">
             <div><h3>Đơn nghỉ / tăng ca cần theo dõi</h3><p>Quản lý theo dõi trạng thái đơn; quyền duyệt đơn thuộc Giám đốc.</p></div>
             <div class="section-actions">
-              <button id="manager-submit-schedule" class="button button-primary" type="button">＋ Đăng ký nghỉ / tăng ca</button>
+              <button id="manager-submit-schedule" class="button button-primary" type="button">Đăng ký nghỉ / tăng ca</button>
               <button id="manager-show-calendar" class="button button-light" type="button">Xem lịch đã duyệt</button>
               <button id="manager-export-schedules" class="button button-light" type="button">Xuất Excel</button>
             </div>
@@ -559,7 +621,6 @@
       <div class="field"><label for="task-start">Ngày bắt đầu</label><input id="task-start" type="date" required></div>
       <div class="field"><label for="task-deadline">Thời hạn</label><input id="task-deadline" type="date" required></div>
       <div class="field"><label for="task-time">Giờ hết hạn</label><input id="task-time" type="time" required></div>
-      <div class="field"><label for="task-punishment">Phạt khi vi phạm</label><input id="task-punishment" maxlength="300" placeholder="Cảnh cáo, trừ điểm KPI..."></div>
       <div class="field full"><label for="task-output">Kết quả cần đạt</label><textarea id="task-output" maxlength="2000" placeholder="Mô tả kết quả tối thiểu cần đạt được..."></textarea></div>
       <div class="field full"><label for="task-note">Chi tiết / ghi chú</label><textarea id="task-note" maxlength="2000"></textarea></div>
       <p id="task-error" class="form-error full" hidden></p>
@@ -620,7 +681,7 @@
 
   <script>
     (() => {
-      const API_URL = 'https://script.google.com/macros/s/AKfycbxyMzmznzc7E1MrAO5qtWVwkkVjp9O20sjw4slj4izJQ3jjwaT0Cm2M3WRyFHkBlEs7/exec';
+      const API_URL = 'https://script.google.com/macros/s/AKfycbx-cWpN7l7Op0w_kjA6PWKWDVzv2aumF3gwFuib1JJRLZJEf_CdQnUAPUXwk9LbeeoX/exec';
       const TOKEN_KEY = 'TV_GLOBAL_TRACKER_TOKEN';
       const entryMode = new URLSearchParams(window.location.search).get('view') || '';
       const entryRoles = { director: 'director', manager: 'manager', teacher: 'teacher' };
@@ -675,6 +736,86 @@
       const statusLabel = status => ({ NEW: 'Mới giao', IN_PROGRESS: 'Đang làm', PENDING: 'Chờ duyệt', COMPLETED: 'Hoàn thành', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối', OVERDUE: 'Quá hạn', ARCHIVED: 'Lưu trữ' })[status] || status;
       const roleLabel = role => ({ director: 'Giám đốc', manager: 'Quản lý tiến độ', teacher: 'Trợ giảng' })[role] || role;
       const initials = name => String(name || '—').trim().split(/\s+/).slice(-2).map(part => part[0] || '').join('').toLocaleUpperCase('vi');
+
+      function decorateTrackerIcons(root = document) {
+        const actionIcons = {
+          accept: 'hand',
+          approve: 'check',
+          'complete-personal': 'check-double',
+          delete: 'trash',
+          edit: 'pen-to-square',
+          note: 'note-sticky',
+          reject: 'rotate-left',
+          'report-progress': 'chart-line',
+          submit: 'paper-plane'
+        };
+        const idIcons = {
+          'calendar-next': 'chevron-right',
+          'calendar-prev': 'chevron-left',
+          'calendar-today': 'calendar-day',
+          'create-task': 'plus',
+          'export-approved-schedules': 'file-arrow-down',
+          'export-schedules': 'file-arrow-down',
+          'logout-button': 'arrow-right-from-bracket',
+          'manager-export-schedules': 'file-arrow-down',
+          'manager-show-calendar': 'calendar-check',
+          'manager-submit-schedule': 'calendar-plus',
+          'save-manager': 'shield-halved',
+          'show-approved-calendar': 'calendar-check',
+          'teacher-submit-schedule': 'calendar-plus',
+          'tracker-retry': 'arrows-rotate'
+        };
+        const headingIcons = {
+          'accepted-heading': 'clipboard-check',
+          'management-heading': 'diagram-project',
+          'teacher-request-heading': 'calendar-check',
+          'teacher-task-heading': 'list-check',
+          'tracker-title': 'chart-line'
+        };
+        root.querySelectorAll('button, a.button, a.top-link').forEach(element => {
+          if (element.querySelector('.tracker-icon')) return;
+          let iconName = idIcons[element.id]
+            || actionIcons[element.dataset.taskAction]
+            || (element.dataset.scheduleAction === 'approve' ? 'check' : '')
+            || (element.dataset.scheduleAction === 'reject' ? 'xmark' : '');
+          const label = element.textContent.trim().toLocaleLowerCase('vi');
+          if (!iconName && element.hasAttribute('data-close')) iconName = 'xmark';
+          if (!iconName && /thử lại|tải lại/.test(label)) iconName = 'arrows-rotate';
+          if (!iconName && /xuất|excel|tải/.test(label)) iconName = 'file-arrow-down';
+          if (!iconName && /đăng ký|nghỉ|tăng ca/.test(label)) iconName = 'calendar-plus';
+          if (!iconName && /phân quyền/.test(label)) iconName = 'shield-halved';
+          if (!iconName && /lưu/.test(label)) iconName = 'floppy-disk';
+          if (!iconName && /về hệ thống/.test(label)) iconName = 'arrow-left';
+          if (!iconName && /giao nhiệm vụ|thêm việc/.test(label)) iconName = 'plus';
+          if (!iconName && /duyệt|hoàn thành/.test(label)) iconName = 'check';
+          if (!iconName && /trả lại|từ chối/.test(label)) iconName = 'rotate-left';
+          if (!iconName && /xóa/.test(label)) iconName = 'trash';
+          if (!iconName && /nhận việc/.test(label)) iconName = 'hand';
+          if (!iconName && /báo cáo/.test(label)) iconName = 'chart-line';
+          if (!iconName && /ghi chú/.test(label)) iconName = 'note-sticky';
+          if (!iconName && /chỉnh sửa|cập nhật kết quả/.test(label)) iconName = 'pen-to-square';
+          if (!iconName && /đóng|hủy/.test(label)) iconName = 'xmark';
+          if (!iconName) return;
+          const icon = document.createElement('i');
+          icon.className = `tracker-icon fa-solid fa-${iconName}`;
+          icon.setAttribute('aria-hidden', 'true');
+          element.insertBefore(icon, element.firstChild);
+        });
+        root.querySelectorAll('#tracker-title, #management-heading, #accepted-heading, #teacher-task-heading, #teacher-request-heading, .dialog-head h2').forEach(heading => {
+          if (heading.querySelector('.tracker-icon')) return;
+          const label = heading.textContent.trim().toLocaleLowerCase('vi');
+          const iconName = headingIcons[heading.id]
+            || (/lịch|nghỉ|tăng ca/.test(label) ? 'calendar-days' : '')
+            || (/báo cáo|tiến độ/.test(label) ? 'chart-line' : '')
+            || (/nhiệm vụ|công việc|task/.test(label) ? 'list-check' : '')
+            || (/đăng ký/.test(label) ? 'calendar-plus' : '');
+          if (!iconName) return;
+          const icon = document.createElement('i');
+          icon.className = `tracker-icon fa-solid fa-${iconName}`;
+          icon.setAttribute('aria-hidden', 'true');
+          heading.insertBefore(icon, heading.firstChild);
+        });
+      }
 
       function notify(message, duration = 3500) {
         $('toast').textContent = message;
@@ -959,25 +1100,38 @@
         $('accepted-description').textContent = role === 'director'
           ? 'Theo dõi tiến độ, duyệt hoàn thành hoặc trả nhiệm vụ để trợ giảng cập nhật.'
           : 'Kiểm tra nhiệm vụ chờ duyệt và trả lại để trợ giảng cập nhật; quản lý không duyệt đơn nghỉ / tăng ca.';
-        $('create-task').textContent = role === 'director' ? '＋ Giao nhiệm vụ tuần' : role === 'manager' ? '＋ Giao nhiệm vụ tuần / việc cá nhân' : '＋ Thêm việc cá nhân';
+        $('create-task').textContent = role === 'director' ? 'Giao nhiệm vụ tuần' : role === 'manager' ? 'Giao nhiệm vụ tuần / việc cá nhân' : 'Thêm việc cá nhân';
         const activeTasks = tasks.filter(task => task.status !== 'ARCHIVED');
         const overdueCount = activeTasks.filter(task => getStatus(task) === 'OVERDUE').length;
         $('kpi-total').textContent = activeTasks.length;
         const pendingTasks = activeTasks.filter(task => task.status === 'PENDING').length;
         $('kpi-overdue').textContent = overdueCount;
-        $('kpi-stars').textContent = tasks.reduce((sum, task) => sum + (Number(task.stars) || 0), 0);
+        const currentMonth = dateInputValue(new Date()).slice(0, 7);
+        const starRecipient = role === 'teacher' ? session.actor.name : '';
+        $('kpi-stars').textContent = tasks.reduce((sum, task) => {
+          const performance = task.performanceByAssignee || {};
+          return sum + Object.entries(performance).reduce((taskSum, [teacherName, teacherPerformance]) => {
+            if (starRecipient && teacherName !== starRecipient) return taskSum;
+            const rewards = Array.isArray(teacherPerformance.rewards) ? teacherPerformance.rewards : [];
+            return taskSum + rewards.reduce((rewardSum, reward) => (
+              String(reward.rewardedAt || '').slice(0, 7) === currentMonth
+                ? rewardSum + (Number(reward.stars) || 0)
+                : rewardSum
+            ), 0);
+          }, 0);
+        }, 0);
         const pendingRequests = requests.filter(request => request.status === 'PENDING').length;
         $('kpi-pending').textContent = role === 'manager' ? pendingTasks : `${pendingTasks} / ${pendingRequests}`;
         if (role === 'manager') {
           document.querySelectorAll('.kpi-label')[0].textContent = 'Nhiệm vụ trong hệ thống';
           document.querySelectorAll('.kpi-label')[1].textContent = 'Nhiệm vụ chờ quản lý duyệt';
           document.querySelectorAll('.kpi-label')[2].textContent = 'Nhiệm vụ quá hạn';
-          document.querySelectorAll('.kpi-label')[3].textContent = 'Sao tích lũy của đội ngũ';
+          document.querySelectorAll('.kpi-label')[3].textContent = 'Sao tháng này của đội ngũ';
         } else {
           document.querySelectorAll('.kpi-label')[0].textContent = 'Tổng nhiệm vụ';
           document.querySelectorAll('.kpi-label')[1].textContent = 'Nhiệm vụ / đơn chờ duyệt';
           document.querySelectorAll('.kpi-label')[2].textContent = 'Quá hạn';
-          document.querySelectorAll('.kpi-label')[3].textContent = 'Tổng sao tích lũy';
+          document.querySelectorAll('.kpi-label')[3].textContent = 'Sao tích lũy tháng này';
         }
         $('teacher-total').textContent = activeTasks.length;
         $('teacher-active').textContent = activeTasks.filter(task => Number(task.priority) <= 2 && ['NEW', 'IN_PROGRESS', 'PENDING'].includes(task.status)).length;
@@ -1007,7 +1161,7 @@
             <td data-label="Loại"><span class="priority priority-${Number(task.priority)}">${Number(task.priority) <= 2 ? 'Nhiệm vụ tuần' : `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}`}</span>${task.repeatWeekly ? '<div class="muted">Lặp hàng tuần</div>' : ''}</td>
             <td data-label="Công việc"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy)} giao${task.note ? ` · ${escapeHtml(task.note)}` : ''}</div>${task.output ? `<div class="muted">Kết quả cần đạt: ${escapeHtml(task.output)}</div>` : ''}${task.progressReport ? `<div class="muted task-report-text"><strong>Tiến độ:</strong> ${escapeHtml(task.progressReport)}</div>` : ''}${task.blocker ? `<div class="muted task-report-text"><strong>Vấn đề:</strong> ${escapeHtml(task.blocker)}</div>` : ''}${task.completionNote ? `<div class="muted">Đã hoàn thành: ${escapeHtml(task.completionNote)}</div>` : ''}${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
             <td data-label="Trợ giảng"><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || 'Việc cá nhân')}</div></td>
-            <td data-label="Hạn">${taskTimelineMarkup(task)}<div class="muted">${escapeHtml(task.punishment || (Number(task.stars) ? `Đánh giá ${task.stars}/5` : ''))}</div></td>
+            <td data-label="Hạn">${taskTimelineMarkup(task)}</td>
             <td data-label="Trạng thái"><span class="status-pill status-${status}">${statusLabel(status)}</span></td>
             <td data-label="Thao tác">${taskActionMarkup(task)}</td>
           </tr>`;
@@ -1085,7 +1239,7 @@
           const personal = Number(task.priority) >= 3;
           return `<article class="teacher-task-card">
             <div class="teacher-task-top"><div class="teacher-task-title">${escapeHtml(task.title)}</div><span class="priority priority-${Number(task.priority)}">${personal ? `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}` : `Nhiệm vụ tuần${task.repeatWeekly ? ' · lặp lại' : ''}`}</span><span class="status-pill status-${status}">${statusLabel(status)}</span></div>
-            <div class="teacher-task-meta"><span>${personal ? 'Việc cá nhân nội bộ' : `Giao bởi: ${escapeHtml(task.createdBy)}`}</span><span>${escapeHtml(task.punishment || '')}</span></div>
+            <div class="teacher-task-meta"><span>${personal ? 'Việc cá nhân nội bộ' : `Giao bởi: ${escapeHtml(task.createdBy)}`}</span></div>
             ${taskTimelineMarkup(task)}
             ${task.output ? `<div class="teacher-task-note">Kết quả cần đạt: ${escapeHtml(task.output)}</div>` : ''}
             ${task.completionNote ? `<div class="teacher-task-note">Đã hoàn thành: ${escapeHtml(task.completionNote)}</div>` : ''}
@@ -1105,6 +1259,7 @@
           <div class="teacher-request-content"><strong>${dateLabel(request.date)} · ${escapeHtml(request.startTime)}–${escapeHtml(request.endTime)}</strong>${escapeHtml(request.reason)}${request.reviewNote ? `<div class="muted">Ghi chú duyệt: ${escapeHtml(request.reviewNote)}</div>` : ''}</div>
           <span class="status-pill status-${escapeHtml(request.status)} teacher-request-status">${statusLabel(request.status)}</span>
         </article>`).join('') : '<div class="empty-state"><strong>Bạn chưa gửi đơn nghỉ / tăng ca</strong>Dùng nút đăng ký phía trên để gửi đơn khi cần.</div>';
+        decorateTrackerIcons($('tracker-screen'));
       }
 
       function refresh() {
@@ -1198,7 +1353,6 @@
         $('task-start').value = dateInputValue(localDate(task.startDate || task.deadline) || new Date());
         $('task-deadline').value = dateInputValue(localDate(task.deadline) || new Date());
         $('task-time').value = timeLabel(task.deadlineTime) || '17:00';
-        $('task-punishment').value = task.punishment || '';
         $('task-output').value = task.output || '';
         $('task-note').value = task.note || '';
         $('task-repeat-weekly').checked = Boolean(task.repeatWeekly);
@@ -1317,7 +1471,6 @@
           startDate,
           deadline,
           deadlineTime: $('task-time').value,
-          punishment: $('task-punishment').value.trim(),
           output: $('task-output').value.trim(),
           note: $('task-note').value.trim(),
           repeatWeekly: !$('task-repeat-field').hidden && $('task-repeat-weekly').checked
@@ -1331,7 +1484,6 @@
           createdBy: session.actor.name,
           priority: role === 'director' ? 1 : role === 'manager' && assignees.length ? 2 : Number($('task-personal-priority').value),
           status: 'NEW',
-          stars: 0,
           reviewNote: '',
           completionNote: '',
           repeatWeekly: task.repeatWeekly,
@@ -1455,13 +1607,13 @@
           } else if (action === 'complete-personal') {
             await apiCall('trackerCompletePersonalTask', { token, taskId });
           } else if (action === 'approve') {
-            await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '', stars: 0 });
+            await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '' });
           } else if (action === 'delete') {
             await apiCall('trackerDeleteTask', { token, taskId });
           } else if (action === 'note') {
             await apiCall('trackerSaveNote', { token, taskId, note });
           } else if (action === 'reject') {
-            await apiCall('trackerReviewTask', { token, taskId, decision: action, note, stars: 0 });
+            await apiCall('trackerReviewTask', { token, taskId, decision: action, note });
           }
           selectedTask.syncing = false;
           render();
@@ -1493,7 +1645,7 @@
         render();
         notify('Đang đồng bộ trạng thái hoàn thành...', 30000);
         try {
-          await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '', stars: 0 });
+          await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '' });
           task.syncing = false;
           notify('Đã xác nhận nhiệm vụ hoàn thành.');
         } catch (error) {
@@ -1719,6 +1871,7 @@
       document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => $(button.dataset.close).close()));
       ['filter-priority', 'filter-teacher', 'filter-status'].forEach(id => $(id).addEventListener('change', render));
       $('task-search').addEventListener('input', render);
+      decorateTrackerIcons();
       token = sessionStorage.getItem(TOKEN_KEY) || '';
       const globalRole = sessionStorage.getItem('TV_GLOBAL_ROLE') || '';
       const globalName = sessionStorage.getItem('TV_GLOBAL_USER') || '';

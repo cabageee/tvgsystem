@@ -494,7 +494,10 @@
         overflow: visible;
       }
       #admin-nav-buttons { flex: 1; min-width: 0; }
-      .dashboard-toolbar { align-items: stretch !important; }
+      .dashboard-toolbar {
+        align-items: stretch !important;
+        flex-direction: column;
+      }
       .dashboard-toolbar > div:first-child {
         width: 100%;
         grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(130px, 1fr));
@@ -1362,10 +1365,11 @@
     }
 
     #master-mobile-cards { display: none; }
-    @media (max-width: 767px) {
+    @media (max-width: 1100px) {
       #master-table-desktop { display: none; }
       #master-mobile-cards:not(.hidden) {
         display: grid;
+        grid-template-columns: minmax(0, 1fr);
         gap: 14px;
         min-width: 0;
       }
@@ -1574,6 +1578,12 @@
         min-height: 44px;
       }
       #master-pagination-controls > div span { text-align: center; }
+    }
+
+    @media (min-width: 850px) and (max-width: 1100px) {
+      #master-mobile-cards:not(.hidden) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
 
     @media (max-width: 360px) {
@@ -2192,7 +2202,7 @@
       color: #ffe0a2;
     }
 
-    @media (max-width: 767px) {
+    @media (max-width: 1100px) {
       #app-container main {
         padding-right: 12px;
         padding-left: 12px;
@@ -2608,4 +2618,103 @@
         padding-right: 6px;
         padding-left: 6px;
       }
+    }
+
+    /* Consistent, high-contrast icon language across the main application. */
+    .ui-icon-wrap {
+      display: inline-flex;
+      width: 2em;
+      height: 2em;
+      align-items: center;
+      justify-content: center;
+      padding: .38em;
+      border: 1px solid rgba(134, 27, 40, .1);
+      border-radius: .7em;
+      background: linear-gradient(145deg, #fff, #f8e9eb);
+      color: #861b28;
+      box-shadow: 0 2px 6px rgba(58, 31, 37, .1), inset 0 1px 0 #ffffffc9;
+      vertical-align: middle;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .ui-icon {
+      width: 1em;
+      height: 1em;
+      font-size: 1em;
+      line-height: 1;
+      filter: none;
+    }
+    .ui-icon-wrap--check,
+    .ui-icon-wrap--restore,
+    .ui-icon-wrap--attendance {
+      border-color: #16806420;
+      background: linear-gradient(145deg, #f3fcf7, #ddf3e8);
+      color: #13745b;
+    }
+    .ui-icon-wrap--alert,
+    .ui-icon-wrap--warning,
+    .ui-icon-wrap--siren,
+    .ui-icon-wrap--error,
+    .ui-icon-wrap--trash,
+    .ui-icon-wrap--deadline {
+      border-color: #bd434320;
+      background: linear-gradient(145deg, #fff8f6, #fde7e5);
+      color: #b6383d;
+    }
+    .ui-icon-wrap--payment,
+    .ui-icon-wrap--chart,
+    .ui-icon-wrap--lightning,
+    .ui-icon-wrap--star,
+    .ui-icon-wrap--sparkle {
+      border-color: #d29a3428;
+      background: linear-gradient(145deg, #fffdf5, #fff0c9);
+      color: #94620d;
+    }
+    .ui-icon-wrap--student,
+    .ui-icon-wrap--users,
+    .ui-icon-wrap--graduation,
+    .ui-icon-wrap--book {
+      border-color: #5879c828;
+      background: linear-gradient(145deg, #f8fbff, #e5efff);
+      color: #4263a0;
+    }
+    #app-container button .ui-icon-wrap,
+    #admin-nav-buttons .ui-icon-wrap {
+      width: 1.8em;
+      height: 1.8em;
+      padding: .32em;
+      border-color: rgba(255, 255, 255, .18);
+      border-radius: .62em;
+      background: rgba(255, 255, 255, .14);
+      color: inherit;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16);
+    }
+    #app-container button:hover .ui-icon-wrap,
+    #admin-nav-buttons button:hover .ui-icon-wrap {
+      transform: translateY(-1px) scale(1.04);
+      box-shadow: 0 3px 8px rgba(25, 16, 20, .15);
+    }
+    #app-container .action-button--neutral .ui-icon { color: #7d3540; }
+    #app-container .action-button--success .ui-icon { color: #168064; }
+    #app-container .action-button--danger .ui-icon { color: #c14349; }
+    #app-container .action-button--primary .ui-icon { color: #ffe2a2; }
+    #app-container .action-button .ui-icon { width: 1em; }
+    #app-container h1 > .ui-icon-wrap,
+    #app-container h2 > .ui-icon-wrap,
+    #app-container h3 > .ui-icon-wrap,
+    #app-container h4 > .ui-icon-wrap {
+      margin-right: .18em;
+      vertical-align: -.16em;
+    }
+    #app-container .notification-center-button > .ui-icon {
+      color: #ffe2a2;
+      font-size: 1.15em;
+    }
+    #screen-login button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .45em;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ui-icon-wrap { transition: none; }
     }

@@ -59,8 +59,8 @@
       </div>
       <div class="p-4 sm:p-5 space-y-3 overflow-y-auto">
         <section class="rounded-xl border border-amber-200 bg-amber-50 p-3">
-          <h4 class="text-xs font-bold uppercase text-amber-900">1. Học viên cần ưu tiên</h4>
-          <div class="mt-2 grid grid-cols-2 gap-2">
+          <h4 class="text-xs font-bold uppercase text-amber-900">1. Học viên &amp; công việc cần ưu tiên</h4>
+          <div class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
             <article class="rounded-lg border border-amber-200 bg-white p-3 text-center">
               <p class="text-[10px] font-bold uppercase tracking-wide text-amber-800">Cần chăm sóc</p>
               <p id="teacher-login-summary-care-count" class="mt-1 text-3xl font-black leading-none text-amber-700">—</p>
@@ -70,6 +70,18 @@
               <p class="text-[10px] font-bold uppercase tracking-wide text-red-800">Cần gia hạn</p>
               <p id="teacher-login-summary-renewal-count" class="mt-1 text-3xl font-black leading-none text-red-700">—</p>
               <p class="mt-1 text-[10px] text-slate-500">học viên</p>
+            </article>
+            <article class="rounded-lg border border-emerald-200 bg-white p-3 text-center">
+              <p class="text-[10px] font-bold uppercase tracking-wide text-emerald-800">Thưởng tháng này</p>
+              <p id="teacher-login-summary-reward-count" class="mt-1 text-3xl font-black leading-none text-emerald-700">—</p>
+              <p class="mt-1 text-[10px] text-slate-500">⭐ tích lũy</p>
+              <div id="teacher-login-summary-rewards" class="mt-2 text-left text-[10px] text-slate-600"></div>
+            </article>
+            <article class="rounded-lg border border-red-200 bg-white p-3 text-center">
+              <p class="text-[10px] font-bold uppercase tracking-wide text-red-800">Trễ hạn cần hoàn thành</p>
+              <p id="teacher-login-summary-overdue-count" class="mt-1 text-3xl font-black leading-none text-red-700">—</p>
+              <p class="mt-1 text-[10px] text-slate-500">nhiệm vụ bị phạt</p>
+              <div id="teacher-login-summary-overdue" class="mt-2 text-left text-[10px] text-red-700"></div>
             </article>
           </div>
           <p id="teacher-login-summary-students" class="mt-2 text-xs text-slate-600" role="status"></p>

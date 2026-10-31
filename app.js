@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyMzmznzc7E1MrAO5qtWVwkkVjp9O20sjw4slj4izJQ3jjwaT0Cm2M3WRyFHkBlEs7/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-cWpN7l7Op0w_kjA6PWKWDVzv2aumF3gwFuib1JJRLZJEf_CdQnUAPUXwk9LbeeoX/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -51,7 +51,36 @@
       lightning: 'bolt',
       gear: 'gear',
       trash: 'trash',
-      restore: 'arrow-rotate-left'
+      restore: 'arrow-rotate-left',
+      home: 'house',
+      graduation: 'graduation-cap',
+      student: 'user-graduate',
+      attendance: 'clipboard-user',
+      deadline: 'hourglass-half',
+      star: 'star',
+      download: 'download',
+      filter: 'sliders',
+      close: 'xmark',
+      back: 'arrow-left',
+      forward: 'arrow-right',
+      save: 'floppy-disk',
+      send: 'paper-plane',
+      shield: 'shield-halved',
+      sparkle: 'wand-magic-sparkles',
+      info: 'circle-info',
+      phone: 'phone',
+      mail: 'envelope',
+      lock: 'lock',
+      unlock: 'lock-open',
+      clock: 'clock',
+      history: 'clock-rotate-left',
+      external: 'arrow-up-right-from-square',
+      login: 'right-to-bracket',
+      upload: 'cloud-arrow-up',
+      calendarCheck: 'calendar-check',
+      calendarPlus: 'calendar-plus',
+      clipboardCheck: 'clipboard-check',
+      downloadFile: 'file-arrow-down'
     };
     const UI_EMOJI_ICONS = {
       '⚠️': 'alert', '📢': 'announcement', '💰': 'payment', '📋': 'clipboard',
@@ -60,7 +89,13 @@
       '🚪': 'door', '👥': 'users', '🚨': 'siren', '🔍': 'search', '🔄': 'refresh',
       '📝': 'note', '📷': 'camera', '👤': 'user', '📚': 'book', '📈': 'chart',
       '📌': 'clipboard', '➔': 'restore', '⚙': 'gear',
-      '⚡': 'lightning', '⏳': 'spinner', '❌': 'error', '🟢': 'check', '🔴': 'alert'
+      '⚡': 'lightning', '⏳': 'spinner', '❌': 'error', '🟢': 'check', '🔴': 'alert',
+      '🎓': 'graduation', '🎒': 'student', '🧑‍🎓': 'student', '🗓️': 'calendar',
+      '🕒': 'clock', '⏰': 'deadline', '⭐': 'star', '⬇️': 'download',
+      '🏠': 'home', '🔒': 'lock', '🔓': 'unlock', '📨': 'send', '📩': 'mail',
+      '☎️': 'phone', '📞': 'phone', '🛡️': 'shield', '✨': 'sparkle',
+      'ℹ️': 'info', '↩️': 'back', '➡️': 'forward', '❎': 'close',
+      '☑️': 'check', '✔️': 'check', '✓': 'check', '×': 'close'
     };
 
     function renderUiIcon(name, extraClass = '') {
@@ -253,7 +288,7 @@
       if (!root?.querySelectorAll) return;
       const emojiKeys = Object.keys(UI_EMOJI_ICONS).sort((a, b) => b.length - a.length);
       const targets = [];
-      const uiTextSelectors = 'button, a, h1, h2, h3, h4, h5, h6, label, #login-error-msg, #user-info-text, [role="alert"], div.text-3xl';
+      const uiTextSelectors = 'button, a, h1, h2, h3, h4, h5, h6, label, span, p, #login-error-msg, #user-info-text, [role="alert"], div.text-3xl, div.text-lg.font-bold';
       if (root.matches?.(uiTextSelectors)) targets.push(root);
       targets.push(...root.querySelectorAll(uiTextSelectors));
 
@@ -281,6 +316,46 @@
         if (!emoji) return;
         element.replaceChildren();
         element.insertAdjacentHTML('afterbegin', renderUiIcon(UI_EMOJI_ICONS[emoji], 'ui-icon--large'));
+      });
+
+      const iconById = {
+        'btn-confirm-payment': 'payment',
+        'btn-save-student': 'save',
+        'btn-save-teacher': 'add',
+        'direct-avatar-input': 'upload'
+      };
+      root.querySelectorAll('button, a.button, a.action-button').forEach(element => {
+        if (element.querySelector('.ui-icon, .ui-icon-wrap')) return;
+        const label = element.textContent.trim().toLocaleLowerCase('vi');
+        const action = element.getAttribute('onclick') || '';
+        let icon = iconById[element.id] || '';
+        if (!icon && /handleLoginSubmit/.test(action)) icon = 'login';
+        if (!icon && /fetchDataFromGoogleSheet|loadTeacherTrackerTasks/.test(action)) icon = 'refresh';
+        if (!icon && /export|downloadReportCard/.test(action)) icon = 'download';
+        if (!icon && /openAdd|addTeacher|addStudent/.test(action)) icon = 'add';
+        if (!icon && /openEdit|handleEdit/.test(action)) icon = 'edit';
+        if (!icon && /delete|remove|dừng|xóa/.test(action)) icon = 'trash';
+        if (!icon && /markTeacherAttendance/.test(action)) icon = 'attendance';
+        if (!icon && /showPage/.test(action)) icon = 'forward';
+        if (!icon && /đăng nhập/.test(label)) icon = 'login';
+        if (!icon && /tải lên|chọn ảnh|đổi ảnh/.test(label)) icon = 'upload';
+        if (!icon && /làm mới|tải lại|thử lại/.test(label)) icon = 'refresh';
+        if (!icon && /xuất|tải ảnh|tải file|excel|pdf/.test(label)) icon = 'download';
+        if (!icon && /thêm|tạo mới|giao nhiệm vụ/.test(label)) icon = 'add';
+        if (!icon && /chỉnh sửa|cập nhật thông tin|sửa/.test(label)) icon = 'edit';
+        if (!icon && /xóa|dừng học|xóa ảnh/.test(label)) icon = 'trash';
+        if (!icon && /thanh toán|gia hạn|học phí/.test(label)) icon = 'payment';
+        if (!icon && /điểm danh/.test(label)) icon = /đã|hoàn thành|hôm nay/.test(label) ? 'check' : 'calendarCheck';
+        if (!icon && /báo cáo|thống kê/.test(label)) icon = 'chart';
+        if (!icon && /chi tiết|phân công/.test(label)) icon = 'clipboard';
+        if (!icon && /đổi mật khẩu/.test(label)) icon = 'key';
+        if (!icon && /hồ sơ/.test(label)) icon = 'folder';
+        if (!icon && /thông báo/.test(label)) icon = 'announcement';
+        if (!icon && /lưu|xác nhận|đã hiểu|hoàn thành/.test(label)) icon = /lưu/.test(label) ? 'save' : 'check';
+        if (!icon && /đóng|hủy|×/.test(label)) icon = 'close';
+        if (!icon && /quay lại|về trang/.test(label)) icon = 'back';
+        if (!icon) return;
+        element.insertAdjacentHTML('afterbegin', renderUiIcon(icon));
       });
     }
 
@@ -342,10 +417,10 @@
     const PAGE_SIZE = 12;
     const MASTER_PAGE_SIZE = 50;
     const MASTER_MOBILE_PAGE_SIZE = 10;
-    let masterMobileLayout = window.matchMedia('(max-width: 767px)').matches;
+    let masterMobileLayout = window.matchMedia('(max-width: 1100px)').matches;
 
     window.addEventListener('resize', () => {
-      const nextMobileLayout = window.matchMedia('(max-width: 767px)').matches;
+      const nextMobileLayout = window.matchMedia('(max-width: 1100px)').matches;
       if (nextMobileLayout === masterMobileLayout) return;
       masterMobileLayout = nextMobileLayout;
       masterCurrentPage = 1;
@@ -1571,11 +1646,38 @@
 
     function teacherTaskIsOverdue(task) {
       if (!task.deadline || ['COMPLETED', 'PENDING'].includes(task.status)) return false;
+      if (teacherTaskHasSubmittedOutput(task, currentUserName)) return false;
       const date = trackerDateValue(task.deadline);
       if (!date) return false;
       const time = trackerTimeValue(task.deadlineTime) || '23:59';
       const deadline = new Date(`${date}T${time}:00`);
       return !Number.isNaN(deadline.getTime()) && deadline < new Date();
+    }
+
+    function teacherTaskHasSubmittedOutput(task, teacherName) {
+      const submission = task.completionSubmissions?.[teacherName];
+      return Boolean(submission?.submitted && String(submission.note || '').trim());
+    }
+
+    function teacherTaskWasSubmittedLate(task, teacherName) {
+      const submission = task.completionSubmissions?.[teacherName];
+      if (!teacherTaskHasSubmittedOutput(task, teacherName) || !submission.submittedAt) return false;
+      const deadline = trackerTaskDeadline(task);
+      const submittedAt = new Date(submission.submittedAt);
+      return Boolean(deadline && Number.isFinite(submittedAt.getTime()) && submittedAt > deadline);
+    }
+
+    function trackerMonthKey(value) {
+      const date = trackerDateValue(value);
+      return date ? date.slice(0, 7) : '';
+    }
+
+    function trackerTaskDeadline(task) {
+      const date = trackerDateValue(task.deadline);
+      if (!date) return null;
+      const time = trackerTimeValue(task.deadlineTime) || '23:59';
+      const deadline = new Date(`${date}T${time}:00`);
+      return Number.isNaN(deadline.getTime()) ? null : deadline;
     }
 
     function renderTeacherTrackerTasks() {
@@ -1594,12 +1696,17 @@
         : 'Hiện chưa có nhiệm vụ nào được giao cho bạn.';
       list.innerHTML = personalTasks.map(task => {
         const overdue = teacherTaskIsOverdue(task);
-        const statusText = overdue ? 'Quá hạn' : teacherTaskStatus(task);
+        const hasSubmittedOutput = teacherTaskHasSubmittedOutput(task, currentUserName);
+        const submittedLate = teacherTaskWasSubmittedLate(task, currentUserName);
+        const statusText = overdue ? 'Quá hạn · cần hoàn thành'
+          : submittedLate ? 'Đã trễ hạn · bị phạt'
+          : hasSubmittedOutput && task.status === 'IN_PROGRESS' ? 'Đã gửi kết quả · chờ nhóm'
+            : teacherTaskStatus(task);
         const priority = Number(task.priority) || 4;
         const personal = priority >= 3 && priority <= 4;
         const canDelete = personal && task.createdBy === currentUserName
           && Array.isArray(task.assignees) && task.assignees.includes(currentUserName);
-        const gantt = trackerTaskGantt(task, overdue ? 'OVERDUE' : task.status);
+        const gantt = trackerTaskGantt(task, overdue || submittedLate ? 'OVERDUE' : hasSubmittedOutput ? 'COMPLETED' : task.status);
         const actions = [];
         if (task.syncing) {
           actions.push('<span class="px-3 py-2 text-xs font-semibold text-slate-500">Đang đồng bộ...</span>');
@@ -1616,7 +1723,7 @@
         if (!task.syncing && canDelete) {
           actions.push(`<button type="button" data-teacher-task-action="delete" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold">Xóa việc cá nhân</button>`);
         }
-        const statusClass = overdue ? 'bg-red-100 text-red-700' : task.status === 'COMPLETED'
+        const statusClass = overdue || submittedLate ? 'bg-red-100 text-red-700' : task.status === 'COMPLETED' || hasSubmittedOutput
           ? 'bg-emerald-100 text-emerald-700'
           : task.status === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700';
         return `<article class="rounded-xl border border-slate-200 p-3 sm:p-4 bg-white">
@@ -1625,7 +1732,7 @@
           </div>
           ${gantt}
           <h3 class="mt-2 text-sm font-bold text-slate-800">${escapeHtml(task.title)}</h3>
-          <p class="mt-1 text-[11px] text-slate-500">Người giao: ${escapeHtml(task.createdBy || '—')}${task.punishment ? ` · Lưu ý: ${escapeHtml(task.punishment)}` : ''}</p>
+          <p class="mt-1 text-[11px] text-slate-500">Người giao: ${escapeHtml(task.createdBy || '—')}</p>
           ${task.output ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Kết quả cần đạt:</strong> ${escapeHtml(task.output)}</p>` : ''}
           ${Number(task.priority) <= 2 && Array.isArray(task.assignees) && task.assignees.length ? `<div class="mt-2 text-[11px] text-slate-600"><strong>Kết quả theo trợ giảng:</strong> ${task.assignees.map(name => { const submission = task.completionSubmissions?.[name]; const output = String(submission?.note || '').trim(); return `<p class="mt-1"><strong>${escapeHtml(name)}:</strong> ${submission?.submitted ? escapeHtml(output) : output ? `<span class="text-amber-700">Cần gửi lại:</span> ${escapeHtml(output)}` : 'Chưa gửi kết quả'}</p>`; }).join('')}</div>` : task.completionNote ? `<p class="mt-2 text-xs text-slate-600"><strong>Đã hoàn thành:</strong> ${escapeHtml(task.completionNote)}</p>` : ''}
           ${task.progressReport ? `<p class="mt-2 text-[11px] text-slate-600 whitespace-pre-wrap"><strong>Tiến độ đã báo cáo:</strong> ${escapeHtml(task.progressReport)}</p>` : ''}
@@ -1676,6 +1783,66 @@
           : 'Không tải được dữ liệu học sinh. Vui lòng tải lại Sheet để xem số liệu mới nhất.';
       }
 
+      const currentMonth = currentLocalDayKey().slice(0, 7);
+      const rewardEvents = [];
+      const overdueItems = new Map();
+      if (teacherTrackerLoadSucceeded) {
+        teacherTrackerTasks.forEach(task => {
+          if (!Array.isArray(task.assignees) || !task.assignees.includes(currentUserName)) return;
+          const performance = task.performanceByAssignee?.[currentUserName] || {};
+          (Array.isArray(performance.rewards) ? performance.rewards : []).forEach(reward => {
+            if (trackerMonthKey(reward.rewardedAt) === currentMonth && Number(reward.stars) > 0) {
+              rewardEvents.push({ title: task.title || 'Nhiệm vụ', stars: Number(reward.stars) });
+            }
+          });
+          (Array.isArray(performance.penalties) ? performance.penalties : []).forEach(penalty => {
+            if (trackerMonthKey(penalty.penalizedAt) === currentMonth) {
+              overdueItems.set(
+                `${task.id}:${penalty.cycleKey || 'penalty'}`,
+                `${task.title || 'Nhiệm vụ'} · trễ hạn, đã bị phạt`
+              );
+            }
+          });
+
+          const submission = task.completionSubmissions?.[currentUserName];
+          const deadline = trackerTaskDeadline(task);
+          const submittedAt = submission?.submitted ? new Date(submission.submittedAt || '') : null;
+          const hasValidSubmittedAt = submittedAt && Number.isFinite(submittedAt.getTime());
+          if (deadline && hasValidSubmittedAt && submittedAt > deadline && trackerMonthKey(task.deadline) === currentMonth) {
+            overdueItems.set(
+              `${task.id}:${task.repeatWeek || task.id}`,
+              `${task.title || 'Nhiệm vụ'} · trễ hạn, đã bị phạt`
+            );
+          } else if (deadline && deadline < new Date()
+            && !['COMPLETED', 'ARCHIVED'].includes(task.status)
+            && !teacherTaskHasSubmittedOutput(task, currentUserName)) {
+            overdueItems.set(
+              `${task.id}:${task.repeatWeek || task.id}`,
+              `${task.title || 'Nhiệm vụ'} · trễ hạn, cần hoàn thành`
+            );
+          }
+        });
+      }
+
+      const rewardCountElement = document.getElementById('teacher-login-summary-reward-count');
+      if (rewardCountElement) rewardCountElement.textContent = teacherTrackerLoadSucceeded
+        ? String(rewardEvents.reduce((total, reward) => total + reward.stars, 0))
+        : '—';
+      renderSummaryEntries(
+        'teacher-login-summary-rewards',
+        rewardEvents.map(reward => `${reward.title} · +${reward.stars} sao`),
+        teacherTrackerLoadSucceeded ? 'Chưa có sao thưởng trong tháng này.' : 'Không tải được dữ liệu thưởng.'
+      );
+      const overdueCountElement = document.getElementById('teacher-login-summary-overdue-count');
+      if (overdueCountElement) overdueCountElement.textContent = teacherTrackerLoadSucceeded
+        ? String(overdueItems.size)
+        : '—';
+      renderSummaryEntries(
+        'teacher-login-summary-overdue',
+        [...overdueItems.values()],
+        teacherTrackerLoadSucceeded ? 'Không có nhiệm vụ trễ hạn.' : 'Không tải được dữ liệu nhiệm vụ.'
+      );
+
       const myTasks = teacherTrackerLoadSucceeded ? teacherTrackerTasks.filter(task => (
         Array.isArray(task.assignees)
         && task.assignees.includes(currentUserName)
@@ -1692,7 +1859,9 @@
 
       const now = new Date();
       const deadlines = myTasks
-        .filter(task => ['NEW', 'IN_PROGRESS', 'PENDING'].includes(task.status) && trackerDateValue(task.deadline))
+        .filter(task => ['NEW', 'IN_PROGRESS'].includes(task.status)
+          && trackerDateValue(task.deadline)
+          && !teacherTaskHasSubmittedOutput(task, currentUserName))
         .map(task => {
           const date = trackerDateValue(task.deadline);
           const time = trackerTimeValue(task.deadlineTime) || '23:59';
