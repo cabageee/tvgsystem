@@ -604,6 +604,14 @@ function trackerEnsureTaskColumn_(sheet, column, label) {
   sheet.getRange(1, column).setValue(label);
 }
 
+function trackerIsPersonalTask_(task) {
+  const priority = Number(task.priority);
+  const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+  return (priority === 3 || priority === 4)
+    && assignees.length === 1
+    && assignees[0] === String(task.createdBy || '').trim();
+}
+
 function trackerTaskRecords_() {
   const sheet = requireSheet_(TAB.TRACKER_TASKS);
   trackerEnsureOutputColumn_(sheet);
@@ -686,7 +694,7 @@ function trackerBootstrap_(token) {
   try {
     allTasks = trackerTaskRecords_();
     allTasks.forEach(task => {
-      if (Number(task.priority) <= 2
+      if (!trackerIsPersonalTask_(task)
         && (['COMPLETED', 'ARCHIVED'].includes(task.status) || task.archiveMonth)) {
         trackerClearTaskPenalties_(taskSheet, task);
       }
@@ -813,7 +821,7 @@ function trackerUpdateTask_(token, taskId, input) {
   const output = String(updates.output || '').trim();
   const repeatWeekly = updates.repeatWeekly === true;
   const priority = Number(task.priority);
-  const isPersonalTask = [3, 4].includes(priority);
+  const isPersonalTask = trackerIsPersonalTask_(task);
   const assignedToActor = task.assignees.indexOf(actor.name) !== -1;
   const canEdit = actor.role === 'director'
     || (actor.role === 'manager' && task.createdBy === actor.name)
@@ -838,7 +846,7 @@ function trackerUpdateTask_(token, taskId, input) {
   if (repeatWeekly && !['director', 'manager'].includes(actor.role)) {
     throw new Error('Chỉ Giám đốc hoặc Manager được giao task lặp hàng tuần.');
   }
-  if (repeatWeekly && priority > 2) throw new Error('Chỉ nhiệm vụ tuần được phép lặp hàng tuần.');
+  if (repeatWeekly && isPersonalTask) throw new Error('Chỉ nhiệm vụ tuần được phép lặp hàng tuần.');
   if (priority === 1 && actor.role !== 'director') throw new Error('Chỉ Giám đốc được chỉnh sửa nhiệm vụ tuần.');
   if (isPersonalTask && (assignees.length !== 1 || assignees[0] !== task.createdBy)) {
     throw new Error('Việc cá nhân phải tiếp tục được giao cho chính người tạo.');
@@ -911,7 +919,7 @@ function trackerApplyWeeklyTaskChanges_(sheet, tasks) {
   const currentWeekStart = new Date(`${currentWeek}T00:00:00Z`);
   const now = new Date().toISOString();
   tasks.forEach(task => {
-    if (Number(task.priority) > 2) return;
+    if (trackerIsPersonalTask_(task)) return;
     if (task.repeatWeekly) {
       if (!task.repeatWeek) {
         sheet.getRange(task.rowNumber, 19).setValue(currentWeek);
@@ -987,7 +995,7 @@ function trackerSubmitAssigneeCompletion_(actor, taskId, note) {
     const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
     if (!task) throw new Error('Không tìm thấy nhiệm vụ.');
     if (!task.assignees.includes(actor.name)) throw new Error('Bạn không được giao nhiệm vụ này.');
-    if (Number(task.priority) > 2) throw new Error('Chỉ task được giao cho nhóm mới cần output theo từng trợ giảng.');
+    if (trackerIsPersonalTask_(task)) throw new Error('Chỉ task được giao cho nhóm mới cần output theo từng trợ giảng.');
     if (task.status !== 'IN_PROGRESS') throw new Error('Task không ở trạng thái nhận output.');
     if (!task.assignees.length) throw new Error('Task chưa có trợ giảng được giao.');
 
@@ -1027,7 +1035,7 @@ function trackerCompletePersonalTask_(token, taskId) {
   if (actor.role === 'director') throw new Error('Task cá nhân chỉ có thể được hoàn thành bởi người tạo task.');
   const sheet = requireSheet_(TAB.TRACKER_TASKS);
   const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
-  if (!task || ![3, 4].includes(Number(task.priority)) || task.assignees.indexOf(actor.name) === -1) {
+  if (!task || !trackerIsPersonalTask_(task) || task.assignees.indexOf(actor.name) === -1) {
     throw new Error('Bạn không có quyền cập nhật task cá nhân này.');
   }
   if (task.status === 'COMPLETED') throw new Error('Task cá nhân này đã hoàn thành.');
@@ -1106,7 +1114,7 @@ function trackerReviewTask_(token, taskId, decision, note) {
   }
   const row = task.rowNumber;
   if (decision === 'approve') {
-    if (Number(task.priority) <= 2) trackerClearTaskPenalties_(sheet, task);
+    if (!trackerIsPersonalTask_(task)) trackerClearTaskPenalties_(sheet, task);
     const performance = task.performanceByAssignee || {};
     const rewardedAt = Utilities.formatDate(
       new Date(),
@@ -1154,7 +1162,7 @@ function trackerDeleteTask_(token, taskId) {
   const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
   if (!task) throw new Error('Không tìm thấy nhiệm vụ cần xóa.');
   const priority = Number(task.priority);
-  const isPersonalTask = priority === 3 || priority === 4;
+  const isPersonalTask = trackerIsPersonalTask_(task);
   const assignedToActor = task.assignees.indexOf(actor.name) !== -1;
   const canDelete = actor.role === 'director'
     || (actor.role === 'manager' && task.createdBy === actor.name && priority >= 2)

@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwMFtHKjCUwoeiHTuF-_EAaCJb4s_Fn73tXatrvZOIdTd4u4v7veoISptpzyEjv1A/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbznfjacUrEwX-DyN5hbk_rCLytXwVM_8JrvOgksup9d-DrAiXyNo_5WBd4OR71HD0Q-/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -1649,6 +1649,14 @@
       return task.status || 'Chưa rõ';
     }
 
+    function isTeacherPersonalTask(task) {
+      const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+      return [3, 4].includes(Number(task.priority))
+        && assignees.length === 1
+        && assignees[0] === task.createdBy
+        && task.createdBy === currentUserName;
+    }
+
     function trackerDateValue(value) {
       if (value instanceof Date && Number.isFinite(value.getTime())) {
         return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
@@ -1720,7 +1728,7 @@
     }
 
     function teacherTaskWasSubmittedLate(task, teacherName) {
-      if (Number(task.priority) <= 2 && ['COMPLETED', 'ARCHIVED'].includes(task.status)) return false;
+      if (!isTeacherPersonalTask(task) && ['COMPLETED', 'ARCHIVED'].includes(task.status)) return false;
       const submission = task.completionSubmissions?.[teacherName];
       if (!teacherTaskHasSubmittedOutput(task, teacherName) || !submission.submittedAt) return false;
       const deadline = trackerTaskDeadline(task);
@@ -1763,10 +1771,12 @@
           : submittedLate ? 'Đã trễ hạn · bị phạt'
           : hasSubmittedOutput && task.status === 'IN_PROGRESS' ? 'Đã gửi kết quả · chờ nhóm'
             : teacherTaskStatus(task);
-        const priority = Number(task.priority) || 4;
-        const personal = priority >= 3 && priority <= 4;
-        const canDelete = personal && task.createdBy === currentUserName
-          && Array.isArray(task.assignees) && task.assignees.includes(currentUserName);
+        const priority = Number(task.priority);
+        const personal = isTeacherPersonalTask(task);
+        const canDelete = personal;
+        const taskTypeLabel = personal
+          ? `Việc cá nhân · ưu tiên ${priority === 3 ? 'trước' : 'sau'}`
+          : `Nhiệm vụ được giao${task.repeatWeekly ? ' · lặp hàng tuần' : ''}`;
         const gantt = trackerTaskGantt(task, overdue || submittedLate ? 'OVERDUE' : hasSubmittedOutput ? 'COMPLETED' : task.status);
         const actions = [];
         if (task.syncing) {
@@ -1774,8 +1784,12 @@
         } else if (task.status === 'NEW') {
           actions.push(`<button type="button" data-teacher-task-action="accept" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">Nhận việc</button>`);
         } else if (task.status === 'IN_PROGRESS') {
-          const submission = task.completionSubmissions?.[currentUserName];
-          actions.push(`<button type="button" data-teacher-task-action="complete" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-[#8B1515] hover:bg-red-900 text-white text-xs font-bold">${submission?.submitted ? 'Cập nhật kết quả' : 'Gửi kết quả hoàn thành'}</button>`);
+          if (personal) {
+            actions.push(`<button type="button" data-teacher-task-action="complete-personal" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-[#8B1515] hover:bg-red-900 text-white text-xs font-bold">Đánh dấu hoàn thành</button>`);
+          } else {
+            const submission = task.completionSubmissions?.[currentUserName];
+            actions.push(`<button type="button" data-teacher-task-action="complete" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-[#8B1515] hover:bg-red-900 text-white text-xs font-bold">${submission?.submitted ? 'Cập nhật kết quả' : 'Gửi kết quả hoàn thành'}</button>`);
+          }
           actions.push(`<button type="button" data-teacher-task-action="report-progress" data-task-id="${escapeHtml(task.id)}" class="px-3 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-900 text-xs font-bold">Báo cáo tiến độ</button>`);
         }
         if (!task.syncing && ['NEW', 'IN_PROGRESS'].includes(task.status)) {
@@ -1787,23 +1801,26 @@
         const statusClass = overdue || submittedLate ? 'bg-red-100 text-red-700' : task.status === 'COMPLETED' || hasSubmittedOutput
           ? 'bg-emerald-100 text-emerald-700'
           : task.status === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700';
-        return `<article class="rounded-xl border border-slate-200 p-3 sm:p-4 bg-white">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2"><span class="px-2 py-1 rounded-full bg-[#8B1515]/10 text-[#8B1515] text-[10px] font-bold">${personal ? `Việc cá nhân · ưu tiên ${priority === 3 ? 'trước' : 'sau'}` : `Nhiệm vụ tuần${task.repeatWeekly ? ' · lặp lại' : ''}`}</span><span class="px-2 py-1 rounded-full ${statusClass} text-[10px] font-bold">${statusText}</span></div>
+        return `<article class="teacher-task-card rounded-xl border border-slate-200 bg-white">
+          <div class="teacher-task-card-header">
+            <h3 class="teacher-task-card-title">${escapeHtml(task.title)}</h3>
+            <div class="teacher-task-card-badges">
+              <span class="teacher-task-type-badge">${taskTypeLabel}</span>
+              <span class="teacher-task-status-badge ${statusClass}">${statusText}</span>
+            </div>
           </div>
           ${gantt}
-          <h3 class="mt-2 text-sm font-bold text-slate-800">${escapeHtml(task.title)}</h3>
-          <p class="mt-1 text-[11px] text-slate-500">Người giao: ${escapeHtml(task.createdBy || '—')}</p>
-          ${task.output ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Kết quả cần đạt:</strong> ${escapeHtml(task.output)}</p>` : ''}
-          ${Number(task.priority) <= 2 && Array.isArray(task.assignees) && task.assignees.length ? `<div class="mt-2 text-[11px] text-slate-600"><strong>Kết quả theo trợ giảng:</strong> ${task.assignees.map(name => { const submission = task.completionSubmissions?.[name]; const output = String(submission?.note || '').trim(); return `<p class="mt-1"><strong>${escapeHtml(name)}:</strong> ${submission?.submitted ? escapeHtml(output) : output ? `<span class="text-amber-700">Cần gửi lại:</span> ${escapeHtml(output)}` : 'Chưa gửi kết quả'}</p>`; }).join('')}</div>` : task.completionNote ? `<p class="mt-2 text-xs text-slate-600"><strong>Đã hoàn thành:</strong> ${escapeHtml(task.completionNote)}</p>` : ''}
-          ${task.progressReport ? `<p class="mt-2 text-[11px] text-slate-600 whitespace-pre-wrap"><strong>Tiến độ đã báo cáo:</strong> ${escapeHtml(task.progressReport)}</p>` : ''}
-          ${task.blocker ? `<p class="mt-2 text-[11px] text-amber-800 whitespace-pre-wrap"><strong>Vấn đề cần hỗ trợ:</strong> ${escapeHtml(task.blocker)}</p>` : ''}
-          ${task.reviewNote ? `<p class="mt-2 text-[11px] text-slate-600"><strong>Phản hồi:</strong> ${escapeHtml(task.reviewNote)}</p>` : ''}
+          <p class="teacher-task-card-meta">Người giao: ${escapeHtml(task.createdBy || '—')}</p>
+          ${task.output ? `<p class="teacher-task-card-copy"><strong>Kết quả cần đạt:</strong> ${escapeHtml(task.output)}</p>` : ''}
+          ${!personal && Array.isArray(task.assignees) && task.assignees.length ? `<div class="teacher-task-card-copy"><strong>Kết quả theo trợ giảng:</strong>${task.assignees.map(name => { const submission = task.completionSubmissions?.[name]; const output = String(submission?.note || '').trim(); return `<p class="teacher-task-submission"><strong>${escapeHtml(name)}:</strong> ${submission?.submitted ? escapeHtml(output) : output ? `<span class="text-amber-700">Cần gửi lại:</span> ${escapeHtml(output)}` : 'Chưa gửi kết quả'}</p>`; }).join('')}</div>` : task.completionNote ? `<p class="teacher-task-card-copy"><strong>Đã hoàn thành:</strong> ${escapeHtml(task.completionNote)}</p>` : ''}
+          ${task.progressReport ? `<p class="teacher-task-card-copy whitespace-pre-wrap"><strong>Tiến độ đã báo cáo:</strong> ${escapeHtml(task.progressReport)}</p>` : ''}
+          ${task.blocker ? `<p class="teacher-task-card-copy teacher-task-card-copy--warning whitespace-pre-wrap"><strong>Vấn đề cần hỗ trợ:</strong> ${escapeHtml(task.blocker)}</p>` : ''}
+          ${task.reviewNote ? `<p class="teacher-task-card-copy"><strong>Phản hồi:</strong> ${escapeHtml(task.reviewNote)}</p>` : ''}
           ${['NEW', 'IN_PROGRESS'].includes(task.status) ? `<div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="${task.status === 'NEW' ? 'sm:col-span-2' : ''}"><label class="block text-[10px] font-bold uppercase text-slate-500" for="teacher-task-note-${escapeHtml(task.id)}">Ghi chú tiến độ</label><textarea id="teacher-task-note-${escapeHtml(task.id)}" data-teacher-task-note="${escapeHtml(task.id)}" maxlength="2000" class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.note || '')}</textarea></div>
-            ${task.status === 'IN_PROGRESS' ? `<div><label class="block text-[10px] font-bold uppercase text-slate-500" for="teacher-task-completion-note-${escapeHtml(task.id)}">Kết quả hoàn thành <span class="text-red-600">*</span></label><textarea id="teacher-task-completion-note-${escapeHtml(task.id)}" data-teacher-task-completion-note="${escapeHtml(task.id)}" maxlength="2000" required placeholder="Ghi rõ kết quả bạn đã hoàn thành..." class="mt-1 w-full min-h-16 rounded-lg border border-slate-200 p-2 text-xs outline-none focus:ring-2 focus:ring-[#8B1515]/20">${escapeHtml(task.completionSubmissions?.[currentUserName]?.note || '')}</textarea></div>` : ''}
+            <div class="${task.status === 'NEW' ? 'sm:col-span-2' : ''}"><label class="teacher-task-field-label" for="teacher-task-note-${escapeHtml(task.id)}">Ghi chú tiến độ</label><textarea id="teacher-task-note-${escapeHtml(task.id)}" data-teacher-task-note="${escapeHtml(task.id)}" maxlength="2000" class="teacher-task-field mt-1 w-full rounded-lg border border-slate-200 p-2">${escapeHtml(task.note || '')}</textarea></div>
+            ${task.status === 'IN_PROGRESS' && !personal ? `<div><label class="teacher-task-field-label" for="teacher-task-completion-note-${escapeHtml(task.id)}">Kết quả hoàn thành <span class="text-red-600">*</span></label><textarea id="teacher-task-completion-note-${escapeHtml(task.id)}" data-teacher-task-completion-note="${escapeHtml(task.id)}" maxlength="2000" required placeholder="Ghi rõ kết quả bạn đã hoàn thành..." class="teacher-task-field mt-1 w-full rounded-lg border border-slate-200 p-2">${escapeHtml(task.completionSubmissions?.[currentUserName]?.note || '')}</textarea></div>` : ''}
           </div>` : task.note ? `<p class="mt-2 text-xs text-slate-600"><strong>Ghi chú tiến độ:</strong> ${escapeHtml(task.note)}</p>` : ''}
-          ${actions.length ? `<div class="mt-3 flex flex-wrap gap-2">${actions.join('')}</div>` : ''}
+          ${actions.length ? `<div class="teacher-task-card-actions">${actions.join('')}</div>` : ''}
         </article>`;
       }).join('');
     }
@@ -1850,7 +1867,7 @@
       if (teacherTrackerLoadSucceeded) {
         teacherTrackerTasks.forEach(task => {
           if (!Array.isArray(task.assignees) || !task.assignees.includes(currentUserName)) return;
-          const approvedTeamTask = Number(task.priority) <= 2
+          const approvedTeamTask = !isTeacherPersonalTask(task)
             && ['COMPLETED', 'ARCHIVED'].includes(task.status);
           const performance = task.performanceByAssignee?.[currentUserName] || {};
           (Array.isArray(performance.rewards) ? performance.rewards : []).forEach(reward => {
@@ -2068,6 +2085,18 @@
           renderTeacherTrackerTasks();
           showToast('Đang đồng bộ trạng thái nhiệm vụ...');
           await apiCall('trackerAcceptTask', { token, taskId });
+        } else if (action === 'complete-personal') {
+          if (!isTeacherPersonalTask(task)) throw new Error('Chỉ người tạo mới có thể hoàn thành việc cá nhân.');
+          const confirmed = await showConfirmModal(`Đánh dấu hoàn thành việc cá nhân "${task.title}"?`);
+          if (!confirmed) {
+            button.disabled = false;
+            return;
+          }
+          task.syncing = true;
+          task.status = 'COMPLETED';
+          renderTeacherTrackerTasks();
+          showToast('Đang cập nhật trạng thái việc cá nhân...');
+          await apiCall('trackerCompletePersonalTask', { token, taskId });
         } else if (action === 'complete') {
           const completionNote = document.getElementById(`teacher-task-completion-note-${taskId}`);
           const note = completionNote?.value.trim() || '';
@@ -2115,7 +2144,7 @@
         const updatedTask = teacherTrackerTasks.find(item => item.id === taskId);
         if (updatedTask) updatedTask.syncing = false;
         renderTeacherTrackerTasks();
-        showToast(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'complete' ? 'Đã gửi kết quả của bạn; trạng thái duyệt được cập nhật.' : action === 'delete' ? 'Đã xóa việc cá nhân.' : 'Đã lưu ghi chú.');
+        showToast(action === 'accept' ? 'Đã nhận nhiệm vụ.' : action === 'complete-personal' ? 'Đã hoàn thành việc cá nhân.' : action === 'complete' ? 'Đã gửi kết quả của bạn; trạng thái duyệt được cập nhật.' : action === 'delete' ? 'Đã xóa việc cá nhân.' : 'Đã lưu ghi chú.');
       } catch (error) {
         const task = teacherTrackerTasks.find(item => item.id === taskId);
         if (task) Object.assign(task, previousTask);
@@ -2127,11 +2156,7 @@
     }
 
     function canDeleteTeacherPersonalTask(task) {
-      const priority = Number(task.priority);
-      return priority >= 3 && priority <= 4
-        && task.createdBy === currentUserName
-        && Array.isArray(task.assignees)
-        && task.assignees.includes(currentUserName);
+      return isTeacherPersonalTask(task);
     }
 
     function getAllLevels() {

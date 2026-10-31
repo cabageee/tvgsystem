@@ -39,6 +39,99 @@
       height: 10px;
       border-radius: 3px;
     }
+    .teacher-task-card {
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: var(--shadow-card);
+    }
+    .teacher-task-card-header {
+      display: grid;
+      gap: 10px;
+    }
+    .teacher-task-card-title {
+      margin: 0;
+      color: var(--ink);
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+    .teacher-task-card-badges {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+    }
+    .teacher-task-type-badge,
+    .teacher-task-status-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 750;
+      line-height: 1.25;
+    }
+    .teacher-task-type-badge {
+      color: #861b28;
+      background: #f9ebed;
+    }
+    .teacher-task-card-meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .teacher-task-card-copy {
+      margin: 0;
+      padding: 10px 12px;
+      border: 1px solid #edf0f4;
+      border-radius: 10px;
+      color: #465368;
+      background: #f8f9fb;
+      font-size: 13px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+    .teacher-task-card-copy--warning {
+      color: #854d0e;
+      background: #fffbeb;
+      border-color: #fde68a;
+    }
+    .teacher-task-submission {
+      margin: 7px 0 0;
+    }
+    .teacher-task-field-label {
+      display: block;
+      color: #526074;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .teacher-task-field {
+      min-height: 88px;
+      font-size: 14px;
+    }
+    .teacher-task-card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      padding-top: 2px;
+    }
+    .teacher-task-card-actions button {
+      min-height: 42px;
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.3;
+    }
 
     /* Freeze / Sticky Columns cho Master View */
     .sticky-col-1 { position: sticky; left: 0; z-index: 25; background-color: #ffffff; }
@@ -2053,6 +2146,9 @@
     }
 
     @media (max-width: 639px) {
+      .teacher-task-card { gap: 10px; padding: 14px; }
+      .teacher-task-card-title { font-size: 16px; }
+      .teacher-task-card-actions button { flex: 1 1 100%; }
       #screen-login > div > div:last-child { padding: 22px; }
       #screen-login > div > div:first-child { padding-top: 26px; padding-bottom: 24px; }
       #app-container main button:not(.action-button) { min-height: 42px; }

@@ -86,7 +86,7 @@
     th { position: sticky; top: 0; z-index: 1; padding: 10px 9px; color: #697488; background: #f7f8fa; border-bottom: 1px solid var(--line); font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
     td { padding: 10px 9px; border-bottom: 1px solid #edf0f4; vertical-align: middle; font-size: 11px; }
     tbody tr:last-child td { border-bottom: 0; }
-    .priority, .status-pill { display: inline-flex; border-radius: 99px; padding: 4px 7px; font-size: 9px; font-weight: 900; white-space: nowrap; }
+    .priority, .status-pill { display: inline-flex; align-items: center; border-radius: 99px; padding: 5px 9px; font-size: 11px; font-weight: 850; line-height: 1.25; white-space: nowrap; }
     .priority-1 { color: #77520b; background: #f4d98c; }
     .priority-2 { color: #695b3f; background: #f3eddf; }
     .priority-3 { color: #315f48; background: #dcecdf; }
@@ -101,12 +101,12 @@
     .task-title { max-width: 240px; font-weight: 850; line-height: 1.35; }
     .muted { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.4; }
     .assignee-list { max-width: 190px; line-height: 1.5; }
-    .task-actions { display: flex; flex-wrap: wrap; gap: 5px; min-width: 130px; }
+    .task-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 130px; }
     .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 20px 0 9px; }
     .section-heading h3 { margin: 0; font-size: 15px; }
     .section-heading p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
     .table-wrap + .section-heading { margin-top: 24px; }
-    .small-button { border: 0; border-radius: 7px; padding: 7px 8px; color: #394659; background: #eef1f5; font-size: 9px; font-weight: 850; }
+    .small-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; border: 0; border-radius: 9px; padding: 9px 12px; color: #394659; background: #eef1f5; font-size: 12px; line-height: 1.3; font-weight: 800; }
     .small-button:hover { background: #dfe5ec; }
     .small-button.primary { color: white; background: var(--wine); }
     .small-button.good { color: white; background: #527b69; }
@@ -181,23 +181,23 @@
     .teacher-panel-heading h3 { margin: 0; font-size: 14px; }
     .teacher-panel-heading p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
     .teacher-card-list { display: grid; gap: 9px; padding: 12px; }
-    .teacher-task-card, .teacher-request-card { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
-    .teacher-task-card { display: grid; align-content: start; gap: 10px; box-shadow: 0 2px 8px #17203308; }
+    .teacher-task-card, .teacher-request-card { min-width: 0; padding: 17px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+    .teacher-task-card { display: grid; align-content: start; gap: 12px; box-shadow: 0 2px 8px #17203308; }
     .task-report-text { white-space: pre-wrap; overflow-wrap: anywhere; }
     .teacher-task-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-    .teacher-task-title { flex: 1 1 220px; min-width: 0; font-size: 15px; font-weight: 850; line-height: 1.4; overflow-wrap: anywhere; }
-    .teacher-task-badges { display: flex; flex: 1 1 220px; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
-    .teacher-task-meta { display: flex; flex-wrap: wrap; gap: 7px 14px; color: #536071; font-size: 11px; line-height: 1.45; }
-    .teacher-task-note { min-width: 0; padding: 9px 11px; border: 1px solid #edf0f4; border-radius: 9px; color: #465368; background: #f6f7f9; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
-    .task-note-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 10px; }
+    .teacher-task-title { flex: 1 1 220px; min-width: 0; font-size: 17px; font-weight: 850; line-height: 1.4; overflow-wrap: anywhere; }
+    .teacher-task-badges { display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; min-width: 0; }
+    .teacher-task-meta { display: flex; flex-wrap: wrap; gap: 7px 14px; color: #536071; font-size: 12px; line-height: 1.5; }
+    .teacher-task-note { min-width: 0; padding: 10px 12px; border: 1px solid #edf0f4; border-radius: 10px; color: #465368; background: #f6f7f9; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+    .task-note-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
     .task-note-pair label { display: grid; gap: 5px; color: #5a6678; font-size: 10px; font-weight: 850; text-transform: uppercase; }
     .task-note-pair textarea { width: 100%; min-height: 68px; resize: vertical; padding: 9px; border: 1px solid #dce2e9; border-radius: 9px; font-size: 11px; }
     .gantt-inline { display: grid; gap: 5px; width: min(100%, 300px); margin-top: 7px; }
     .gantt-dates { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 9px; }
     .gantt-dates span:last-child { text-align: right; }
     .gantt-day-labels, .gantt-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; width: 100%; }
-    .gantt-day-labels { color: var(--muted); font-size: 8px; font-weight: 750; text-align: center; }
-    .gantt-days span { height: 9px; border-radius: 2px; background: #e8ebf0; }
+    .gantt-day-labels { color: var(--muted); font-size: 10px; font-weight: 750; text-align: center; }
+    .gantt-days span { height: 10px; border-radius: 3px; background: #e8ebf0; }
     .gantt-days .is-active { background: var(--wine); }
     .gantt-days.is-complete .is-active { background: #527b69; }
     .gantt-days.is-pending .is-active { background: #98743d; }
@@ -258,7 +258,7 @@
       .table-wrap tbody td[data-label="Hạn"] .gantt-inline,
       .table-wrap tbody td[data-label="Thời hạn"] .gantt-inline { grid-column: 1 / -1; width: 100%; max-width: none; margin-top: 2px; }
       .task-actions { min-width: 0; }
-      .small-button { font-size: 10px; }
+      .small-button { min-height: 40px; font-size: 12px; }
       .calendar-grid { display: none; }
       .calendar-agenda { display: block; }
       .calendar-agenda { max-height: none; }
@@ -776,7 +776,7 @@
 
   <script>
     (() => {
-      const API_URL = 'https://script.google.com/macros/s/AKfycbwwMFtHKjCUwoeiHTuF-_EAaCJb4s_Fn73tXatrvZOIdTd4u4v7veoISptpzyEjv1A/exec';
+      const API_URL = 'https://script.google.com/macros/s/AKfycbznfjacUrEwX-DyN5hbk_rCLytXwVM_8JrvOgksup9d-DrAiXyNo_5WBd4OR71HD0Q-/exec';
       const TOKEN_KEY = 'TV_GLOBAL_TRACKER_TOKEN';
       const TRACKER_REFRESH_INTERVAL_MS = 15000;
       const entryMode = new URLSearchParams(window.location.search).get('view') || '';
@@ -1019,6 +1019,21 @@
         return task.status;
       }
 
+      function isPersonalTask(task) {
+        const priority = Number(task.priority);
+        const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+        return (priority === 3 || priority === 4)
+          && assignees.length === 1
+          && assignees[0] === task.createdBy;
+      }
+
+      function taskTypeLabel(task) {
+        if (isPersonalTask(task)) {
+          return `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}`;
+        }
+        return `Nhiệm vụ được giao${task.repeatWeekly ? ' · lặp hàng tuần' : ''}`;
+      }
+
       function taskDeadline(task) {
         const deadline = localDate(task.deadline);
         if (!deadline) return null;
@@ -1035,7 +1050,7 @@
 
         tasks.forEach(task => {
           if (!Array.isArray(task.assignees) || !task.assignees.includes(name)) return;
-          const approvedTeamTask = Number(task.priority) <= 2
+          const approvedTeamTask = !isPersonalTask(task)
             && ['COMPLETED', 'ARCHIVED'].includes(task.status);
           const performance = task.performanceByAssignee?.[name] || {};
           (approvedTeamTask ? [] : Array.isArray(performance.penalties) ? performance.penalties : []).forEach(penalty => {
@@ -1068,7 +1083,7 @@
         const records = new Map();
         tasks.forEach(task => {
           if (!Array.isArray(task.assignees)) return;
-          if (Number(task.priority) <= 2 && ['COMPLETED', 'ARCHIVED'].includes(task.status)) return;
+          if (!isPersonalTask(task) && ['COMPLETED', 'ARCHIVED'].includes(task.status)) return;
           task.assignees.forEach(name => {
             const performance = task.performanceByAssignee?.[name] || {};
             const penalties = Array.isArray(performance.penalties) ? performance.penalties : [];
@@ -1110,7 +1125,7 @@
             && submittedAt && Number.isFinite(submittedAt.getTime()) && submittedAt > deadline);
           const performance = task.performanceByAssignee?.[name] || {};
           const cycleKey = task.repeatWeekly ? task.repeatWeek : task.id;
-            const approvalWaivesPenalty = Number(task.priority) <= 2
+            const approvalWaivesPenalty = !isPersonalTask(task)
               && ['COMPLETED', 'ARCHIVED'].includes(task.status);
             const hasPenalty = !approvalWaivesPenalty && (Array.isArray(performance.penalties) ? performance.penalties : [])
               .some(penalty => penalty.cycleKey === cycleKey);
@@ -1133,7 +1148,7 @@
           <div class="field full"><strong>Trạng thái hiện tại:</strong> ${escapeHtml(approvalStatus)}<br>
             <strong>Hạn hoàn thành:</strong> ${escapeHtml(deadlineLabel)}<br>
             <strong>Người giao:</strong> ${escapeHtml(task.createdBy || '—')}</div>
-          <p class="muted full">${Number(task.priority) <= 2 && ['COMPLETED', 'ARCHIVED'].includes(task.status)
+          <p class="muted full">${!isPersonalTask(task) && ['COMPLETED', 'ARCHIVED'].includes(task.status)
             ? 'Task đã được duyệt hoàn thành; lần phạt trễ của chu kỳ này được miễn và không tính vào thống kê.'
             : 'Thời điểm gửi kết quả được đối chiếu với deadline để xác định có gửi trễ hay không.'}</p>
           <div class="table-wrap full"><table>
@@ -1169,7 +1184,7 @@
         if (task.syncing) return '<span class="muted">Đang đồng bộ...</span>';
         const role = actorRole();
         const assigned = (task.assignees || []).includes(session.actor.name);
-        const personal = Number(task.priority) >= 3;
+        const personal = isPersonalTask(task);
         const buttons = [];
         const canDelete = canDeleteTask(task);
         if (canEditTask(task)) buttons.push(`<button class="small-button primary" data-task-action="edit" data-id="${escapeHtml(task.id)}">Chỉnh sửa</button>`);
@@ -1196,7 +1211,7 @@
 
       function canEditTask(task) {
         const role = actorRole();
-        const personal = [3, 4].includes(Number(task.priority));
+        const personal = isPersonalTask(task);
         const assignedToActor = (task.assignees || []).includes(session.actor.name);
         return role === 'director'
           || (role === 'manager' && task.createdBy === session.actor.name)
@@ -1205,11 +1220,11 @@
 
       function canDeleteTask(task) {
         const role = actorRole();
-        const isPersonalTask = Number(task.priority) >= 3 && Number(task.priority) <= 4;
+        const personal = isPersonalTask(task);
         const assignedToActor = (task.assignees || []).includes(session.actor.name);
         return role === 'director'
           || (role === 'manager' && Number(task.priority) >= 2 && task.createdBy === session.actor.name)
-          || (role === 'teacher' && isPersonalTask && assignedToActor && task.createdBy === session.actor.name);
+          || (role === 'teacher' && personal && assignedToActor && task.createdBy === session.actor.name);
       }
 
       function dayOrdinal(value) {
@@ -1359,7 +1374,7 @@
           ? archivedTasksInMonth.map(task => {
             const status = getStatus(task);
             return `<tr>
-              <td data-label="Loại"><span class="priority priority-${Number(task.priority)}">${Number(task.priority) <= 2 ? 'Nhiệm vụ tuần' : `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}`}</span>${task.repeatWeekly ? '<div class="muted">Lặp hàng tuần</div>' : ''}<div class="muted">${escapeHtml(monthLabel(task.archiveMonth))}</div></td>
+              <td data-label="Loại"><span class="priority priority-${Number(task.priority)}">${taskTypeLabel(task)}</span>${task.repeatWeekly ? '<div class="muted">Lặp hàng tuần</div>' : ''}<div class="muted">${escapeHtml(monthLabel(task.archiveMonth))}</div></td>
               <td data-label="Công việc"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy || '—')} giao</div>${task.note ? `<div class="muted">${escapeHtml(task.note)}</div>` : ''}${task.output ? `<div class="muted">Kết quả cần đạt: ${escapeHtml(task.output)}</div>` : ''}</td>
               <td data-label="Trợ giảng"><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || 'Việc cá nhân')}</div></td>
               <td data-label="Hạn"><strong>${dateLabel(task.deadline)}</strong><div class="muted">${escapeHtml(timeLabel(task.deadlineTime) || '23:59')}</div></td>
@@ -1377,7 +1392,7 @@
         $('team-penalty-section').hidden = role === 'teacher';
         $('overdue-task-body').innerHTML = overdueTasks.length
           ? overdueTasks.map(task => `<tr>
-            <td data-label="Nhiệm vụ"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${Number(task.priority) <= 2 ? 'Nhiệm vụ tuần' : `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}`}</div></td>
+            <td data-label="Nhiệm vụ"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${taskTypeLabel(task)}</div></td>
             <td data-label="Trợ giảng"><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || '—')}</div></td>
             <td data-label="Người giao">${escapeHtml(task.createdBy || '—')}</td>
             <td data-label="Hạn hoàn thành"><strong>${dateLabel(task.deadline)}</strong><div class="muted">${escapeHtml(timeLabel(task.deadlineTime) || '23:59')}</div></td>
@@ -1431,8 +1446,8 @@
           document.querySelectorAll('.kpi-label')[3].textContent = 'Sao tích lũy tháng này';
         }
         $('teacher-total').textContent = activeTasks.length;
-        $('teacher-active').textContent = activeTasks.filter(task => Number(task.priority) <= 2 && ['NEW', 'IN_PROGRESS', 'PENDING'].includes(task.status)).length;
-        $('teacher-pending').textContent = activeTasks.filter(task => Number(task.priority) >= 3 && task.status !== 'COMPLETED').length;
+        $('teacher-active').textContent = activeTasks.filter(task => !isPersonalTask(task) && ['NEW', 'IN_PROGRESS', 'PENDING'].includes(task.status)).length;
+        $('teacher-pending').textContent = activeTasks.filter(task => isPersonalTask(task) && task.status !== 'COMPLETED').length;
         $('teacher-schedule-pending').textContent = pendingRequests;
         $('export-schedules').hidden = role === 'teacher';
         $('show-approved-calendar').hidden = role === 'teacher';
@@ -1450,12 +1465,12 @@
         const managedTasks = role === 'manager'
           ? filtered.filter(task => Number(task.priority) === 2 && !(task.assignees || []).includes(session.actor.name))
           : role === 'director'
-            ? filtered.filter(task => Number(task.priority) <= 2)
+            ? filtered.filter(task => !isPersonalTask(task))
             : filtered;
         const taskRows = managedTasks.map(task => {
           const status = getStatus(task);
           return `<tr>
-            <td data-label="Loại"><span class="priority priority-${Number(task.priority)}">${Number(task.priority) <= 2 ? 'Nhiệm vụ tuần' : `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}`}</span>${task.repeatWeekly ? '<div class="muted">Lặp hàng tuần</div>' : ''}</td>
+            <td data-label="Loại"><span class="priority priority-${Number(task.priority)}">${taskTypeLabel(task)}</span>${task.repeatWeekly ? '<div class="muted">Lặp hàng tuần</div>' : ''}</td>
             <td data-label="Công việc"><div class="task-title">${escapeHtml(task.title)}</div><div class="muted">${escapeHtml(task.createdBy)} giao${task.note ? ` · ${escapeHtml(task.note)}` : ''}</div>${task.output ? `<div class="muted">Kết quả cần đạt: ${escapeHtml(task.output)}</div>` : ''}${task.progressReport ? `<div class="muted task-report-text"><strong>Tiến độ:</strong> ${escapeHtml(task.progressReport)}</div>` : ''}${task.blocker ? `<div class="muted task-report-text"><strong>Vấn đề:</strong> ${escapeHtml(task.blocker)}</div>` : ''}${task.completionNote ? `<div class="muted">Đã hoàn thành: ${escapeHtml(task.completionNote)}</div>` : ''}${task.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
             <td data-label="Trợ giảng"><div class="assignee-list">${escapeHtml((task.assignees || []).join(', ') || 'Việc cá nhân')}</div></td>
             <td data-label="Hạn">${taskTimelineMarkup(task)}</td>
@@ -1495,7 +1510,7 @@
           : '<tr><td colspan="6"><div class="empty-state"><strong>Chưa có đơn nghỉ / tăng ca</strong>Đơn trợ giảng gửi sẽ hiển thị tại đây.</div></td></tr>';
 
         const acceptedTasks = filtered.filter(task => task.status !== 'NEW'
-          && Number(task.priority) <= 2
+          && !isPersonalTask(task)
           && !(role === 'manager' && (task.assignees || []).includes(session.actor.name)));
         $('accepted-task-body').innerHTML = acceptedTasks.length ? acceptedTasks.map(task => {
           const status = getStatus(task);
@@ -1517,12 +1532,13 @@
           : [];
         $('manager-assigned-tasks').innerHTML = managerAssignedTasks.length ? managerAssignedTasks.map(task => {
           const status = getStatus(task);
+          const personal = isPersonalTask(task);
           return `<article class="teacher-task-card">
-            <div class="teacher-task-top"><div class="teacher-task-title">${escapeHtml(task.title)}</div><div class="teacher-task-badges"><span class="priority priority-${Number(task.priority)}">Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}</span><span class="status-pill status-${status}">${statusLabel(status)}</span></div></div>
-            <div class="teacher-task-meta"><span>Tạo bởi: ${escapeHtml(task.createdBy)}</span></div>
+            <div class="teacher-task-top"><div class="teacher-task-title">${escapeHtml(task.title)}</div><div class="teacher-task-badges"><span class="priority priority-${Number(task.priority)}">${taskTypeLabel(task)}</span><span class="status-pill status-${status}">${statusLabel(status)}</span></div></div>
+            <div class="teacher-task-meta"><span>${personal ? 'Việc cá nhân nội bộ' : `Giao bởi: ${escapeHtml(task.createdBy)}`}</span></div>
             ${taskTimelineMarkup(task)}
             ${task.output ? `<div class="teacher-task-note">Kết quả cần đạt: ${escapeHtml(task.output)}</div>` : ''}
-            ${Number(task.priority) <= 2 ? completionSubmissionsMarkup(task) : task.completionNote ? `<div class="teacher-task-note">Đã hoàn thành: ${escapeHtml(task.completionNote)}</div>` : ''}
+            ${!personal ? completionSubmissionsMarkup(task) : task.completionNote ? `<div class="teacher-task-note">Đã hoàn thành: ${escapeHtml(task.completionNote)}</div>` : ''}
             ${task.note ? `<div class="teacher-task-note">${escapeHtml(task.note)}</div>` : ''}
             ${task.progressReport ? `<div class="teacher-task-note task-report-text"><strong>Tiến độ:</strong> ${escapeHtml(task.progressReport)}</div>` : ''}
             ${task.blocker ? `<div class="teacher-task-note task-report-text"><strong>Vấn đề cần hỗ trợ:</strong> ${escapeHtml(task.blocker)}</div>` : ''}
@@ -1533,13 +1549,13 @@
 
         $('teacher-task-cards').innerHTML = filtered.length ? filtered.map(task => {
           const status = getStatus(task);
-          const personal = Number(task.priority) >= 3;
+          const personal = isPersonalTask(task);
           return `<article class="teacher-task-card">
-            <div class="teacher-task-top"><div class="teacher-task-title">${escapeHtml(task.title)}</div><div class="teacher-task-badges"><span class="priority priority-${Number(task.priority)}">${personal ? `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}` : `Nhiệm vụ tuần${task.repeatWeekly ? ' · lặp lại' : ''}`}</span><span class="status-pill status-${status}">${statusLabel(status)}</span></div></div>
+            <div class="teacher-task-top"><div class="teacher-task-title">${escapeHtml(task.title)}</div><div class="teacher-task-badges"><span class="priority priority-${Number(task.priority)}">${taskTypeLabel(task)}</span><span class="status-pill status-${status}">${statusLabel(status)}</span></div></div>
             <div class="teacher-task-meta"><span>${personal ? 'Việc cá nhân nội bộ' : `Giao bởi: ${escapeHtml(task.createdBy)}`}</span></div>
             ${taskTimelineMarkup(task)}
             ${task.output ? `<div class="teacher-task-note">Kết quả cần đạt: ${escapeHtml(task.output)}</div>` : ''}
-            ${task.completionNote ? `<div class="teacher-task-note">Đã hoàn thành: ${escapeHtml(task.completionNote)}</div>` : ''}
+            ${!personal && task.completionSubmissions ? completionSubmissionsMarkup(task) : task.completionNote ? `<div class="teacher-task-note">Đã hoàn thành: ${escapeHtml(task.completionNote)}</div>` : ''}
             ${task.note ? `<div class="teacher-task-note">${escapeHtml(task.note)}</div>` : ''}
             ${task.progressReport ? `<div class="teacher-task-note task-report-text"><strong>Tiến độ:</strong> ${escapeHtml(task.progressReport)}</div>` : ''}
             ${task.blocker ? `<div class="teacher-task-note task-report-text"><strong>Vấn đề cần hỗ trợ:</strong> ${escapeHtml(task.blocker)}</div>` : ''}
@@ -1670,7 +1686,7 @@
         $('task-note').value = task.note || '';
         $('task-repeat-weekly').checked = Boolean(task.repeatWeekly);
         const role = actorRole();
-        const personal = Number(task.priority) >= 3;
+        const personal = isPersonalTask(task);
         $('assignee-field').hidden = personal && role !== 'director';
         $('task-personal-priority-field').hidden = true;
         const assignNames = role === 'manager' ? teachers.filter(name => name !== session.actor.name) : teachers;
