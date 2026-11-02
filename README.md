@@ -92,11 +92,11 @@ Trong một terminal khác:
 node server.js
 ```
 
-Mặc định API chạy tại `http://localhost:3002`; kiểm tra máy chủ bằng `http://localhost:3002/api/health`. Có thể đổi cổng bằng biến môi trường `PORT`. Khi giao diện chạy trên HTTP, ứng dụng thử proxy cục bộ này trước và dùng JSONP trực tiếp tới Apps Script nếu proxy không khả dụng.
+Mặc định API chạy tại `http://127.0.0.1:3002`; kiểm tra máy chủ bằng `http://127.0.0.1:3002/api/health`. Có thể đổi cổng bằng biến môi trường `PORT`. Proxy chỉ lắng nghe trên loopback; CORS mặc định chỉ cho phép origin localhost/127.0.0.1 ở cổng 5500 và 8000. Có thể khai báo thêm origin phát triển bằng danh sách phân tách dấu phẩy trong `TVG_ALLOWED_ORIGINS`. Khi proxy không khả dụng, trình duyệt gửi yêu cầu POST trực tiếp tới Apps Script qua iframe để tránh lỗi CORS mà không đưa mật khẩu/token vào URL.
 
-`server.js` không phục vụ các trang HTML; cần giữ máy chủ tĩnh ở bước trên. Không mở public cổng Node này như một backend production: API proxy hiện chưa có cơ chế xác thực người gọi.
+`server.js` không phục vụ các trang HTML; cần giữ máy chủ tĩnh ở bước trên. Đây chỉ là proxy phát triển, không phải backend production; không đổi bind address ra Internet.
 
-Khi có nhiều người dùng trên các thiết bị khác nhau, mỗi trình duyệt vẫn kết nối cùng deployment Apps Script/Google Sheets. Apps Script tuần tự hóa các thao tác ghi để tránh hai yêu cầu cùng ghi đè một lúc; không cần bật API Node trên máy người dùng. Bộ nhớ đệm trong trình duyệt chỉ hỗ trợ hiển thị nhanh, còn dữ liệu chính vẫn được xác nhận bởi Google Sheets.
+Khi có nhiều người dùng trên các thiết bị khác nhau, mỗi trình duyệt vẫn kết nối cùng deployment Apps Script/Google Sheets. Apps Script tuần tự hóa các thao tác ghi để tránh hai yêu cầu cùng ghi đè một lúc; không cần bật API Node trên máy người dùng. Dữ liệu học viên chỉ được tải sau đăng nhập và không còn lưu vào `localStorage`; ứng dụng cần kết nối mạng để tải dữ liệu.
 
 ## Cấu hình Google Sheets và Apps Script
 
@@ -112,6 +112,7 @@ Khi có nhiều người dùng trên các thiết bị khác nhau, mỗi trình 
 6. Sao chép URL `/exec` của deployment vào cấu hình trong `app.js`, `executive-tracker.html` và `server.js` nếu URL đã thay đổi.
 7. Tạo tài khoản trợ giảng trong sheet `TroGiang`, cập nhật cấu hình trong `CauHinh`, rồi kiểm thử đăng nhập và đọc/ghi dữ liệu.
 8. Khi cập nhật mã Apps Script đã triển khai, vào **Deploy → Manage deployments → Edit → New version**. Giữ URL deployment hiện tại nếu có thể; nếu URL đổi, cập nhật lại các cấu hình ở bước 6.
+9. Sau khi triển khai, đăng nhập bằng mật khẩu đang dùng. Mật khẩu dạng văn bản cũ được chuyển thành hash có salt khi đăng nhập thành công. Nếu tài khoản chưa có mật khẩu riêng hoặc vẫn dùng `123456`, ứng dụng bắt buộc đổi sang mật khẩu từ 12 đến 128 ký tự trước khi dùng tiếp. Mật khẩu mới và mật khẩu tài khoản trợ giảng được lưu dạng hash, không xóa/ghi đè dữ liệu tài khoản khi nâng cấp backend.
 
 ### Các sheet được khởi tạo
 
@@ -140,7 +141,7 @@ Khi thêm hoặc đổi tệp giao diện cần cache, cập nhật danh sách `
 - **Giám đốc:** tổng quan, hồ sơ học viên, phân công, điểm danh, tổng kết, học viên nghỉ, quản lý trợ giảng/cấp độ và đổi mật khẩu.
 - **Trợ giảng:** danh sách lớp được phân công, điểm danh hôm nay, ghi chú tiến độ và Tracker nhiệm vụ.
 - Trong giao diện trợ giảng, nút **Điểm danh hôm nay** ghi ngày hiện tại vào buổi còn trống tiếp theo. Nút không khả dụng nếu học viên đã được điểm danh trong ngày hoặc đã hết buổi học.
-- Việc chuyển trang dùng URL HTML riêng. Phiên đăng nhập được lưu trong `sessionStorage` để duy trì khi chuyển trang trong cùng trình duyệt/tab.
+- Việc chuyển trang dùng URL HTML riêng. Token phiên có thời hạn 6 giờ được lưu trong `sessionStorage` để duy trì khi chuyển trang trong cùng tab; đăng xuất thu hồi token phía Apps Script.
 - Thông báo sinh nhật xuất hiện tối đa một lần mỗi ngày trên trình duyệt đang dùng. Trung tâm thông báo lưu tối đa 30 thông báo gần nhất trong ngày cục bộ; đây là thông báo trong ứng dụng, không phải Web Push.
 - Lịch sử ở nút **Thông báo** được làm mới theo ngày. Mỗi lần trợ giảng đăng nhập, popup tổng quan ưu tiên hiển thị số học viên cần chăm sóc và cần gia hạn, sau đó là task cần nhận và thời gian còn lại đến deadline.
 
@@ -154,7 +155,9 @@ Tracker sử dụng cùng Google Apps Script và Spreadsheet với ứng dụng 
 - **Manager:** giao nhiệm vụ tuần P2 cho trợ giảng khác, quản lý task trong Tracker, xem và cập nhật nhiệm vụ được giao trực tiếp cho mình, và duyệt yêu cầu hoàn thành. Manager không có quyền duyệt đơn nghỉ/tăng ca.
 - **Trợ giảng:** nhận nhiệm vụ tuần, cập nhật ghi chú, gửi output hoàn thành riêng; có thể tạo việc cá nhân P3/P4 và gửi đơn nghỉ/tăng ca.
 - Với task giao nhiều trợ giảng, mỗi người gửi output riêng. Task chỉ chuyển sang chờ duyệt khi tất cả người được giao đã gửi; Giám đốc/Manager xem output và số lượng đã gửi theo từng người rồi duyệt task một lần. Nếu task bị trả lại, mọi người phải gửi lại output.
+- Người được giao không thể nhận task không phân công cho mình; khi task đang chờ duyệt, không thể đổi danh sách người được giao. Thay đổi người được giao trước khi chờ duyệt sẽ xóa output cũ để tránh dùng lại kết quả của người đã bị gỡ.
 - Khi hết tuần, task tuần đã hoàn thành được lưu trữ; task chưa hoàn thành tiếp tục giữ nguyên để theo dõi. Task bật **Lặp lại hàng tuần** được giao lại ở trạng thái mới, deadline được chuyển thêm một tuần và trợ giảng cần nhận lại.
+- Mỗi chu kỳ task lặp bắt đầu với báo cáo tiến độ và vấn đề hỗ trợ trống; output tuần trước không hiển thị như báo cáo của tuần mới.
 - Trợ giảng có thể gửi **Báo cáo tiến độ** gồm phần đã làm và vấn đề cần hỗ trợ; Giám đốc/Manager xem báo cáo trong bảng task đã nhận. Báo cáo mới nhất được giữ trên task.
 - **Việc cá nhân P3/P4:** P3 là ưu tiên trước, P4 là ưu tiên sau. Người tạo cập nhật ghi chú và tự đánh dấu hoàn thành, không cần Manager/Giám đốc duyệt.
 - Trợ giảng chỉ nhận dữ liệu task/đơn thuộc tài khoản của mình. Manager và Giám đốc có trang Tracker riêng theo vai trò; Manager có thể mở cả lối vào **Công việc của tôi** và **Quản lý tiến độ**. Vai trò thực tế luôn lấy từ phiên Apps Script; nếu tài khoản được nhận diện là trợ giảng, trang chỉ hiển thị và cho thao tác trên nhiệm vụ được giao cho tài khoản đó.
@@ -173,7 +176,7 @@ Avatar mới được tải lên Google Drive qua Apps Script, không cần máy
 
 Trong `tracker-backend.gs.txt`, có thể đặt `AVATAR_FOLDER_ID` để lưu ảnh vào một thư mục Drive cụ thể; để trống thì Apps Script tạo/dùng thư mục của tài khoản triển khai. Khi được yêu cầu, cấp quyền Drive cho Apps Script và triển khai **New version** sau khi cập nhật mã.
 
-Ảnh được chia sẻ bằng liên kết để website có thể hiển thị. Cân nhắc chính sách quyền truy cập và dữ liệu cá nhân trước khi tải ảnh thật lên. Avatar đang dùng URL lưu trữ cũ không được tự động di chuyển; cần tải lại ảnh và cập nhật hồ sơ tương ứng.
+Yêu cầu tải ảnh cần token đăng nhập hợp lệ; trợ giảng chỉ được tải ảnh cho học viên được phân công. Ảnh hiện vẫn được chia sẻ bằng liên kết để website có thể hiển thị, vì vậy người có URL có thể xem ảnh. Chưa tải ảnh trẻ em/dữ liệu thật nếu chính sách tổ chức không chấp nhận chia sẻ kiểu này; cần chọn giải pháp lưu trữ ảnh riêng tư trước khi mở rộng sử dụng. Avatar đang dùng URL lưu trữ cũ không được tự động di chuyển; cần tải lại ảnh và cập nhật hồ sơ tương ứng.
 
 ## CSS, thư viện và kiểm thử
 
@@ -206,7 +209,7 @@ Kiểm tra cú pháp không thay thế cho việc thử đăng nhập và thao t
 | Không đăng nhập được hoặc báo chưa cấp quyền Tracker | Kiểm tra URL `/exec`, quyền triển khai và phiên bản Apps Script; xác nhận backend có `verifyLogin` và cấp token Tracker. |
 | Báo thiếu sheet | Mở Apps Script, chạy `initDatabase`, cấp quyền nếu được hỏi rồi tải lại trang. |
 | Trang tải được nhưng dữ liệu không đồng bộ | Kiểm tra Internet, URL Apps Script và quyền truy cập Spreadsheet của tài khoản triển khai. Xem thông báo lỗi trên trang và log Apps Script. |
-| API proxy local không hoạt động | Kiểm tra `node server.js`, cổng `3002` hoặc giá trị `PORT`; có thể tiếp tục dùng JSONP trực tiếp nếu môi trường cho phép. |
+| API proxy local không hoạt động | Kiểm tra `node server.js`, cổng `3002` hoặc giá trị `PORT`; trình duyệt sẽ thử gửi POST trực tiếp qua iframe. Nếu vẫn không phản hồi, cập nhật deployment Apps Script lên phiên bản mới nhất. |
 | Tracker/website vẫn hiện phiên bản cũ | Kiểm tra deployment đã chọn **New version**; làm mới cache trình duyệt/service worker. |
 | PWA không cài được | Dùng HTTPS hoặc `localhost`, kiểm tra manifest, icon và service worker trong DevTools. |
 | Avatar tải thất bại | Kiểm tra quyền Drive của Apps Script, giới hạn định dạng/kích thước, deployment mới nhất và dung lượng Drive. |
@@ -215,12 +218,13 @@ Kiểm tra cú pháp không thay thế cho việc thử đăng nhập và thao t
 ## Bảo mật và giới hạn hiện tại
 
 - Không đưa mật khẩu hoặc dữ liệu nhạy cảm vào mã frontend, README, repository công khai hay log.
-- Đổi mật khẩu quản trị mặc định trước khi dùng thật. Backend hiện có giá trị mặc định `123456`; một số tài khoản trợ giảng không có mật khẩu cũng có thể rơi về giá trị mặc định này.
-- Mật khẩu trợ giảng hiện được lưu trong Google Sheet; giới hạn quyền xem/sửa Spreadsheet chỉ cho người cần thiết.
-- Các trang web gọi Apps Script bằng JSONP ở một số môi trường; tham số đăng nhập có thể xuất hiện trong URL của yêu cầu HTTPS. Tránh đăng nhập qua mạng/máy tính không đáng tin cậy.
-- Các API dữ liệu học viên cũ chưa được bảo vệ đồng nhất bằng phiên/kiểm tra vai trò ở backend. Phân quyền Tracker không đồng nghĩa toàn bộ API đã được bảo vệ.
+- Mật khẩu lưu trong Google Sheet dưới dạng hash HMAC-SHA-256 có salt và 10.000 vòng lặp; mật khẩu cũ được hash lại khi xác thực thành công. Bảo vệ quyền xem/sửa Spreadsheet vì sheet vẫn chứa dữ liệu nhạy cảm khác.
+- Mật khẩu mặc định `123456` chỉ được dùng để đăng nhập lần đầu và bắt buộc đổi trước khi truy cập dữ liệu; mật khẩu mới cần từ 12 đến 128 ký tự. Đăng nhập bị giới hạn sau 10 lần sai trong 10 phút.
+- Website gửi API bằng POST; trang tĩnh nhận phản hồi qua iframe `postMessage`, còn trang Apps Script dùng `google.script.run`. API JSONP tổng quát đã bị tắt; sau khi cập nhật backend cần triển khai phiên bản Apps Script mới nhất để đăng nhập và gọi dữ liệu hoạt động.
+- API dữ liệu yêu cầu token phiên ở backend. Trợ giảng chỉ đọc học viên được phân công và chỉ được điểm danh, cập nhật avatar học viên được phân công hoặc đổi mật khẩu; các thao tác quản trị học viên do Giám đốc thực hiện. Danh sách tên trợ giảng để hiển thị biểu mẫu đăng nhập là dữ liệu công khai tối thiểu.
+- `initDatabase` kiểm tra header sheet hiện hữu và dừng rõ ràng nếu sai cấu trúc. Chuyển/khôi phục học viên có rollback bù khi một bước ghi thất bại; vẫn cần sao lưu Spreadsheet trước migration hoặc chỉnh sửa cấu trúc.
 - Deployment Apps Script chạy với quyền tài khoản triển khai có thể đọc/ghi Spreadsheet và Drive. Chỉ triển khai trong phạm vi người dùng phù hợp với mức độ nhạy cảm của dữ liệu; không xem URL deployment như cơ chế xác thực.
-- `server.js` hiện có CORS mở và endpoint proxy không xác thực người gọi. Chỉ dùng trong môi trường phát triển cục bộ; không đưa server này lên Internet nếu chưa thiết kế xác thực, giới hạn truy cập và bảo vệ dữ liệu.
+- `server.js` chỉ bind `127.0.0.1`, CORS có allowlist phát triển và các endpoint upload/xóa ảnh cũ đã được gỡ. Không đưa server này lên Internet.
 - Tối ưu Tracker hiện làm giao diện phản hồi nhanh hơn nhưng không giảm độ trễ xử lý của chính Google Apps Script/Google Sheets. Không thực hiện thao tác ghi khi offline và không đảm bảo lưu thành công cho tới khi nhận được phản hồi xác nhận.
 
-Nếu ứng dụng cần dùng với dữ liệu cá nhân thật trên diện rộng, nên chuyển API sang backend có xác thực, phân quyền đồng nhất, HTTPS và phương thức POST; đồng thời rà soát lại chính sách truy cập Spreadsheet/Drive trước khi triển khai.
+Nếu ứng dụng cần dùng với dữ liệu cá nhân thật trên diện rộng, cần rà soát quyền triển khai và chính sách truy cập Spreadsheet/Drive; đặc biệt thay cơ chế avatar chia sẻ bằng liên kết bằng kho lưu trữ ảnh riêng tư.

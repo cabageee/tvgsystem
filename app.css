@@ -2189,6 +2189,43 @@
       background: linear-gradient(145deg, #fff9e9, #ffefc9);
       color: #94620d;
     }
+
+    #modal-alert-popup > div,
+    #modal-confirm > div,
+    #modal-payment > div,
+    #modal-fee-status > div,
+    #modal-session-editor > div,
+    #modal-birthday-notice > div,
+    #modal-student-card > div,
+    #modal-add-teacher > div {
+      width: min(100%, 28rem);
+      max-width: 28rem;
+    }
+    #modal-teacher-progress-report > div,
+    #modal-add-student > div,
+    #modal-edit-student > div {
+      width: min(100%, 36rem);
+      max-width: 36rem;
+    }
+    #modal-teacher-login-summary > div {
+      width: min(100%, 42rem);
+      max-width: 42rem;
+    }
+    #modal-direct-avatar-options > div {
+      width: min(100%, 24rem);
+      max-width: 24rem;
+    }
+    #modal-direct-avatar-options > div > div:first-child h3 {
+      color: #344054;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+    #modal-direct-avatar-options > div > div:first-child button {
+      color: #667085;
+    }
+    #modal-direct-avatar-options [data-avatar-action] {
+      min-height: 44px;
+    }
     .ui-icon {
       display: inline-block;
       width: 1.1em;

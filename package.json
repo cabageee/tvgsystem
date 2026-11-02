@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build:css": "tailwindcss -c tailwind.config.js -i tailwind.input.css -o tailwind.css --minify",
-    "test": "node --check app.js && node verify_syntax.js && node build-apps-script.js && node verify_apps_script.js"
+    "test": "node --check app.js && node --check server.js && node verify_syntax.js && node verify_tracker_behavior.js && node build-apps-script.js && node verify_apps_script.js"
   },
   "keywords": [],
   "author": "",
@@ -14,8 +14,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",
     "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "multer": "^2.2.0"
+    "express": "^5.2.1"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.17"

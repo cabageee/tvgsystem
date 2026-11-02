@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbznfjacUrEwX-DyN5hbk_rCLytXwVM_8JrvOgksup9d-DrAiXyNo_5WBd4OR71HD0Q-/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsg0nACEtmAb61joXK_L3-d4UuxxwJku-aasXjtTAe-ZMxTbOL8AotyOuTPF7QgkKo/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -428,6 +428,7 @@
     let dataRefreshPromise = null;
     let dataRefreshVersion = 0;
     let dataFetchPromise = null;
+    let dataFetchToken = null;
 
     let profileCurrentPage = 1, masterCurrentPage = 1;
     let masterFilterTimer = null;
@@ -617,18 +618,23 @@
       updateNotificationButton();
     }
 
-    function showToast(message, type = 'success') {
+    function showToast(message, type = 'success', notificationTitle) {
       const container = document.getElementById('toast-container');
       if (!container) return;
 
-      recordAppNotification(type === 'success' ? 'Thông báo' : 'Có lỗi xảy ra', message, type);
+      recordAppNotification(notificationTitle || (type === 'success' ? 'Thông báo' : 'Có lỗi xảy ra'), message, type);
       
       const toast = document.createElement('div');
       const bgClass = type === 'success' ? 'bg-slate-900 border-emerald-500 text-white' : 'bg-red-900 border-red-500 text-white';
       const icon = type === 'success' ? renderUiIcon('lightning') : renderUiIcon('alert');
       
       toast.className = `toast-anim flex items-center gap-2 px-4 py-2.5 rounded-xl border-l-4 shadow-xl text-xs font-semibold ${bgClass}`;
-      toast.innerHTML = `<span class="ui-icon-wrap">${icon}</span> <span>${message}</span>`;
+      const iconElement = document.createElement('span');
+      iconElement.className = 'ui-icon-wrap';
+      iconElement.innerHTML = icon;
+      const messageElement = document.createElement('span');
+      messageElement.textContent = message;
+      toast.append(iconElement, messageElement);
       
       container.appendChild(toast);
       setTimeout(() => {
@@ -641,7 +647,10 @@
     // Call GAS Backend
     function apiCall(action, payload = {}) {
       const request = { action, ...payload };
-      const key = JSON.stringify(request);
+      const sessionToken = action === 'verifyLogin' || action === 'getLoginOptions'
+        ? ''
+        : payload.token || sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') || '';
+      const key = JSON.stringify([request, sessionToken]);
       if (inFlightApiCalls.has(key)) return inFlightApiCalls.get(key);
 
       const pending = performApiCall(request).finally(() => {
@@ -653,32 +662,61 @@
 
     async function performApiCall(request) {
       const action = request.action;
-      const callJsonp = () => new Promise((resolve, reject) => {
-        const callbackName = `tvgApi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        const script = document.createElement('script');
+      const token = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN');
+      if (action !== 'verifyLogin' && action !== 'getLoginOptions') {
+        request = { ...request, token: request.token || token || '' };
+      }
+      const callAppsScriptPostMessage = () => new Promise((resolve, reject) => {
+        const requestId = `tvg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const frame = document.createElement('iframe');
+        const form = document.createElement('form');
         let timeoutId;
         const cleanup = () => {
           clearTimeout(timeoutId);
-          delete window[callbackName];
-          script.remove();
+          window.removeEventListener('message', handleMessage);
+          form.remove();
+          frame.remove();
         };
-        window[callbackName] = result => {
+        const handleMessage = event => {
+          if (event.source !== frame.contentWindow
+            || event.data?.type !== 'tvg-api-response'
+            || event.data.requestId !== requestId) return;
           cleanup();
-          if (result?.status === 'error') reject(new Error(result.message || 'Google Apps Script bị lỗi.'));
-          else resolve(result);
+          const result = event.data.result;
+          if (!result || result.status === 'error') {
+            reject(new Error(result?.message || `Google Apps Script bị lỗi khi thực hiện "${action}".`));
+          } else {
+            resolve(result);
+          }
         };
-        script.onerror = () => {
-          cleanup();
-          reject(new Error(`Không nhận được phản hồi Apps Script cho thao tác "${action}".`));
-        };
-        script.async = true;
-        const query = new URLSearchParams({ callback: callbackName, data: JSON.stringify(request), _: String(Date.now()) });
-        script.src = `${GOOGLE_APPS_SCRIPT_URL}?${query.toString()}`;
+        frame.name = requestId;
+        frame.hidden = true;
+        form.method = 'POST';
+        form.action = GOOGLE_APPS_SCRIPT_URL;
+        form.target = requestId;
+        form.hidden = true;
+        [
+          ['apiRequestId', requestId],
+          ['apiPayload', JSON.stringify(request)]
+        ].forEach(([name, value]) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = name;
+          input.value = value;
+          form.appendChild(input);
+        });
+        window.addEventListener('message', handleMessage);
+        document.body.append(frame, form);
         timeoutId = setTimeout(() => {
           cleanup();
-          reject(new Error(`Apps Script không phản hồi thao tác "${action}" sau 15 giây.`));
-        }, 15000);
-        document.head.appendChild(script);
+          reject(new Error(`Apps Script không phản hồi thao tác "${action}". Hãy kiểm tra deployment và thử lại.`));
+        }, 30000);
+        try {
+          form.submit();
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
       });
 
       if (!window.google?.script?.run) {
@@ -704,13 +742,12 @@
               if (error?.name === 'AbortError') throw new Error('Kết nối quá chậm hoặc bị gián đoạn. Vui lòng thử lại.');
               if (!(error instanceof TypeError)) throw error;
               localProxyUnavailableUntil = Date.now() + 15000;
-              // Máy chủ proxy đang tắt: dùng JSONP trực tiếp thay vì để người dùng bị kẹt.
-              return await callJsonp();
+              return await callAppsScriptPostMessage();
             } finally {
               clearTimeout(timeoutId);
             }
           }
-          return await callJsonp();
+          return await callAppsScriptPostMessage();
         } catch (error) {
           throw error?.name === 'AbortError'
             ? new Error('Kết nối quá chậm hoặc bị gián đoạn. Vui lòng thử lại.')
@@ -736,12 +773,15 @@
 
     // Tải dữ liệu từ Google Sheet
     async function fetchDataFromGoogleSheet(isManual = false) {
+      const requestToken = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN');
+      if (!currentUserRole || !requestToken) return false;
       const loading = document.getElementById('loading-state');
       const refreshButton = document.getElementById('refresh-data-button');
-      const hasCachedData = Boolean(localStorage.getItem(STORAGE_KEYS.STUDENTS));
 
       if (dataFetchPromise) {
+        const pendingToken = dataFetchToken;
         const refreshed = await dataFetchPromise;
+        if (pendingToken !== requestToken) return fetchDataFromGoogleSheet(isManual);
         if (isManual) {
           showToast(refreshed
             ? `Đã tải ${studentsData.length} học viên từ Google Sheet`
@@ -750,19 +790,23 @@
         return refreshed;
       }
 
-      const showInitialLoading = !studentDataLoadSucceeded && !hasCachedData;
+      const showInitialLoading = !studentDataLoadSucceeded;
       if (loading && showInitialLoading) loading.classList.remove('hidden');
       if (refreshButton) {
         refreshButton.disabled = true;
         refreshButton.setAttribute('aria-busy', 'true');
       }
 
+      dataFetchToken = requestToken;
       dataFetchPromise = (async () => {
         try {
           const res = await apiCall('getData');
 
           if (!res || res.status !== 'success') {
             throw new Error(res?.message || 'Google Apps Script không trả về success');
+          }
+          if (sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') !== requestToken || !currentUserRole) {
+            return false;
           }
 
           const previousData = JSON.stringify([
@@ -821,6 +865,7 @@
 
           return true;
         } catch (err) {
+          if (sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') !== requestToken) return false;
           console.error('Lỗi tải dữ liệu từ Google Sheet:', err);
 
           if (isManual) {
@@ -833,10 +878,15 @@
             refreshButton.disabled = false;
             refreshButton.removeAttribute('aria-busy');
           }
-          studentDataLoadComplete = true;
-          maybeShowTeacherLoginSummary();
-          if (!isManual && currentUserRole) showUpcomingBirthdays();
-          dataFetchPromise = null;
+          if (sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') === requestToken) {
+            studentDataLoadComplete = true;
+            maybeShowTeacherLoginSummary();
+            if (!isManual && currentUserRole) showUpcomingBirthdays();
+          }
+          if (dataFetchToken === requestToken) {
+            dataFetchPromise = null;
+            dataFetchToken = null;
+          }
         }
       })();
 
@@ -908,7 +958,7 @@
     }
 
     // Upload ảnh qua Google Apps Script để lưu vào Google Drive.
-    async function uploadAvatarFile(file) {
+    async function uploadAvatarFile(file, studentId, newStudent = false) {
       if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
         throw new Error('Chỉ chấp nhận ảnh PNG, JPEG hoặc WebP.');
       }
@@ -936,6 +986,9 @@
       form.hidden = true;
       const fields = {
         requestId,
+        token: sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') || '',
+        studentId: String(studentId || ''),
+        newStudent: String(newStudent),
         fileName: file.name,
         mimeType: file.type,
         dataUrl
@@ -1016,7 +1069,8 @@
       if (statusEl) statusEl.innerText = "Đang tải ảnh lên Google Drive...";
 
       try {
-        const avatarUrl = await uploadAvatarFile(file);
+        const studentId = target === 'edit' ? document.getElementById('edit_id').value : '';
+        const avatarUrl = await uploadAvatarFile(file, studentId, target === 'add');
         document.getElementById(targetIds.value).value = avatarUrl;
         setAvatarImage(document.getElementById(targetIds.preview), avatarUrl);
         if (statusEl) statusEl.innerText = "Tải ảnh lên thành công.";
@@ -1127,7 +1181,7 @@
       let uploadedAvatar = '';
       showToast(`Đang tải avatar cho ${student.name} lên Google Drive...`);
       try {
-        uploadedAvatar = await uploadAvatarFile(file);
+        uploadedAvatar = await uploadAvatarFile(file, student.id);
         const result = await apiCall('updateStudentInfo', {
           student: { id: student.id, avatar: uploadedAvatar }
         });
@@ -1487,6 +1541,11 @@
     }
 
     function openPaymentPopup(studentId) {
+      if (currentUserRole !== 'director') {
+        showToast('Chỉ giám đốc mới có quyền xử lý thanh toán.', 'error');
+        return;
+      }
+
       const student = studentsData.find(s => s.id === studentId);
       if (!student) return;
 
@@ -1550,6 +1609,11 @@
     }
 
     async function processStudentPayment(studentId) {
+      if (currentUserRole !== 'director') {
+        showToast('Chỉ giám đốc mới có quyền xử lý thanh toán.', 'error');
+        return;
+      }
+
       const student = studentsData.find(s => s.id === studentId);
       const confirmButton = document.getElementById('btn-confirm-payment');
       if (!student || !confirmButton) return;
@@ -1596,6 +1660,11 @@
     };
 
     function showPage(pageId) {
+      if (currentUserRole !== 'director'
+        && sessionStorage.getItem('TV_GLOBAL_MUST_CHANGE_PASSWORD') === 'true'
+        && pageId !== 'page-change-password') {
+        pageId = 'page-change-password';
+      }
       if (pageId === 'page-director-attendance' && currentUserRole !== 'director') {
         showToast('Chức năng điểm danh riêng chỉ dành cho giám đốc.', 'error');
         pageId = 'page-teacher-attendance';
@@ -2023,6 +2092,46 @@
       }
     }
 
+    function collectNewTeacherTaskReviewNotices(tasks, notifiedKeys) {
+      const seen = new Set(notifiedKeys);
+      return tasks
+        .filter(task => task.status === 'IN_PROGRESS' && String(task.reviewNote || '').trim())
+        .map(task => ({
+          task,
+          key: JSON.stringify([String(task.id || ''), String(task.updatedAt || ''), String(task.reviewNote || '').trim()])
+        }))
+        .filter(notice => !seen.has(notice.key));
+    }
+
+    function notifyTeacherTaskReviews(tasks) {
+      const storageKey = `TV_GLOBAL_TRACKER_REVIEW_NOTICES_${encodeURIComponent(currentUserName)}`;
+      let notifiedKeys = [];
+      try {
+        const storedKeys = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        if (Array.isArray(storedKeys)) notifiedKeys = storedKeys.filter(key => typeof key === 'string');
+      } catch (error) {
+        console.error('Không đọc được trạng thái thông báo trả lại nhiệm vụ:', error);
+      }
+
+      const newNotices = collectNewTeacherTaskReviewNotices(tasks, notifiedKeys);
+      if (!newNotices.length) return;
+
+      try {
+        const updatedKeys = [...notifiedKeys, ...newNotices.map(notice => notice.key)].slice(-200);
+        localStorage.setItem(storageKey, JSON.stringify(updatedKeys));
+      } catch (error) {
+        console.error('Không lưu được trạng thái thông báo trả lại nhiệm vụ:', error);
+      }
+
+      newNotices.forEach(({ task }) => {
+        showToast(
+          `Nhiệm vụ "${task.title || 'Nhiệm vụ'}" đã bị trả lại. Lý do: ${String(task.reviewNote).trim()}`,
+          'error',
+          'Nhiệm vụ cần cập nhật'
+        );
+      });
+    }
+
     async function loadTeacherTrackerTasks() {
       const list = document.getElementById('teacher-task-list');
       const status = document.getElementById('teacher-task-status');
@@ -2040,19 +2149,24 @@
       status.textContent = 'Đang tải nhiệm vụ...';
       try {
         const result = await apiCall('trackerBootstrap', { token });
+        if (sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') !== token) return;
         if (result?.actor?.name !== currentUserName || !['teacher', 'manager'].includes(result?.actor?.role)) {
           throw new Error('Phiên đăng nhập không khớp với tài khoản trợ giảng hiện tại. Vui lòng đăng nhập lại.');
         }
         teacherTrackerTasks = Array.isArray(result.tasks) ? result.tasks : [];
         teacherTrackerLoadSucceeded = true;
+        notifyTeacherTaskReviews(teacherTrackerTasks);
         renderTeacherTrackerTasks();
       } catch (error) {
+        if (sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') !== token) return;
         teacherTrackerLoadSucceeded = false;
         status.textContent = `Không tải được nhiệm vụ: ${error.message}`;
         list.innerHTML = '';
       } finally {
-        teacherLoginSummaryTrackerReady = true;
-        maybeShowTeacherLoginSummary();
+        if (sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') === token) {
+          teacherLoginSummaryTrackerReady = true;
+          maybeShowTeacherLoginSummary();
+        }
       }
     }
 
@@ -2168,37 +2282,20 @@
 
     function saveAllDataToLocalStorage() {
       try {
-        localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(studentsData));
-        localStorage.setItem(STORAGE_KEYS.TEACHERS, JSON.stringify(assistantTeachers));
-        localStorage.setItem(STORAGE_KEYS.INACTIVE, JSON.stringify(inactiveStudentsData));
-        localStorage.setItem(STORAGE_KEYS.LEVELS, JSON.stringify(customLevelsList));
-      } catch (e) { console.warn("Lỗi lưu offline:", e); }
+        Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+        localStorage.removeItem('TV_GLOBAL_PASSWORDS_DATA');
+      } catch (error) {
+        console.warn('Không thể xóa dữ liệu học viên đã lưu trên thiết bị:', error);
+      }
     }
 
     function loadDataFromLocalStorage() {
       try {
-        if (localStorage.getItem(STORAGE_KEYS.TEACHERS)) {
-          const cachedTeachers = JSON.parse(localStorage.getItem(STORAGE_KEYS.TEACHERS));
-          if (Array.isArray(cachedTeachers)) assistantTeachers = cachedTeachers;
-        }
-        if (localStorage.getItem(STORAGE_KEYS.INACTIVE)) {
-          const cachedInactive = JSON.parse(localStorage.getItem(STORAGE_KEYS.INACTIVE));
-          if (Array.isArray(cachedInactive)) inactiveStudentsData = cachedInactive;
-        }
+        Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
         localStorage.removeItem('TV_GLOBAL_PASSWORDS_DATA');
-        if (localStorage.getItem(STORAGE_KEYS.LEVELS)) {
-          const cachedLevels = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEVELS));
-          if (Array.isArray(cachedLevels)) customLevelsList = cachedLevels;
-        }
-        if (localStorage.getItem(STORAGE_KEYS.STUDENTS)) {
-          const cachedStudents = JSON.parse(localStorage.getItem(STORAGE_KEYS.STUDENTS));
-          if (Array.isArray(cachedStudents)) {
-            studentsData = cachedStudents;
-            recalculateCompletedSessions();
-            return true;
-          }
-        }
-      } catch (e) { console.error(e); }
+      } catch (error) {
+        console.warn('Không thể xóa dữ liệu học viên đã lưu trên thiết bị:', error);
+      }
       return false;
     }
 
@@ -3301,7 +3398,7 @@
       const isRenewal = priority === 3;
       title.textContent = isRenewal ? 'Học viên cần gia hạn' : 'Học viên cần chăm sóc';
       summary.textContent = students.length
-        ? `${students.length} học viên được phân công cho ${currentUserName}. Bấm Chi tiết để xem tiến độ hoặc Gia hạn để mở thanh toán.`
+        ? `${students.length} học viên được phân công cho ${currentUserName}. Bấm Chi tiết để xem tiến độ.`
         : 'Không có học viên nào trong danh sách này.';
       list.innerHTML = students.map(student => {
         const studentId = escapeHtml(student.id);
@@ -3317,7 +3414,6 @@
             </div>
             <div class="flex shrink-0 flex-wrap gap-2">
               <button type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50" data-priority-student-action="details" data-student-id="${studentId}">Chi tiết</button>
-              <button type="button" class="rounded-lg bg-[#8B1515] px-3 py-2 text-xs font-bold text-white hover:bg-red-900" data-priority-student-action="payment" data-student-id="${studentId}">Gia hạn</button>
               ${phoneHref ? `<a class="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-50" href="tel:${escapeHtml(phoneHref)}">Gọi phụ huynh</a>` : ''}
             </div>
           </div>
@@ -3333,7 +3429,6 @@
       const action = button.dataset.priorityStudentAction;
       closeModal('modal-teacher-priority-students');
       if (action === 'details') openTeacherStudentDetails(studentId);
-      else if (action === 'payment') openPaymentPopup(studentId);
     }
 
     async function markTeacherAttendance(studentIndex) {
@@ -3682,26 +3777,28 @@
 
     function openAddTeacherModal() {
       document.getElementById('teacher_name_input').value = '';
-      document.getElementById('teacher_pwd_input').value = '123456';
+      document.getElementById('teacher_pwd_input').value = '';
       document.getElementById('modal-add-teacher').classList.remove('hidden');
     }
 
     async function handleAddTeacherSubmit(e) {
       e.preventDefault();
       const name = document.getElementById('teacher_name_input').value.trim();
-      const pwd = document.getElementById('teacher_pwd_input').value.trim() || '123456';
+      const pwd = document.getElementById('teacher_pwd_input').value;
       if (!name) return;
       if (assistantTeachers.includes(name)) return alert("Trợ Giảng này đã tồn tại!");
+      if (pwd.length < 4 || pwd.length > 128) {
+        return alert('Mật khẩu trợ giảng phải có từ 4 đến 128 ký tự.');
+      }
 
-      assistantTeachers.push(name);
-      saveAllDataToLocalStorage();
       closeModal('modal-add-teacher');
-      updateAllViews();
-      showToast(`Đã thêm trợ giảng ${name}`);
-
       try {
         await apiCall('addTeacher', { teacherName: name, password: pwd });
+        assistantTeachers.push(name);
+        saveAllDataToLocalStorage();
+        updateAllViews();
         void refreshDataAfterMutation();
+        showToast(`Đã thêm trợ giảng ${name}`);
       } catch (err) {
         showToast(`Không thể lưu trợ giảng: ${err.message}`, 'error');
       }
@@ -3729,6 +3826,9 @@
       const newPwd = document.getElementById('pwd_new').value;
       const confirmPwd = document.getElementById('pwd_confirm').value;
 
+      if (newPwd.length < 4 || newPwd.length > 128) {
+        return alert('Mật khẩu mới phải có từ 4 đến 128 ký tự.');
+      }
       if (newPwd !== confirmPwd) {
         return alert("Mật khẩu mới và xác nhận mật khẩu không khớp!");
       }
@@ -3737,6 +3837,7 @@
 
       try {
         await apiCall('changePassword', { username: accountName, oldPassword: oldPwd, newPassword: newPwd });
+        sessionStorage.removeItem('TV_GLOBAL_MUST_CHANGE_PASSWORD');
         saveAllDataToLocalStorage();
         void refreshDataAfterMutation();
         showToast("Đã đổi mật khẩu và cập nhật lên Sheet thành công!");
@@ -3766,65 +3867,20 @@
       }
     }
 
-    async function verifyTeacherPasswordFromSheet(name, password) {
-      const spreadsheetId = '1vDz0Wmc2PeQy9KnEG-w3HZaQnk1bq7TYohjgwVfOM2M';
-      const normalizeTeacherName = value => String(value || '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/đ/g, 'd').replace(/Đ/g, 'D')
-        .trim().toLocaleLowerCase('vi');
-      const knownTeacherNames = ['Thanh Tâm', 'Triều Thi', 'Tú Anh'];
-      if (knownTeacherNames.some(item => normalizeTeacherName(item) === normalizeTeacherName(name)) && String(password ?? '').trim() === '123456') {
-        return true;
-      }
-      if (window.location.protocol === 'http:') {
-        try {
-          const proxyResponse = await fetch('http://127.0.0.1:3002/api/verify-teacher-sheet', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: name, password }),
-            cache: 'no-store'
-          });
-          if (proxyResponse.ok) {
-            const proxyResult = await proxyResponse.json();
-            if (proxyResult?.status === 'success') return true;
-            if (proxyResult?.status === 'error' && proxyResult?.message === 'Tài khoản hoặc mật khẩu không đúng.') return false;
-          }
-        } catch (proxyError) {
-          console.warn('Không xác minh được trợ giảng qua proxy Sheet:', proxyError);
+    async function loadLoginTeacherOptions() {
+      try {
+        const result = await apiCall('getLoginOptions');
+        if (result?.status !== 'success' || !Array.isArray(result.teachers)) {
+          throw new Error(result?.message || 'Không tải được danh sách tài khoản trợ giảng.');
         }
+        assistantTeachers = result.teachers;
+        initLoginTeacherList();
+      } catch (error) {
+        console.error('Không tải được danh sách tài khoản đăng nhập:', error);
+        const message = document.getElementById('login-error-msg');
+        message.textContent = 'Không tải được danh sách tài khoản. Vui lòng kiểm tra kết nối rồi tải lại trang.';
+        message.classList.remove('hidden');
       }
-
-      const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=TroGiang&cache=${Date.now()}`;
-      const response = await fetch(url, { cache: 'no-store' });
-      if (!response.ok) throw new Error('Không đọc được danh sách mật khẩu từ Sheet.');
-      const csv = await response.text();
-      const rows = [];
-      let row = [];
-      let value = '';
-      let quoted = false;
-      for (let i = 0; i < csv.length; i++) {
-        const char = csv[i];
-        if (char === '"') {
-          if (quoted && csv[i + 1] === '"') { value += '"'; i++; }
-          else quoted = !quoted;
-        } else if (char === ',' && !quoted) {
-          row.push(value); value = '';
-        } else if ((char === '\n' || char === '\r') && !quoted) {
-          if (char === '\r' && csv[i + 1] === '\n') i++;
-          row.push(value); value = '';
-          rows.push(row); row = [];
-        } else {
-          value += char;
-        }
-      }
-      if (value || row.length) { row.push(value); rows.push(row); }
-
-      const targetName = String(name || '').trim().toLocaleLowerCase('vi');
-      const matchingRow = rows.slice(1).find(item => String(item[0] || '').trim().toLocaleLowerCase('vi') === targetName);
-      if (!matchingRow) return false;
-      const sheetPassword = String(matchingRow[1] ?? '').trim() || '123456';
-      return String(password ?? '').trim() === sheetPassword;
     }
 
     async function handleLoginSubmit(role) {
@@ -3869,8 +3925,19 @@
         sessionStorage.setItem('TV_GLOBAL_TRACKER_TOKEN', identity.token);
         sessionStorage.setItem('TV_GLOBAL_ROLE', identity.role);
         sessionStorage.setItem('TV_GLOBAL_USER', identityName);
+        if (identity.mustChangePassword) {
+          sessionStorage.setItem('TV_GLOBAL_MUST_CHANGE_PASSWORD', 'true');
+        } else {
+          sessionStorage.removeItem('TV_GLOBAL_MUST_CHANGE_PASSWORD');
+        }
         teacherTrackerTasks = [];
+        saveAllDataToLocalStorage();
         loginAs(identity.role, identityName);
+        if (identity.mustChangePassword) {
+          showToast('Mật khẩu khởi tạo cần được đổi trước khi tiếp tục.', 'error');
+        } else {
+          void fetchDataFromGoogleSheet();
+        }
         if (!isDirector && teacherSelect) teacherSelect.value = identityName;
         pwdInput.value = '';
       } catch (error) {
@@ -3922,7 +3989,23 @@
     }
 
     function logout() {
+      const token = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN');
+      if (token) {
+        void apiCall('logout', { token }).catch(error => {
+          console.warn('Không thể thu hồi phiên đăng nhập trên máy chủ:', error);
+        });
+      }
       sessionStorage.clear();
+      studentsData = [];
+      inactiveStudentsData = [];
+      assistantTeachers = [];
+      customLevelsList = [];
+      trackerManagerName = '';
+      trackerManagerLoaded = false;
+      studentDataLoadSucceeded = false;
+      studentDataLoadComplete = false;
+      saveAllDataToLocalStorage();
+      updateAllViews();
       document.querySelectorAll('div[id^="modal-"]:not(.hidden)').forEach(dialog => closeModal(dialog.id));
       document.getElementById('notification-center-dialog')?.close();
       document.querySelectorAll('main section[id^="page-"]').forEach(page => page.classList.add('hidden'));
@@ -3949,6 +4032,7 @@
         return;
       }
       if (role && name) {
+        if (role === 'director') sessionStorage.removeItem('TV_GLOBAL_MUST_CHANGE_PASSWORD');
         loginAs(role, name, true);
       }
     }
@@ -3982,5 +4066,10 @@
       initLoginTeacherList();
       updateAllViews();
       restoreSession();
-      await fetchDataFromGoogleSheet();
+      if (currentUserRole && (currentUserRole === 'director'
+        || sessionStorage.getItem('TV_GLOBAL_MUST_CHANGE_PASSWORD') !== 'true')) {
+        await fetchDataFromGoogleSheet();
+      } else if (!currentUserRole) {
+        await loadLoginTeacherOptions();
+      }
     };

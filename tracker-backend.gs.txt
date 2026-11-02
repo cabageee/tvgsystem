@@ -44,25 +44,12 @@ function requireSheet_(name) {
 function doGet(e) {
   const params = e && e.parameter ? e.parameter : {};
   if (params.callback && params.avatarRequestId) {
-    const callback = String(params.callback).replace(/[^a-zA-Z0-9_.$]/g, '');
+    const callback = jsonpCallback_(params.callback);
+    if (!callback) return jsonResponse({ status: 'error', message: 'Callback không hợp lệ.' });
     const result = getAvatarUploadStatus_(params.avatarRequestId);
     return ContentService
       .createTextOutput(`${callback}(${JSON.stringify(result)})`)
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-
-  if (params.callback && params.data) {
-    try {
-      const result = handleApiAction(JSON.parse(params.data));
-      const callback = String(params.callback).replace(/[^a-zA-Z0-9_.$]/g, '');
-      return ContentService
-        .createTextOutput(`${callback}(${JSON.stringify(result)})`)
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    } catch (error) {
-      return ContentService
-        .createTextOutput(`${params.callback}(${JSON.stringify({ status: 'error', message: error.message })})`)
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
   }
 
   return HtmlService
@@ -73,6 +60,27 @@ function doGet(e) {
 function doPost(e) {
   if (e && e.parameter && e.parameter.requestId) {
     return uploadAvatarToDrive_(e.parameter);
+  }
+
+  if (e && e.parameter && e.parameter.apiPayload) {
+    const requestId = String(e.parameter.apiRequestId || '');
+    if (!/^[a-zA-Z0-9_-]{1,100}$/.test(requestId)) {
+      return jsonResponse({ status: 'error', message: 'Mã yêu cầu API không hợp lệ.' });
+    }
+
+    let result;
+    try {
+      if (String(e.parameter.apiPayload).length > 100000) {
+        throw new Error('Dữ liệu yêu cầu vượt quá giới hạn.');
+      }
+      result = handleApiAction(JSON.parse(e.parameter.apiPayload));
+    } catch (error) {
+      result = {
+        status: 'error',
+        message: error && error.message ? error.message : String(error)
+      };
+    }
+    return apiPostMessageResponse_(requestId, result);
   }
 
   try {
@@ -86,10 +94,27 @@ function doPost(e) {
   } catch (error) {
     return jsonResponse({
       status: 'error',
-      message: error.message,
-      stack: error.stack
+      message: error && error.message ? error.message : String(error)
     });
   }
+}
+
+function jsonpCallback_(value) {
+  const callback = String(value || '');
+  return /^[A-Za-z_$][0-9A-Za-z_$]*(\.[A-Za-z_$][0-9A-Za-z_$]*)*$/.test(callback)
+    ? callback
+    : '';
+}
+
+function apiPostMessageResponse_(requestId, result) {
+  const message = JSON.stringify({
+    type: 'tvg-api-response',
+    requestId: requestId,
+    result: result
+  }).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  return HtmlService.createHtmlOutput(
+    `<!doctype html><html><body><script>window.parent.postMessage(${message}, '*');</script></body></html>`
+  ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function getAvatarUploadStatus_(requestId) {
@@ -133,6 +158,16 @@ function uploadAvatarToDrive_(params) {
   try {
     if (!/^[a-zA-Z0-9_-]{1,100}$/.test(requestId)) {
       throw new Error('Mã yêu cầu upload không hợp lệ.');
+    }
+    const actor = trackerActor_(params.token);
+    const studentId = String(params.studentId || '').trim();
+    const newStudentUpload = String(params.newStudent || '') === 'true';
+    const canUpload = newStudentUpload
+      ? actor.role === 'director'
+      : Boolean(findRowById(requireSheet_(TAB.STUDENTS), studentId))
+        && (actor.role === 'director' || trackerTeacherCanAccessStudent_(actor, studentId));
+    if (!canUpload) {
+      throw new Error('Bạn không có quyền cập nhật ảnh học viên này.');
     }
 
     const mimeType = String(params.mimeType || '');
@@ -318,6 +353,14 @@ function initDatabase() {
       1,
       schema.headers.length
     );
+    const actualHeaders = headerRange.getValues()[0].map(value => String(value || '').trim());
+    const mismatchIndex = schema.headers.findIndex((header, index) => actualHeaders[index] !== header);
+    if (mismatchIndex !== -1) {
+      throw new Error(
+        `Cấu trúc sheet "${schema.name}" không đúng tại cột ${mismatchIndex + 1}: `
+        + `cần "${schema.headers[mismatchIndex]}", đang có "${actualHeaders[mismatchIndex] || '(trống)'}".`
+      );
+    }
 
     headerRange
       .setFontWeight('bold')
@@ -352,23 +395,98 @@ const API_WRITE_ACTIONS_ = new Set([
 
 function handleApiAction(payload) {
   const action = payload && payload.action;
+  if (!action) throw new Error('Thiếu action API.');
+
+  if (action === 'getLoginOptions') {
+    return dispatchApiAction_(payload);
+  }
+
+  if (action === 'verifyLogin') {
+    const lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    try {
+      return dispatchApiAction_(payload);
+    } finally {
+      lock.releaseLock();
+    }
+  }
+
+  const actor = trackerActor_(payload.token);
+  if (actor.mustChangePassword && actor.role !== 'director' && action !== 'changePassword' && action !== 'logout') {
+    throw new Error('Vui lòng đổi mật khẩu khởi tạo trước khi tiếp tục.');
+  }
+  if (action === 'logout') {
+    CacheService.getScriptCache().remove('tracker:' + String(payload.token));
+    return { status: 'success' };
+  }
+
+  if (!action.startsWith('tracker')) {
+    authorizeLegacyApiAction_(actor, action, payload);
+  }
+
   if (!API_WRITE_ACTIONS_.has(action)) return dispatchApiAction_(payload);
 
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    return dispatchApiAction_(payload);
+    return dispatchApiAction_(payload, actor);
   } finally {
     lock.releaseLock();
   }
 }
 
-function dispatchApiAction_(payload) {
+function authorizeLegacyApiAction_(actor, action, payload) {
+  if (action === 'getData' || action === 'getAllData') return;
+
+  if (action === 'changePassword') {
+    const username = String(payload.username || '').trim();
+    const isDirector = actor.role === 'director'
+      && (username === 'director' || username === 'Giám Đốc');
+    if (!isDirector && username !== actor.name) {
+      throw new Error('Bạn chỉ được đổi mật khẩu của chính mình.');
+    }
+    return;
+  }
+
+  if (action === 'updateAttendance') {
+    if (actor.role === 'director' || trackerTeacherCanAccessStudent_(actor, payload.studentId)) return;
+    throw new Error('Bạn không có quyền cập nhật điểm danh học viên này.');
+  }
+
+  if (action === 'updateStudentInfo' && actor.role !== 'director') {
+    const student = payload.student || {};
+    const keys = Object.keys(student).filter(key => key !== 'id');
+    if (keys.length === 1 && keys[0] === 'avatar'
+      && trackerTeacherCanAccessStudent_(actor, student.id)) return;
+  }
+
+  if (actor.role !== 'director') {
+    throw new Error('Chỉ Giám đốc được thực hiện thao tác này.');
+  }
+}
+
+function trackerTeacherCanAccessStudent_(actor, studentId) {
+  if (!actor || actor.role !== 'teacher') return false;
+  const row = findRowById(requireSheet_(TAB.STUDENTS), studentId);
+  if (!row) return false;
+  const assistants = splitAssistants(requireSheet_(TAB.STUDENTS).getRange(row, 13).getValue());
+  return assistants.indexOf(actor.name) !== -1;
+}
+
+function dispatchApiAction_(payload, actor) {
   const action = payload.action;
 
   switch (action) {
     case 'verifyLogin':
       return verifyLogin_(payload.username, payload.password);
+    case 'logout':
+      CacheService.getScriptCache().remove('tracker:' + String(payload.token || ''));
+      return { status: 'success' };
+    case 'getLoginOptions':
+      return {
+        status: 'success',
+        teachers: readTeachers(requireSheet_(TAB.TEACHERS)).map(teacher => teacher.name)
+      };
     case 'trackerBootstrap':
       return trackerBootstrap_(payload.token);
     case 'trackerSetManager':
@@ -401,7 +519,7 @@ function dispatchApiAction_(payload) {
       return trackerClearArchivedMonth_(payload.token, payload.month);
     case 'getData':
     case 'getAllData':
-      return getAllData();
+      return getAllData(actor || trackerActor_(payload.token));
 
     case 'updateFeeStatus': 
       return updateFeeStatus(payload.studentId, payload.feeStatus); 
@@ -416,11 +534,20 @@ function dispatchApiAction_(payload) {
       return deleteLevel(payload.level);
 
     case 'changePassword':
-      return changePassword(
+      const passwordResult = changePassword(
         payload.username,
         payload.oldPassword,
         payload.newPassword
       );
+      if (passwordResult.status === 'success' && actor && actor.mustChangePassword) {
+        actor.mustChangePassword = false;
+        CacheService.getScriptCache().put(
+          'tracker:' + String(payload.token),
+          JSON.stringify(actor),
+          21600
+        );
+      }
+      return passwordResult;
 
     case 'addStudent':
       return addStudent(payload.student);
@@ -493,39 +620,126 @@ function issueTrackerSession_(identity) {
   const token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
   CacheService.getScriptCache().put('tracker:' + token, JSON.stringify({
     name: identity.name,
-    role: identity.role
+    role: identity.role,
+    mustChangePassword: identity.mustChangePassword === true
   }), 21600);
   return token;
+}
+
+const PASSWORD_HASH_PREFIX_ = 'TVG-HMAC-SHA256$10000$';
+const PASSWORD_HASH_ITERATIONS_ = 10000;
+const LOGIN_ATTEMPT_LIMIT_ = 10;
+const LOGIN_ATTEMPT_TTL_SECONDS_ = 600;
+
+function loginAttemptCacheKey_(username) {
+  const normalized = String(username || '').trim().toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 40);
+  return 'LOGIN_ATTEMPTS_' + (normalized || 'unknown');
+}
+
+function recordLoginFailure_(cache, key) {
+  const failures = Number(cache.get(key) || 0) + 1;
+  cache.put(key, String(failures), LOGIN_ATTEMPT_TTL_SECONDS_);
+}
+
+function hashPassword_(password) {
+  const salt = Utilities.getUuid().replace(/-/g, '');
+  let digest = Utilities.computeHmacSha256Signature(String(password), salt);
+  for (let iteration = 1; iteration < PASSWORD_HASH_ITERATIONS_; iteration++) {
+    digest = Utilities.computeHmacSha256Signature(Utilities.base64Encode(digest), salt);
+  }
+  return PASSWORD_HASH_PREFIX_ + salt + '$' + Utilities.base64Encode(digest);
+}
+
+function isPasswordHash_(value) {
+  return String(value || '').indexOf(PASSWORD_HASH_PREFIX_) === 0;
+}
+
+function verifyPassword_(password, storedValue) {
+  const stored = String(storedValue || '');
+  if (!isPasswordHash_(stored)) return String(password) === stored;
+
+  const parts = stored.slice(PASSWORD_HASH_PREFIX_.length).split('$');
+  if (parts.length !== 2 || !/^[a-f0-9]{32}$/i.test(parts[0])) return false;
+  let digest = Utilities.computeHmacSha256Signature(String(password), parts[0]);
+  for (let iteration = 1; iteration < PASSWORD_HASH_ITERATIONS_; iteration++) {
+    digest = Utilities.computeHmacSha256Signature(Utilities.base64Encode(digest), parts[0]);
+  }
+  const expected = Utilities.base64Encode(digest);
+  if (expected.length !== parts[1].length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < expected.length; index++) {
+    mismatch |= expected.charCodeAt(index) ^ parts[1].charCodeAt(index);
+  }
+  return mismatch === 0;
 }
 
 function verifyLogin_(username, password) {
   const name = String(username || '').trim();
   const secret = String(password ?? '').trim();
+  if (!name || secret.length > 256) {
+    return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
+  }
+  const cache = CacheService.getScriptCache();
+  const attemptKey = loginAttemptCacheKey_(name);
+  if (Number(cache.get(attemptKey) || 0) >= LOGIN_ATTEMPT_LIMIT_) {
+    return { status: 'error', message: 'Quá nhiều lần đăng nhập không thành công. Vui lòng thử lại sau 10 phút.' };
+  }
   let identity;
   if (name === 'director' || name === 'Giám Đốc') {
-    const config = readConfig(requireSheet_(TAB.CONFIG));
-    const directorPassword = String(config.directorPassword ?? DEFAULT_DIRECTOR_PASSWORD).trim();
-    if (secret === DEFAULT_DIRECTOR_PASSWORD || secret === directorPassword || (!directorPassword && secret === DEFAULT_DIRECTOR_PASSWORD)) {
-      identity = { status: 'success', name: 'Giám Đốc', role: 'director' };
-    } else {
+    const sheet = requireSheet_(TAB.CONFIG);
+    const values = sheet.getDataRange().getValues();
+    const passwordRow = values.findIndex((row, index) =>
+      index > 0 && String(row[0] || '').trim() === 'directorPassword'
+    );
+    const configuredValue = passwordRow === -1
+      ? ''
+      : String(values[passwordRow][1] || '').trim();
+    const storedPassword = configuredValue || DEFAULT_DIRECTOR_PASSWORD;
+    if (!verifyPassword_(secret, storedPassword)) {
+      recordLoginFailure_(cache, attemptKey);
       return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
     }
+    if (!isPasswordHash_(storedPassword)) {
+      const nextHash = hashPassword_(secret);
+      if (passwordRow === -1) sheet.appendRow(['directorPassword', nextHash]);
+      else sheet.getRange(passwordRow + 1, 2).setValue(nextHash);
+    }
+    identity = {
+      status: 'success',
+      name: 'Giám Đốc',
+      role: 'director',
+      mustChangePassword: false
+    };
   } else {
     const teacherSheet = requireSheet_(TAB.TEACHERS);
     const row = findRowByTeacherName(teacherSheet, name);
     if (!row) {
-      return { status: 'error', message: 'Không tìm thấy tài khoản trợ giảng.' };
+      recordLoginFailure_(cache, attemptKey);
+      return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
     }
 
     const rawStoredPassword = teacherSheet.getRange(row, 2).getDisplayValue();
     const storedPassword = String(rawStoredPassword ?? '').trim();
     const validPassword = storedPassword || DEFAULT_DIRECTOR_PASSWORD;
-    if (secret !== validPassword) {
+    if (!verifyPassword_(secret, validPassword)) {
+      recordLoginFailure_(cache, attemptKey);
       return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
     }
-    identity = { status: 'success', name: name, role: 'teacher' };
+    const mustChangePassword = secret === DEFAULT_DIRECTOR_PASSWORD;
+    if (!isPasswordHash_(validPassword)) {
+      teacherSheet.getRange(row, 2).setValue(hashPassword_(secret));
+    }
+    identity = {
+      status: 'success',
+      name: name,
+      role: 'teacher',
+      mustChangePassword: mustChangePassword
+    };
   }
 
+  cache.remove(attemptKey);
   identity.token = issueTrackerSession_(identity);
   return identity;
 }
@@ -854,6 +1068,11 @@ function trackerUpdateTask_(token, taskId, input) {
   if (priority === 2 && (!assignees.length || (actor.role === 'manager' && assignees.includes(actor.name)))) {
     throw new Error('Nhiệm vụ của Manager phải được giao cho ít nhất một trợ giảng khác.');
   }
+  const assigneesChanged = task.assignees.length !== assignees.length
+    || task.assignees.some(name => !assignees.includes(name));
+  if (task.status === 'PENDING' && assigneesChanged) {
+    throw new Error('Không thể thay đổi người được giao khi nhiệm vụ đang chờ duyệt.');
+  }
   const validTeachers = readTeachers(requireSheet_(TAB.TEACHERS)).map(teacher => teacher.name);
   if (assignees.some(name => validTeachers.indexOf(name) === -1)) {
     throw new Error('Danh sách người được giao có tài khoản không hợp lệ.');
@@ -863,6 +1082,7 @@ function trackerUpdateTask_(token, taskId, input) {
   if (!row) throw new Error('Không tìm thấy dòng nhiệm vụ trong bảng dữ liệu.');
   sheet.getRange(row, 2).setValue(title);
   sheet.getRange(row, 5).setValue(JSON.stringify(assignees));
+  if (assigneesChanged) sheet.getRange(row, 23).clearContent();
   sheet.getRange(row, 6, 1, 3).setValues([[startDate, deadline, deadlineTime]]);
   sheet.getRange(row, 10, 1, 2).setValues([
     [String(updates.note || '').slice(0, 2000), String(updates.punishment || '').slice(0, 300)]
@@ -945,6 +1165,7 @@ function trackerApplyWeeklyTaskChanges_(sheet, tasks) {
       sheet.getRange(task.rowNumber, 12, 1, 2).setValues([[0, '']]);
       sheet.getRange(task.rowNumber, 15).setValue(now);
       sheet.getRange(task.rowNumber, 17).clearContent();
+      sheet.getRange(task.rowNumber, 20, 1, 3).clearContent();
       sheet.getRange(task.rowNumber, 19).setValue(currentWeek);
       sheet.getRange(task.rowNumber, 23).clearContent();
       sheet.getRange(task.rowNumber, 25).clearContent();
@@ -968,7 +1189,7 @@ function trackerUpdateTaskStatus_(token, taskId, nextAction, note) {
   const tasks = trackerTaskRecords_();
   const task = tasks.find(item => item.id === String(taskId || ''));
   if (!task) throw new Error('Không tìm thấy nhiệm vụ.');
-  if (actor.role === 'teacher' && task.assignees.indexOf(actor.name) === -1) {
+  if (!['manager', 'teacher'].includes(actor.role) || !task.assignees.includes(actor.name)) {
     throw new Error('Bạn không được giao nhiệm vụ này.');
   }
 
@@ -987,39 +1208,32 @@ function trackerSubmitAssigneeCompletion_(actor, taskId, note) {
   if (!output) throw new Error('Vui lòng ghi rõ output đã hoàn thành.');
   if (output.length > 2000) throw new Error('Output không được vượt quá 2000 ký tự.');
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    const sheet = requireSheet_(TAB.TRACKER_TASKS);
-    trackerEnsureOutputColumn_(sheet);
-    const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
-    if (!task) throw new Error('Không tìm thấy nhiệm vụ.');
-    if (!task.assignees.includes(actor.name)) throw new Error('Bạn không được giao nhiệm vụ này.');
-    if (trackerIsPersonalTask_(task)) throw new Error('Chỉ task được giao cho nhóm mới cần output theo từng trợ giảng.');
-    if (task.status !== 'IN_PROGRESS') throw new Error('Task không ở trạng thái nhận output.');
-    if (!task.assignees.length) throw new Error('Task chưa có trợ giảng được giao.');
+  const sheet = requireSheet_(TAB.TRACKER_TASKS);
+  trackerEnsureOutputColumn_(sheet);
+  const task = trackerTaskRecords_().find(item => item.id === String(taskId || ''));
+  if (!task) throw new Error('Không tìm thấy nhiệm vụ.');
+  if (!task.assignees.includes(actor.name)) throw new Error('Bạn không được giao nhiệm vụ này.');
+  if (trackerIsPersonalTask_(task)) throw new Error('Chỉ task được giao cho nhóm mới cần output theo từng trợ giảng.');
+  if (task.status !== 'IN_PROGRESS') throw new Error('Task không ở trạng thái nhận output.');
+  if (!task.assignees.length) throw new Error('Task chưa có trợ giảng được giao.');
 
-    const submissions = task.completionSubmissions || {};
-    const nowDate = new Date();
-    const now = nowDate.toISOString();
-    submissions[actor.name] = { note: output, submitted: true, submittedAt: now };
-    const submittedCount = task.assignees.filter(name => (
-      submissions[name] && submissions[name].submitted && String(submissions[name].note || '').trim()
-    )).length;
-    const allSubmitted = submittedCount === task.assignees.length;
-    sheet.getRange(task.rowNumber, 23).setValue(JSON.stringify(submissions));
-    sheet.getRange(task.rowNumber, 15).setValue(now);
-    if (allSubmitted) sheet.getRange(task.rowNumber, 9).setValue('PENDING');
-    return {
-      status: 'success',
-      taskStatus: allSubmitted ? 'PENDING' : 'IN_PROGRESS',
-      submittedCount: submittedCount,
-      requiredCount: task.assignees.length,
-      completionSubmissions: submissions
-    };
-  } finally {
-    lock.releaseLock();
-  }
+  const submissions = task.completionSubmissions || {};
+  const now = new Date().toISOString();
+  submissions[actor.name] = { note: output, submitted: true, submittedAt: now };
+  const submittedCount = task.assignees.filter(name => (
+    submissions[name] && submissions[name].submitted && String(submissions[name].note || '').trim()
+  )).length;
+  const allSubmitted = submittedCount === task.assignees.length;
+  sheet.getRange(task.rowNumber, 23).setValue(JSON.stringify(submissions));
+  sheet.getRange(task.rowNumber, 15).setValue(now);
+  if (allSubmitted) sheet.getRange(task.rowNumber, 9).setValue('PENDING');
+  return {
+    status: 'success',
+    taskStatus: allSubmitted ? 'PENDING' : 'IN_PROGRESS',
+    submittedCount: submittedCount,
+    requiredCount: task.assignees.length,
+    completionSubmissions: submissions
+  };
 }
 
 function trackerAcceptTask_(token, taskId) {
@@ -1270,15 +1484,20 @@ function trackerValidDate_(value) {
 // ĐỌC TOÀN BỘ DỮ LIỆU
 // =====================================================
 
-function getAllData() {
-  const students = readStudents(
+function getAllData(actor) {
+  let students = readStudents(
     requireSheet_(TAB.STUDENTS),
     requireSheet_(TAB.ATTENDANCE)
   );
 
-  const inactive = readInactive(
+  let inactive = readInactive(
     requireSheet_(TAB.INACTIVE)
   );
+
+  if (actor && actor.role === 'teacher') {
+    students = students.filter(student => student.assistants.indexOf(actor.name) !== -1);
+    inactive = inactive.filter(student => student.assistants.indexOf(actor.name) !== -1);
+  }
 
   const teachers = readTeachers(
     requireSheet_(TAB.TEACHERS)
@@ -1462,11 +1681,11 @@ function deleteLevel(level) {
 
 function changePassword(username, oldPassword, newPassword) {
   const user = String(username || '').trim();
-  const oldValue = String(oldPassword || '');
-  const newValue = String(newPassword || '');
+  const oldValue = String(oldPassword || '').trim();
+  const newValue = String(newPassword || '').trim();
 
-  if (newValue.length < 4) {
-    return { status: 'error', message: 'Mật khẩu mới phải có ít nhất 4 ký tự' };
+  if (newValue.length < 4 || newValue.length > 128) {
+    return { status: 'error', message: 'Mật khẩu mới phải có từ 4 đến 128 ký tự' };
   }
 
   const ss = getSpreadsheet();
@@ -1484,23 +1703,23 @@ function changePassword(username, oldPassword, newPassword) {
       }
     }
 
-    if (oldValue !== currentValue) {
+    if (!verifyPassword_(oldValue, currentValue)) {
       return { status: 'error', message: 'Mật khẩu hiện tại không đúng' };
     }
 
-    if (rowNumber) sheet.getRange(rowNumber, 2).setValue(newValue);
-    else sheet.appendRow(['directorPassword', newValue]);
+    if (rowNumber) sheet.getRange(rowNumber, 2).setValue(hashPassword_(newValue));
+    else sheet.appendRow(['directorPassword', hashPassword_(newValue)]);
   } else {
     const sheet = requireSheet_(TAB.TEACHERS);
     const row = findRowByTeacherName(sheet, user);
     if (!row) return { status: 'error', message: 'Không tìm thấy tài khoản trợ giảng' };
 
     const currentValue = String(sheet.getRange(row, 2).getValue() || DEFAULT_DIRECTOR_PASSWORD);
-    if (oldValue !== currentValue) {
+    if (!verifyPassword_(oldValue, currentValue)) {
       return { status: 'error', message: 'Mật khẩu hiện tại không đúng' };
     }
 
-    sheet.getRange(row, 2).setValue(newValue);
+    sheet.getRange(row, 2).setValue(hashPassword_(newValue));
   }
 
   return { status: 'success', message: 'Đã cập nhật mật khẩu lên Sheet' };
@@ -1703,12 +1922,13 @@ function updateStudentInfo(student) {
  * 7. Chuyển sang Tab Học Viên Nghỉ Học
  */
 function moveToInactive(studentId, reason) {
-  const ss = getSpreadsheet();
   const sheetStudents = requireSheet_(TAB.STUDENTS);
   const sheetAttendance = requireSheet_(TAB.ATTENDANCE);
   const sheetInactive = requireSheet_(TAB.INACTIVE);
+  const id = String(studentId || '').trim();
 
   const studentsData = sheetStudents.getDataRange().getValues();
+  const inactiveData = sheetInactive.getDataRange().getValues();
   let studentInfo = null;
   let targetRowIndex = -1;
 
@@ -1721,32 +1941,73 @@ function moveToInactive(studentId, reason) {
   }
 
   if (!studentInfo) return { status: 'error', message: 'Không tìm thấy học viên' };
-
-  sheetInactive.appendRow([
-    studentInfo[0],
-    studentInfo[1],
-    studentInfo[2],
-    studentInfo[3],
-    studentInfo[4],
-    studentInfo[5],
-    studentInfo[6],
-    studentInfo[7],
-    "Nghỉ học",
-    studentInfo[8],
-    studentInfo[10],
-    studentInfo[11],
-    studentInfo[12],
-    reason || "Đã dừng học"
-  ]);
-
-  sheetStudents.deleteRow(targetRowIndex);
+  if (inactiveData.slice(1).some(row => String(row[0] || '').trim() === id)) {
+    return { status: 'error', message: 'Học viên đã tồn tại trong danh sách nghỉ học' };
+  }
 
   const attData = sheetAttendance.getDataRange().getValues();
-  for (let j = 1; j < attData.length; j++) {
-    if (String(attData[j][0]).trim() === String(studentId).trim()) {
-      sheetAttendance.deleteRow(j + 1);
-      break;
+  const attendanceInfo = attData.slice(1).find(row => String(row[0] || '').trim() === id);
+  let inactiveRow = null;
+  try {
+    sheetInactive.appendRow([
+      studentInfo[0],
+      studentInfo[1],
+      studentInfo[2],
+      studentInfo[3],
+      studentInfo[4],
+      studentInfo[5],
+      studentInfo[6],
+      studentInfo[7],
+      'Nghỉ học',
+      studentInfo[8],
+      studentInfo[10],
+      studentInfo[11],
+      studentInfo[12],
+      reason || 'Đã dừng học'
+    ]);
+    inactiveRow = sheetInactive.getLastRow();
+    sheetStudents.deleteRow(targetRowIndex);
+    if (attendanceInfo) {
+      const currentAttendance = sheetAttendance.getDataRange().getValues();
+      const attendanceIndex = currentAttendance.findIndex((row, index) =>
+        index > 0 && String(row[0] || '').trim() === id
+      );
+      if (attendanceIndex !== -1) sheetAttendance.deleteRow(attendanceIndex + 1);
     }
+  } catch (error) {
+    const rollbackErrors = [];
+    if (!findRowById(sheetStudents, id)) {
+      try {
+        sheetStudents.appendRow(studentInfo);
+      } catch (rollbackError) {
+        rollbackErrors.push('Không khôi phục được hồ sơ học viên.');
+      }
+    }
+    if (attendanceInfo) {
+      const currentAttendance = sheetAttendance.getDataRange().getValues();
+      const attendanceExists = currentAttendance.slice(1).some(row => String(row[0] || '').trim() === id);
+      if (!attendanceExists) {
+        try {
+          sheetAttendance.appendRow(attendanceInfo);
+        } catch (rollbackError) {
+          rollbackErrors.push('Không khôi phục được điểm danh.');
+        }
+      }
+    }
+    if (inactiveRow) {
+      const currentInactive = sheetInactive.getDataRange().getValues();
+      if (String((currentInactive[inactiveRow - 1] || [])[0] || '').trim() === id) {
+        try {
+          sheetInactive.deleteRow(inactiveRow);
+        } catch (rollbackError) {
+          rollbackErrors.push('Không xóa được bản ghi nghỉ học mới tạo.');
+        }
+      }
+    }
+    if (rollbackErrors.length) {
+      throw new Error(`${error.message} ${rollbackErrors.join(' ')} Vui lòng kiểm tra các sheet liên quan.`);
+    }
+    throw error;
   }
 
   return { status: 'success' };
@@ -1760,7 +2021,6 @@ function restoreStudent(student) {
     };
   }
 
-  const ss = getSpreadsheet();
   const studentSheet = requireSheet_(TAB.STUDENTS);
   const attendanceSheet = requireSheet_(TAB.ATTENDANCE);
   const inactiveSheet = requireSheet_(TAB.INACTIVE);
@@ -1772,46 +2032,85 @@ function restoreStudent(student) {
       message: 'Học viên đã tồn tại trong danh sách đang học'
     };
   }
+  const inactiveValues = inactiveSheet.getDataRange().getValues();
+  let inactiveRow = -1;
+  for (let i = inactiveValues.length - 1; i >= 1; i--) {
+    if (String(inactiveValues[i][0] || '').trim() === studentId) {
+      inactiveRow = i + 1;
+      break;
+    }
+  }
+  if (inactiveRow === -1) {
+    return { status: 'error', message: 'Không tìm thấy học viên trong danh sách nghỉ học' };
+  }
 
   const assistants = splitAssistants(student.assistants).join(', ');
   const feeStatus = normalizeFeeStatus(student.feeStatus);
-
-  studentSheet.appendRow([
-    studentId,
-    student.name || '',
-    student.dob || '',
-    student.gender || '',
-    student.level || '',
-    student.regDate || '',
-    student.parentName || '',
-    student.parentPhone || '',
-    student.address || '',
-    feeStatus,
-    student.note || '',
-    student.avatar || '',
-    assistants
-  ]);
 
   const attendanceValues = attendanceSheet.getDataRange().getValues();
   const existsInAttendance = attendanceValues.slice(1).some(row =>
     String(row[0] || '').trim() === studentId
   );
-
-  if (!existsInAttendance) {
-    attendanceSheet.appendRow([
+  let activeRowAdded = false;
+  let attendanceAdded = false;
+  try {
+    studentSheet.appendRow([
       studentId,
       student.name || '',
+      student.dob || '',
+      student.gender || '',
+      student.level || '',
       student.regDate || '',
-      ...Array(40).fill('')
+      student.parentName || '',
+      student.parentPhone || '',
+      student.address || '',
+      feeStatus,
+      student.note || '',
+      student.avatar || '',
+      assistants
     ]);
-  }
+    activeRowAdded = true;
 
-  const inactiveValues = inactiveSheet.getDataRange().getValues();
-  for (let i = inactiveValues.length - 1; i >= 1; i--) {
-    if (String(inactiveValues[i][0] || '').trim() === studentId) {
-      inactiveSheet.deleteRow(i + 1);
-      break;
+    if (!existsInAttendance) {
+      attendanceSheet.appendRow([
+        studentId,
+        student.name || '',
+        student.regDate || '',
+        ...Array(40).fill('')
+      ]);
+      attendanceAdded = true;
     }
+
+    inactiveSheet.deleteRow(inactiveRow);
+  } catch (error) {
+    const rollbackErrors = [];
+    if (attendanceAdded) {
+      const currentAttendance = attendanceSheet.getDataRange().getValues();
+      const rowIndex = currentAttendance.findIndex((row, index) =>
+        index > 0 && String(row[0] || '').trim() === studentId
+      );
+      if (rowIndex !== -1) {
+        try {
+          attendanceSheet.deleteRow(rowIndex + 1);
+        } catch (rollbackError) {
+          rollbackErrors.push('Không xóa được dòng điểm danh mới tạo.');
+        }
+      }
+    }
+    if (activeRowAdded) {
+      const activeRow = findRowById(studentSheet, studentId);
+      if (activeRow) {
+        try {
+          studentSheet.deleteRow(activeRow);
+        } catch (rollbackError) {
+          rollbackErrors.push('Không xóa được hồ sơ đang học mới tạo.');
+        }
+      }
+    }
+    if (rollbackErrors.length) {
+      throw new Error(`${error.message} ${rollbackErrors.join(' ')} Vui lòng kiểm tra các sheet liên quan.`);
+    }
+    throw error;
   }
 
   return {
@@ -1870,6 +2169,9 @@ function addTeacher(teacherName, password) {
       message: 'Tên và mật khẩu không được để trống'
     };
   }
+  if (pwd.length < 4 || pwd.length > 128) {
+    return { status: 'error', message: 'Mật khẩu trợ giảng phải có từ 4 đến 128 ký tự' };
+  }
 
   const sheet = requireSheet_(TAB.TEACHERS);
   const teachers = readTeachers(sheet);
@@ -1881,7 +2183,7 @@ function addTeacher(teacherName, password) {
     };
   }
 
-  sheet.appendRow([name, pwd]);
+  sheet.appendRow([name, hashPassword_(pwd)]);
 
   return {
     status: 'success',

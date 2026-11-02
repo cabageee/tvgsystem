@@ -64,6 +64,8 @@
     .repeat-option { align-content: start; color: var(--ink); }
     .repeat-option input { width: 16px; height: 16px; margin: 0; accent-color: var(--wine); }
     .progress-report-task-title { margin: 0; color: var(--ink); font-size: 13px; font-weight: 850; }
+    .task-action-guidance { margin: 10px 0; padding: 10px 12px; border: 1px solid #e8dfc7; border-radius: 10px; color: #5b4b2f; background: #fffaf0; font-size: 11px; line-height: 1.55; }
+    .completion-confirm-copy { margin: 0; color: var(--ink); font-size: 12px; line-height: 1.6; }
     .required-mark { color: #b42332; }
     .field input:focus, .field select:focus, .field textarea:focus { border-color: #b8616b; box-shadow: 0 0 0 3px #761e2b12; }
     .login-form { display: grid; gap: 12px; margin-top: 17px; }
@@ -101,19 +103,16 @@
     .task-title { max-width: 240px; font-weight: 850; line-height: 1.35; }
     .muted { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.4; }
     .assignee-list { max-width: 190px; line-height: 1.5; }
-    .task-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 130px; }
+    .task-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
     .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 20px 0 9px; }
     .section-heading h3 { margin: 0; font-size: 15px; }
     .section-heading p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
     .table-wrap + .section-heading { margin-top: 24px; }
-    .small-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; border: 0; border-radius: 9px; padding: 9px 12px; color: #394659; background: #eef1f5; font-size: 12px; line-height: 1.3; font-weight: 800; }
+    .small-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border: 0; border-radius: 9px; padding: 8px 10px; color: #394659; background: #eef1f5; font-size: 11px; line-height: 1.25; font-weight: 800; }
     .small-button:hover { background: #dfe5ec; }
     .small-button.primary { color: white; background: var(--wine); }
     .small-button.good { color: white; background: #527b69; }
     .small-button.danger { color: #a52835; background: #fff0f1; }
-    .completion-control { display: inline-flex; align-items: center; gap: 7px; color: #334052; font-size: 10px; font-weight: 850; white-space: nowrap; }
-    .completion-control input { width: 17px; height: 17px; margin: 0; accent-color: #087451; }
-    .completion-control input:disabled { cursor: not-allowed; }
     .empty-state { padding: 40px 18px; color: var(--muted); text-align: center; }
     .empty-state strong { display: block; margin-bottom: 5px; color: #364255; }
     dialog { width: min(720px, calc(100vw - 24px)); max-height: min(90vh, 780px); max-height: min(90svh, 780px); padding: 0; border: 0; border-radius: 16px; box-shadow: 0 20px 70px #0005; }
@@ -189,12 +188,10 @@
     .teacher-task-badges { display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; min-width: 0; }
     .teacher-task-meta { display: flex; flex-wrap: wrap; gap: 7px 14px; color: #536071; font-size: 12px; line-height: 1.5; }
     .teacher-task-note { min-width: 0; padding: 10px 12px; border: 1px solid #edf0f4; border-radius: 10px; color: #465368; background: #f6f7f9; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
-    .task-note-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
-    .task-note-pair label { display: grid; gap: 5px; color: #5a6678; font-size: 10px; font-weight: 850; text-transform: uppercase; }
-    .task-note-pair textarea { width: 100%; min-height: 68px; resize: vertical; padding: 9px; border: 1px solid #dce2e9; border-radius: 9px; font-size: 11px; }
     .gantt-inline { display: grid; gap: 5px; width: min(100%, 300px); margin-top: 7px; }
     .gantt-dates { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 9px; }
     .gantt-dates span:last-child { text-align: right; }
+    .gantt-week-label { color: var(--ink); font-size: 9px; font-weight: 800; }
     .gantt-day-labels, .gantt-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; width: 100%; }
     .gantt-day-labels { color: var(--muted); font-size: 10px; font-weight: 750; text-align: center; }
     .gantt-days span { height: 10px; border-radius: 3px; background: #e8ebf0; }
@@ -204,9 +201,8 @@
     .gantt-days.is-overdue .is-active { background: #a95057; }
     .task-actions .delete-task-button { color: #a52835; background: #fff0f1; }
     .task-actions .delete-task-button:hover { background: #ffe1e5; }
-    .completion-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
-    .completion-actions .completion-control { flex: 0 1 auto; }
-    .completion-actions .small-button { padding: 6px 8px; }
+    .completion-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; }
+    .completion-actions .small-button { flex: 0 0 auto; padding: 6px 8px; white-space: nowrap; }
     .teacher-task-card .gantt-inline { width: min(100%, 520px); max-width: none; margin-top: 0; }
     .teacher-request-card { display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 9px; }
     .teacher-request-content { min-width: 0; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
@@ -216,6 +212,69 @@
     @media (max-width: 900px) {
       .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .filters { grid-template-columns: repeat(2, minmax(125px, 1fr)); }
+    }
+    @media (min-width: 701px) and (max-width: 1100px) {
+      #management-section .table-wrap,
+      #manager-requests-section .table-wrap {
+        overflow: visible;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+      #management-section table,
+      #management-section tbody,
+      #manager-requests-section table,
+      #manager-requests-section tbody {
+        display: grid;
+        gap: 10px;
+      }
+      #management-section thead,
+      #manager-requests-section thead { display: none; }
+      #management-section tbody tr,
+      #manager-requests-section tbody tr {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 2px 8px #17203308;
+      }
+      #management-section tbody td,
+      #manager-requests-section tbody td {
+        display: grid;
+        grid-template-columns: minmax(80px, 28%) minmax(0, 1fr);
+        align-content: start;
+        gap: 8px;
+        min-width: 0;
+        padding: 10px 12px;
+        border-bottom: 1px solid #edf0f4;
+        overflow-wrap: anywhere;
+      }
+      #management-section tbody td::before,
+      #manager-requests-section tbody td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 9px;
+        font-weight: 850;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+      }
+      #management-section tbody td[data-label="Công việc"],
+      #management-section tbody td[data-label="Nội dung"],
+      #manager-requests-section tbody td[data-label="Nội dung"],
+      #management-section tbody td[data-label="Thao tác"] { grid-column: 1 / -1; }
+      #management-section tbody td[data-label="Thao tác"] { border-bottom: 0; }
+      #management-section tbody td[colspan],
+      #manager-requests-section tbody td[colspan] {
+        display: block;
+        grid-column: 1 / -1;
+        border-bottom: 0;
+      }
+      #management-section tbody td[colspan]::before,
+      #manager-requests-section tbody td[colspan]::before { content: none; }
+      #management-section .task-actions { min-width: 0; }
+      #management-section .gantt-inline { width: 100%; max-width: 520px; }
     }
     @media (max-width: 700px) {
       .teacher-task-card { gap: 9px; padding: 12px; }
@@ -257,6 +316,8 @@
       .table-wrap tbody td[colspan]::before { content: none; }
       .table-wrap tbody td[data-label="Hạn"] .gantt-inline,
       .table-wrap tbody td[data-label="Thời hạn"] .gantt-inline { grid-column: 1 / -1; width: 100%; max-width: none; margin-top: 2px; }
+      #accepted-task-section tbody td[data-label="Duyệt kết quả"] { grid-template-columns: 1fr; }
+      #accepted-task-section .completion-actions { grid-column: 1 / -1; }
       .task-actions { min-width: 0; }
       .small-button { min-height: 40px; font-size: 12px; }
       .calendar-grid { display: none; }
@@ -276,7 +337,6 @@
       .manager-box { display: none; }
       .top-link { padding: 8px; font-size: 9px; }
       .filters { grid-template-columns: 1fr 1fr; }
-      .task-note-pair { grid-template-columns: 1fr; }
       .toolbar { align-items: stretch; }
       .toolbar-actions > .button { flex: 1; }
       .dialog-form { grid-template-columns: 1fr; padding: 14px; }
@@ -676,11 +736,11 @@
 
       <section id="accepted-task-section">
       <div class="section-heading">
-        <div><h3 id="accepted-heading">Theo dõi nhiệm vụ trợ giảng đã nhận</h3><p id="accepted-description">Cập nhật tiến độ các nhiệm vụ trợ giảng đã tiếp nhận.</p></div>
+        <div><h3 id="accepted-heading">Theo dõi nhiệm vụ trợ giảng đã nhận</h3><p id="accepted-description">Xem báo cáo hoàn thành tại đây; chỉ duyệt sau khi đã kiểm tra kết quả.</p></div>
       </div>
       <section class="table-wrap" aria-label="Bảng theo dõi nhiệm vụ trợ giảng đã nhận">
         <table>
-          <thead><tr><th>Nhiệm vụ</th><th>Trợ giảng nhận việc</th><th>Người giao</th><th>Thời hạn</th><th>Trạng thái</th><th>Báo cáo / phản hồi</th><th>Hoàn thành</th></tr></thead>
+          <thead><tr><th>Nhiệm vụ</th><th>Trợ giảng nhận việc</th><th>Người giao</th><th>Thời hạn</th><th>Trạng thái</th><th>Báo cáo / phản hồi</th><th>Duyệt kết quả</th></tr></thead>
           <tbody id="accepted-task-body"></tbody>
         </table>
       </section>
@@ -719,10 +779,20 @@
     <div class="dialog-head"><h2>Báo cáo tiến độ</h2><button type="button" data-close="progress-report-dialog" aria-label="Đóng">&times;</button></div>
     <form id="progress-report-form" class="dialog-form">
       <p id="progress-report-task-title" class="full progress-report-task-title"></p>
+      <p class="full completion-confirm-copy">Báo cáo này chỉ cập nhật tình hình và vấn đề cần hỗ trợ, không xác nhận công việc đã hoàn thành.</p>
       <div class="field full"><label for="progress-report-done">Đã thực hiện được gì? <span class="required-mark">*</span></label><textarea id="progress-report-done" required maxlength="2000" placeholder="Tóm tắt phần việc đã hoàn thành hoặc tiến độ hiện tại..."></textarea></div>
       <div class="field full"><label for="progress-report-blocker">Vấn đề đang gặp / cần hỗ trợ</label><textarea id="progress-report-blocker" maxlength="2000" placeholder="Mô tả khó khăn để Giám đốc hoặc Quản lý hỗ trợ..."></textarea></div>
       <p id="progress-report-error" class="form-error full" hidden></p>
       <div class="dialog-actions"><button class="button button-light" type="button" data-close="progress-report-dialog">Hủy</button><button id="progress-report-save" class="button button-primary" type="submit">Gửi báo cáo</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="completion-confirm-dialog">
+    <div class="dialog-head"><h2>Xác nhận gửi kết quả hoàn thành</h2><button type="button" data-close="completion-confirm-dialog" aria-label="Đóng">&times;</button></div>
+    <form id="completion-confirm-form" class="dialog-form">
+      <p id="completion-confirm-task-title" class="full progress-report-task-title"></p>
+      <p class="full completion-confirm-copy">Đây là xác nhận công việc đã hoàn tất, không phải báo cáo tiến độ. Kết quả sẽ được gửi để Giám đốc / Quản lý kiểm tra; thời điểm gửi được lưu lại và nếu gửi sau hạn, có thể được tính là trễ hạn. Nếu công việc chưa xong, hãy chọn “Báo cáo tiến độ”.</p>
+      <div class="dialog-actions"><button id="completion-confirm-cancel" class="button button-light" type="button" data-close="completion-confirm-dialog">Quay lại</button><button id="completion-confirm-submit" class="button button-primary" type="submit">Xác nhận gửi kết quả</button></div>
     </form>
   </dialog>
 
@@ -776,7 +846,7 @@
 
   <script>
     (() => {
-      const API_URL = 'https://script.google.com/macros/s/AKfycbznfjacUrEwX-DyN5hbk_rCLytXwVM_8JrvOgksup9d-DrAiXyNo_5WBd4OR71HD0Q-/exec';
+      const API_URL = 'https://script.google.com/macros/s/AKfycbzsg0nACEtmAb61joXK_L3-d4UuxxwJku-aasXjtTAe-ZMxTbOL8AotyOuTPF7QgkKo/exec';
       const TOKEN_KEY = 'TV_GLOBAL_TRACKER_TOKEN';
       const TRACKER_REFRESH_INTERVAL_MS = 15000;
       const entryMode = new URLSearchParams(window.location.search).get('view') || '';
@@ -943,27 +1013,58 @@
         $('tracker-screen').hidden = true;
       }
 
-      function callJsonp(action, payload) {
+      function callAppsScriptPostMessage(action, payload) {
         return new Promise((resolve, reject) => {
-          const callbackName = `trackerApi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-          const script = document.createElement('script');
+          const requestId = `tracker_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+          const frame = document.createElement('iframe');
+          const form = document.createElement('form');
           let timeout;
           const cleanup = () => {
             clearTimeout(timeout);
-            delete window[callbackName];
-            script.remove();
+            window.removeEventListener('message', handleMessage);
+            form.remove();
+            frame.remove();
           };
-          window[callbackName] = result => {
+          const handleMessage = event => {
+            if (event.source !== frame.contentWindow
+              || event.data?.type !== 'tvg-api-response'
+              || event.data.requestId !== requestId) return;
             cleanup();
-            if (!result || result.status !== 'success') reject(new Error(result?.message || 'Apps Script trả về phản hồi không hợp lệ.'));
-            else resolve(result);
+            const result = event.data.result;
+            if (!result || result.status !== 'success') {
+              reject(new Error(result?.message || 'Apps Script trả về phản hồi không hợp lệ.'));
+            } else {
+              resolve(result);
+            }
           };
-          script.onerror = () => { cleanup(); reject(new Error('Không kết nối được Apps Script. Kiểm tra URL /exec và deployment Web app.')); };
-          const query = new URLSearchParams({ callback: callbackName, data: JSON.stringify({ action, ...payload }), _: String(Date.now()) });
-          script.async = true;
-          script.src = `${API_URL}?${query}`;
-          timeout = setTimeout(() => { cleanup(); reject(new Error('Apps Script không phản hồi. Kiểm tra quyền truy cập deployment và kết nối mạng.')); }, 20000);
-          document.head.appendChild(script);
+          frame.name = requestId;
+          frame.hidden = true;
+          form.method = 'POST';
+          form.action = API_URL;
+          form.target = requestId;
+          form.hidden = true;
+          [
+            ['apiRequestId', requestId],
+            ['apiPayload', JSON.stringify({ action, ...payload })]
+          ].forEach(([name, value]) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+          });
+          window.addEventListener('message', handleMessage);
+          document.body.append(frame, form);
+          timeout = setTimeout(() => {
+            cleanup();
+            reject(new Error('Apps Script không phản hồi. Hãy kiểm tra deployment phiên bản mới nhất và kết nối mạng.'));
+          }, 30000);
+          try {
+            form.submit();
+          } catch (error) {
+            cleanup();
+            reject(error);
+          }
         });
       }
 
@@ -1006,7 +1107,7 @@
             clearTimeout(timeout);
           }
         }
-        return callJsonp(action, request);
+        return callAppsScriptPostMessage(action, request);
       }
 
       function getStatus(task) {
@@ -1188,23 +1289,15 @@
         const buttons = [];
         const canDelete = canDeleteTask(task);
         if (canEditTask(task)) buttons.push(`<button class="small-button primary" data-task-action="edit" data-id="${escapeHtml(task.id)}">Chỉnh sửa</button>`);
-        if (['director', 'manager'].includes(role)) {
-          if (task.status === 'PENDING') {
-            buttons.push(`<button class="small-button good" data-task-action="approve" data-id="${escapeHtml(task.id)}">Duyệt</button>`);
-            buttons.push(`<button class="small-button danger" data-task-action="reject" data-id="${escapeHtml(task.id)}">Trả lại</button>`);
-          } else {
-            buttons.push(`<span class="muted">${task.status === 'NEW' ? 'Chờ trợ giảng nhận việc' : task.status === 'IN_PROGRESS' ? 'Trợ giảng đang thực hiện' : task.status === 'COMPLETED' ? 'Đã hoàn thành' : 'Không có thao tác'}</span>`);
-          }
-        }
         if (canDelete) buttons.push(`<button class="small-button delete-task-button" data-task-action="delete" data-id="${escapeHtml(task.id)}">Xóa nhiệm vụ</button>`);
         if (assigned && role !== 'director' && personal && task.status !== 'COMPLETED') buttons.push(`<button class="small-button good" data-task-action="complete-personal" data-id="${escapeHtml(task.id)}">Đánh dấu hoàn thành</button>`);
         if (assigned && role !== 'director' && !personal && task.status === 'NEW') buttons.push(`<button class="small-button primary" data-task-action="accept" data-id="${escapeHtml(task.id)}">Nhận việc</button>`);
+        if (assigned && role !== 'director' && task.status === 'IN_PROGRESS') buttons.push(`<button class="small-button" data-task-action="report-progress" data-id="${escapeHtml(task.id)}">Báo cáo tiến độ / khó khăn</button>`);
         if (assigned && role !== 'director' && !personal && task.status === 'IN_PROGRESS') {
           const submission = task.completionSubmissions?.[session.actor.name];
-          buttons.push(`<button class="small-button good" data-task-action="submit" data-id="${escapeHtml(task.id)}">${submission?.submitted ? 'Cập nhật kết quả' : 'Gửi kết quả hoàn thành'}</button>`);
+          buttons.push(`<button class="small-button good" data-task-action="submit" data-id="${escapeHtml(task.id)}">${submission?.submitted ? 'Gửi lại kết quả hoàn thành' : 'Gửi kết quả hoàn thành'}</button>`);
         }
-        if (assigned && role !== 'director' && task.status === 'IN_PROGRESS') buttons.push(`<button class="small-button" data-task-action="report-progress" data-id="${escapeHtml(task.id)}">Báo cáo tiến độ</button>`);
-        if (assigned && role !== 'director' && task.status !== 'COMPLETED') buttons.push(`<button class="small-button" data-task-action="note" data-id="${escapeHtml(task.id)}">Cập nhật ghi chú</button>`);
+        if (assigned && role === 'manager' && task.status !== 'COMPLETED') buttons.push(`<button class="small-button" data-task-action="note" data-id="${escapeHtml(task.id)}">Cập nhật ghi chú</button>`);
         if (assigned && personal && task.status === 'COMPLETED' && !canDelete) return '<span class="muted">Đã hoàn thành cá nhân</span>';
         return buttons.length ? `<div class="task-actions">${buttons.join('')}</div>` : `<span class="muted">Không có thao tác</span>`;
       }
@@ -1236,19 +1329,24 @@
         const start = dayOrdinal(task.startDate || task.deadline);
         const end = dayOrdinal(task.deadline);
         if (start === null || end === null) return '';
-        const duration = Math.max(1, end - start + 1);
-        const firstWeekday = (new Date(start * 86400000).getUTCDay() + 6) % 7;
+        const today = new Date();
+        const todayOrdinal = dayOrdinal(today);
+        const weekStartOrdinal = todayOrdinal - ((today.getDay() + 6) % 7);
+        const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7));
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
         const status = getStatus(task);
         const barClass = status === 'COMPLETED' ? 'is-complete' : status === 'PENDING' ? 'is-pending' : status === 'OVERDUE' ? 'is-overdue' : '';
         const weekdayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
         const days = weekdayLabels.map((_, index) => {
-          const offset = (index - firstWeekday + 7) % 7;
-          const active = offset < Math.min(duration, 7);
+          const day = weekStartOrdinal + index;
+          const active = day >= start && day <= end;
           return `<span class="${active ? 'is-active' : ''}"></span>`;
         }).join('');
         const deadlineTime = timeLabel(task.deadlineTime);
         return `<div class="gantt-inline" aria-label="Thời gian thực hiện: ${dateLabel(task.startDate || task.deadline)} đến ${dateLabel(task.deadline)}${deadlineTime ? ` ${deadlineTime}` : ''}">
           <div class="gantt-dates"><span>Bắt đầu ${dateLabel(task.startDate || task.deadline)}</span><span>Hạn ${dateLabel(task.deadline)}${deadlineTime ? ` · ${deadlineTime}` : ''}</span></div>
+          <div class="gantt-week-label">Tuần hiện tại: ${dateLabel(weekStart)} – ${dateLabel(weekEnd)}</div>
           <div class="gantt-day-labels" aria-hidden="true">${weekdayLabels.map(day => `<span>${day}</span>`).join('')}</div>
           <div class="gantt-days ${barClass}" aria-hidden="true">${days}</div>
         </div>`;
@@ -1347,8 +1445,8 @@
         $('director-schedule-actions').hidden = role === 'manager';
         $('accepted-heading').textContent = role === 'director' ? 'Kiểm tra nhiệm vụ trợ giảng đã nhận' : 'Duyệt hoàn thành nhiệm vụ';
         $('accepted-description').textContent = role === 'director'
-          ? 'Theo dõi tiến độ, duyệt hoàn thành hoặc trả nhiệm vụ để trợ giảng cập nhật.'
-          : 'Kiểm tra nhiệm vụ chờ duyệt và trả lại để trợ giảng cập nhật; quản lý không duyệt đơn nghỉ / tăng ca.';
+          ? 'Xem báo cáo hoàn thành tại đây; chỉ duyệt sau khi đã kiểm tra kết quả.'
+          : 'Kiểm tra báo cáo hoàn thành và duyệt tại đây; không duyệt ở bảng điều phối phía trên.';
         $('create-task').textContent = role === 'director' ? 'Giao nhiệm vụ tuần' : role === 'manager' ? 'Giao nhiệm vụ tuần / việc cá nhân' : 'Thêm việc cá nhân';
         const activeTasks = tasks.filter(task => !task.archiveMonth && task.status !== 'ARCHIVED');
         const currentMonth = dateInputValue(new Date()).slice(0, 7);
@@ -1521,8 +1619,8 @@
             <td data-label="Thời hạn">${taskTimelineMarkup(task)}</td>
             <td data-label="Trạng thái"><span class="status-pill status-${status}">${statusLabel(status)}</span></td>
             <td data-label="Báo cáo / phản hồi">${completionSubmissionsMarkup(task)}${task.progressReport ? `<div class="task-report-text"><strong>Tiến độ chung:</strong> ${escapeHtml(task.progressReport)}</div>` : ''}${task.blocker ? `<div class="muted task-report-text"><strong>Vấn đề:</strong> ${escapeHtml(task.blocker)}</div>` : ''}${task.progressReportedAt ? `<div class="muted">Cập nhật: ${escapeHtml(dateLabel(task.progressReportedAt))}</div>` : ''}${task.reviewNote ? `<div class="muted task-report-text">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}</td>
-            <td data-label="Hoàn thành">${['director', 'manager'].includes(role)
-              ? `<div class="completion-actions">${task.status === 'COMPLETED' ? `<span class="muted">${(task.assignees || []).length > 1 ? 'Đã duyệt hoàn thành cả nhóm' : 'Đã hoàn thành'}</span>` : task.status === 'PENDING' ? `<label class="completion-control"><input type="checkbox" data-complete-task="${escapeHtml(task.id)}" aria-label="Duyệt hoàn thành: ${escapeHtml(task.title)}"><span>${(task.assignees || []).length > 1 ? 'Duyệt hoàn thành cả nhóm' : 'Duyệt hoàn thành'}</span></label>` : `<span class="muted">Chờ đủ kết quả (${(task.assignees || []).filter(name => task.completionSubmissions?.[name]?.submitted).length}/${(task.assignees || []).length})</span>`}</div>`
+            <td data-label="Duyệt kết quả">${['director', 'manager'].includes(role)
+              ? `<div class="completion-actions">${task.status === 'COMPLETED' ? `<span class="muted">${(task.assignees || []).length > 1 ? 'Đã duyệt hoàn thành cả nhóm' : 'Đã hoàn thành'}</span>` : task.status === 'PENDING' ? `<button class="small-button good" data-task-action="approve" data-id="${escapeHtml(task.id)}" aria-label="Duyệt kết quả hoàn thành: ${escapeHtml(task.title)}">Duyệt kết quả</button><button class="small-button danger" data-task-action="reject" data-id="${escapeHtml(task.id)}" aria-label="Trả lại kết quả: ${escapeHtml(task.title)}">Trả lại</button>` : `<span class="muted">Chờ đủ kết quả (${(task.assignees || []).filter(name => task.completionSubmissions?.[name]?.submitted).length}/${(task.assignees || []).length})</span>`}</div>`
               : `<span class="muted">${task.status === 'PENDING' ? 'Chờ Giám đốc / Quản lý duyệt' : task.status === 'COMPLETED' ? 'Đã hoàn thành' : 'Chỉ quản lý đánh dấu hoàn thành'}</span>`}</td>
           </tr>`;
         }).join('') : '<tr><td colspan="7"><div class="empty-state"><strong>Chưa có nhiệm vụ được tiếp nhận</strong>Nhiệm vụ sẽ xuất hiện tại đây sau khi trợ giảng nhận việc.</div></td></tr>';
@@ -1559,7 +1657,7 @@
             ${task.note ? `<div class="teacher-task-note">${escapeHtml(task.note)}</div>` : ''}
             ${task.progressReport ? `<div class="teacher-task-note task-report-text"><strong>Tiến độ:</strong> ${escapeHtml(task.progressReport)}</div>` : ''}
             ${task.blocker ? `<div class="teacher-task-note task-report-text"><strong>Vấn đề cần hỗ trợ:</strong> ${escapeHtml(task.blocker)}</div>` : ''}
-            ${role === 'teacher' && task.status === 'IN_PROGRESS' ? `<div class="task-note-pair"><label class="field"><span>Ghi chú tiến độ</span><textarea id="tracker-progress-note-${escapeHtml(task.id)}" maxlength="2000">${escapeHtml(task.note || '')}</textarea></label>${!personal ? `<label class="field"><span>Kết quả hoàn thành <b aria-hidden="true">*</b></span><textarea id="tracker-completion-note-${escapeHtml(task.id)}" maxlength="2000" placeholder="Ghi rõ kết quả bạn đã hoàn thành...">${escapeHtml(task.completionSubmissions?.[session.actor.name]?.note || '')}</textarea></label>` : ''}</div>` : ''}
+            ${role === 'teacher' && task.status === 'IN_PROGRESS' && !personal ? `<div class="task-action-guidance"><strong>Phân biệt hai thao tác:</strong> “Báo cáo tiến độ / khó khăn” chỉ cập nhật tình hình, không xác nhận hoàn thành. “Gửi kết quả hoàn thành” chỉ dùng khi bạn đã làm xong; thời điểm gửi được lưu và có thể được tính trễ hạn nếu quá hạn. Chưa xong thì chỉ gửi báo cáo tiến độ.</div><div class="field"><label for="tracker-completion-note-${escapeHtml(task.id)}">Kết quả đã hoàn thành <b aria-hidden="true">*</b></label><textarea id="tracker-completion-note-${escapeHtml(task.id)}" maxlength="2000" placeholder="Chỉ ghi kết quả cuối cùng khi công việc đã hoàn tất...">${escapeHtml(task.completionSubmissions?.[session.actor.name]?.note || '')}</textarea></div>` : ''}
             ${task.reviewNote ? `<div class="teacher-task-note">Phản hồi: ${escapeHtml(task.reviewNote)}</div>` : ''}
             <div>${taskActionMarkup(task)}</div>
           </article>`;
@@ -1852,6 +1950,65 @@
         }
       }
 
+      function openCompletionConfirmation(task) {
+        const dialog = $('completion-confirm-dialog');
+        dialog.dataset.taskId = task.id;
+        $('completion-confirm-task-title').textContent = task.title;
+        dialog.showModal();
+        $('completion-confirm-cancel').focus();
+      }
+
+      async function submitTaskCompletion(taskId) {
+        const dialog = $('completion-confirm-dialog');
+        const task = tasks.find(item => item.id === taskId);
+        const field = document.getElementById(`tracker-completion-note-${taskId}`);
+        const note = field?.value.trim() || '';
+        if (!task || task.status !== 'IN_PROGRESS' || !(task.assignees || []).includes(session.actor.name)) {
+          dialog.close();
+          notify('Nhiệm vụ không còn ở trạng thái có thể gửi kết quả. Vui lòng tải lại trang.');
+          return;
+        }
+        if (!note) {
+          dialog.close();
+          notify('Cần ghi rõ kết quả đã hoàn thành trước khi gửi.');
+          field?.focus();
+          return;
+        }
+
+        const previousSubmissions = { ...(task.completionSubmissions || {}) };
+        task.completionSubmissions = task.completionSubmissions || {};
+        task.completionSubmissions[session.actor.name] = {
+          note,
+          submitted: true,
+          submittedAt: new Date().toISOString()
+        };
+        task.syncing = true;
+        dialog.close();
+        render();
+        const confirmButton = $('completion-confirm-submit');
+        confirmButton.disabled = true;
+        notify('Đang gửi kết quả của bạn...', 30000);
+        try {
+          const result = await apiCall('trackerRequestCompletion', { token, taskId, note });
+          task.status = result.taskStatus || task.status;
+          task.completionSubmissions = result.completionSubmissions || task.completionSubmissions;
+          task.syncing = false;
+          render();
+          notify(result.taskStatus === 'PENDING'
+            ? 'Đã đủ kết quả, nhiệm vụ đang chờ quản lý duyệt.'
+            : `Đã gửi kết quả của bạn (${result.submittedCount || 1}/${result.requiredCount || task.assignees.length}); chờ các trợ giảng còn lại.`);
+        } catch (error) {
+          task.completionSubmissions = previousSubmissions;
+          task.syncing = false;
+          render();
+          const retryField = document.getElementById(`tracker-completion-note-${taskId}`);
+          if (retryField) retryField.value = note;
+          notify(error.message);
+        } finally {
+          confirmButton.disabled = false;
+        }
+      }
+
       async function taskAction(event) {
         const button = event.target.closest('[data-task-action]');
         if (!button) return;
@@ -1872,38 +2029,11 @@
           const field = document.getElementById(`tracker-completion-note-${taskId}`);
           const note = field?.value.trim() || '';
           if (!note) {
-            notify('Cần ghi rõ những việc đã hoàn thành trước khi gửi yêu cầu.');
+            notify('Cần ghi rõ kết quả đã hoàn thành trước khi gửi.');
             field?.focus();
             return;
           }
-          const previousSubmissions = { ...(selectedTask.completionSubmissions || {}) };
-          selectedTask.completionSubmissions = selectedTask.completionSubmissions || {};
-          selectedTask.completionSubmissions[session.actor.name] = {
-            note,
-            submitted: true,
-            submittedAt: new Date().toISOString()
-          };
-          selectedTask.syncing = true;
-          render();
-          notify('Đang gửi kết quả của bạn...', 30000);
-          button.disabled = true;
-          try {
-            const result = await apiCall('trackerRequestCompletion', { token, taskId, note });
-            selectedTask.status = result.taskStatus || selectedTask.status;
-            selectedTask.completionSubmissions = result.completionSubmissions || selectedTask.completionSubmissions;
-            selectedTask.syncing = false;
-            render();
-            notify(result.taskStatus === 'PENDING'
-              ? 'Đã đủ kết quả, nhiệm vụ đang chờ quản lý duyệt.'
-              : `Đã gửi kết quả của bạn (${result.submittedCount || 1}/${result.requiredCount || selectedTask.assignees.length}); chờ các trợ giảng còn lại.`);
-          } catch (error) {
-            selectedTask.completionSubmissions = previousSubmissions;
-            selectedTask.syncing = false;
-            render();
-            notify(error.message);
-          } finally {
-            button.disabled = false;
-          }
+          openCompletionConfirmation(selectedTask);
           return;
         }
         let note;
@@ -1955,37 +2085,6 @@
           notify(error.message);
         } finally {
           button.disabled = false;
-        }
-      }
-
-      async function completeTask(event) {
-        const checkbox = event.target.closest('[data-complete-task]');
-        if (!checkbox) return;
-        const taskId = checkbox.dataset.completeTask;
-        checkbox.disabled = true;
-        if (!checkbox.checked) {
-          checkbox.checked = true;
-          checkbox.disabled = false;
-          return;
-        }
-        const task = tasks.find(item => item.id === taskId);
-        if (!task) return;
-        task.status = 'COMPLETED';
-        task.syncing = true;
-        render();
-        notify('Đang đồng bộ trạng thái hoàn thành...', 30000);
-        try {
-          await apiCall('trackerReviewTask', { token, taskId, decision: 'approve', note: '' });
-          task.syncing = false;
-          render();
-          notify('Đã xác nhận nhiệm vụ hoàn thành.');
-        } catch (error) {
-          task.status = 'PENDING';
-          task.syncing = false;
-          render();
-          checkbox.checked = false;
-          checkbox.disabled = false;
-          notify(error.message);
         }
       }
 
@@ -2177,6 +2276,15 @@
 
       $('task-form').addEventListener('submit', saveTask);
       $('progress-report-form').addEventListener('submit', submitProgressReport);
+      $('completion-confirm-form').addEventListener('submit', event => {
+        event.preventDefault();
+        const taskId = $('completion-confirm-dialog').dataset.taskId;
+        if (!taskId) {
+          notify('Không tìm thấy nhiệm vụ cần xác nhận.');
+          return;
+        }
+        submitTaskCompletion(taskId);
+      });
       $('task-repeat-weekly').addEventListener('change', () => {
         if ($('task-repeat-field').hidden) $('task-repeat-weekly').checked = false;
       });
@@ -2201,7 +2309,6 @@
         scheduleAction(event);
       });
       $('accepted-task-body').addEventListener('click', taskAction);
-      $('accepted-task-body').addEventListener('change', completeTask);
       $('teacher-task-cards').addEventListener('click', taskAction);
       $('manager-assigned-tasks').addEventListener('click', taskAction);
       $('export-schedules').addEventListener('click', exportSchedules);
