@@ -321,7 +321,7 @@ const postResponse = context.doPost({
     apiPayload: JSON.stringify({ action: 'verifyLogin', username: 'director', password: 'secret' })
   }
 });
-assert.match(lastHtml, /window\.parent\.postMessage/);
+assert.match(lastHtml, /window\.top\.postMessage/);
 assert.match(lastHtml, /tvg-api-response/);
 assert.match(lastHtml, /tvg_test_1/);
 assert.match(lastHtml, /\\u003c\/script>/, 'API responses must escape script-breaking content.');
@@ -621,7 +621,9 @@ scriptCache.delete('LOGIN_ATTEMPTS_director');
 assert(localServer.includes("app.listen(PORT, '127.0.0.1'"), 'The local API must not bind to public network interfaces.');
 assert(!localServer.includes("app.use('/uploads'"), 'The legacy public upload directory must stay disabled.');
 assert(trackerPage.includes("['apiPayload', JSON.stringify({ action, ...payload })]"), 'Tracker frontend must POST API payloads.');
-assert(frontend.includes('event.source !== frame.contentWindow'), 'Main frontend must validate the iframe message source.');
+assert(frontend.includes("event.origin === 'https://script.google.com'")
+  && frontend.includes('event.data.requestId !== requestId'),
+  'Main frontend must validate the Apps Script origin and request ID.');
 assert(trackerPage.includes('event.source !== frame.contentWindow'), 'Tracker frontend must validate the iframe message source.');
 assert(!frontend.includes('callJsonp'), 'Main frontend must not fall back to JSONP.');
 assert(!trackerPage.includes('callJsonp'), 'Tracker frontend must not call APIs with JSONP.');

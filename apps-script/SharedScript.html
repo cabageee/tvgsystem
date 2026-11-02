@@ -723,7 +723,7 @@
         request = { ...request, token: request.token || token || '' };
       }
       const callAppsScriptPostMessage = () => new Promise((resolve, reject) => {
-        const requestId = `tvg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const requestId = `tvg_${window.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
         const frame = document.createElement('iframe');
         const form = document.createElement('form');
         let timeoutId;
@@ -734,7 +734,10 @@
           frame.remove();
         };
         const handleMessage = event => {
-          if (event.source !== frame.contentWindow
+          const trustedGoogleOrigin = event.origin === 'https://script.google.com'
+            || event.origin === 'https://script.googleusercontent.com'
+            || /^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/i.test(event.origin);
+          if (!trustedGoogleOrigin
             || event.data?.type !== 'tvg-api-response'
             || event.data.requestId !== requestId) return;
           cleanup();

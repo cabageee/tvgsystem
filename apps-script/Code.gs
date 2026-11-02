@@ -144,7 +144,7 @@ function apiPostMessageResponse_(requestId, result) {
     result: result
   }).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   return HtmlService.createHtmlOutput(
-    `<!doctype html><html><body><script>window.parent.postMessage(${message}, '*');</script></body></html>`
+    `<!doctype html><html><body><script>window.top.postMessage(${message}, '*');</script></body></html>`
   ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
