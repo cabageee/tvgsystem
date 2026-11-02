@@ -153,6 +153,30 @@ assert.strictEqual(
   false,
   'First-run director credentials must not force a password-change redirect.'
 );
+let teacherPassword = '';
+const teacherSheet = {
+  getRange(row, column) {
+    assert.strictEqual(row, 2);
+    assert.strictEqual(column, 2);
+    return {
+      getDisplayValue: () => teacherPassword,
+      setValue: value => { teacherPassword = value; }
+    };
+  }
+};
+context.requireSheet_ = name => {
+  assert.strictEqual(name, 'TroGiang');
+  return teacherSheet;
+};
+context.findRowByTeacherName = (_sheet, name) => name === 'An' ? 2 : null;
+const teacherIdentity = context.verifyLogin_('An', '123456');
+assert.strictEqual(teacherIdentity.status, 'success');
+assert.strictEqual(
+  teacherIdentity.mustChangePassword,
+  false,
+  'Teacher accounts using the default password must not require a password-change redirect.'
+);
+assert.match(teacherPassword, /^TVG-HMAC-SHA256\$10000\$/);
 const passwordHash = context.hashPassword_('a-secure-test-password');
 assert(context.verifyPassword_('a-secure-test-password', passwordHash));
 assert(!context.verifyPassword_('wrong-password', passwordHash));
@@ -169,11 +193,14 @@ assert.throws(
   /hết hạn/,
   'Legacy write APIs must reject requests without an authenticated session.'
 );
-assert.throws(
-  () => context.handleApiAction({ action: 'getData', token: 'forced-change' }),
-  /đổi mật khẩu khởi tạo/,
-  'Accounts using the initial password must not access application data before changing it.'
+const originalDispatchApiAction = context.dispatchApiAction_;
+context.dispatchApiAction_ = () => ({ status: 'success' });
+assert.strictEqual(
+  context.handleApiAction({ action: 'getData', token: 'forced-change' }).status,
+  'success',
+  'Existing teacher sessions must not be blocked by a stale password-change requirement.'
 );
+context.dispatchApiAction_ = originalDispatchApiAction;
 assert.throws(
   () => context.authorizeLegacyApiAction_(
     { name: 'An', role: 'teacher' },
@@ -387,25 +414,24 @@ assert.strictEqual(maximumLockDepth, 1, 'Completion submission must not acquire 
 const frontend = fs.readFileSync('app.js', 'utf8');
 const trackerPage = fs.readFileSync('executive-tracker.html', 'utf8');
 const localServer = fs.readFileSync('server.js', 'utf8');
+assert(
+  frontend.includes("retryButton.style.display = loginTeacherOptionsError ? 'inline-flex' : 'none'"),
+  'The retry button must stay hidden after successful loading even when UI icon styles are applied.'
+);
 assert.match(
   backend,
   /role: 'director',\s+mustChangePassword: false/,
   'Director login must enter the dashboard without a forced password-change redirect.'
 );
-assert.match(
+assert.doesNotMatch(
   backend,
   /actor\.mustChangePassword && actor\.role !== 'director'/,
-  'Legacy director sessions must not be blocked from dashboard actions by the old forced-change flag.'
+  'Accounts must not be blocked from application actions by a forced password-change flag.'
 );
-assert.match(
+assert.doesNotMatch(
   frontend,
-  /currentUserRole !== 'director'[\s\S]{0,120}TV_GLOBAL_MUST_CHANGE_PASSWORD/,
-  'The frontend must not redirect directors with a stale password-change flag.'
-);
-assert.match(
-  frontend,
-  /currentUserRole === 'director'[\s\S]{0,100}TV_GLOBAL_MUST_CHANGE_PASSWORD/,
-  'Restored director sessions must load dashboard data even if they had the old password-change flag.'
+  /TV_GLOBAL_MUST_CHANGE_PASSWORD/,
+  'The frontend must not redirect users with a stale forced password-change flag.'
 );
 const reviewNoticeHelper = frontend.match(/function collectNewTeacherTaskReviewNotices\(tasks, notifiedKeys\) \{[\s\S]*?\n    \}/);
 assert(reviewNoticeHelper, 'Teacher task return notices must be deduplicated by task review update.');

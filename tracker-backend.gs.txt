@@ -412,9 +412,6 @@ function handleApiAction(payload) {
   }
 
   const actor = trackerActor_(payload.token);
-  if (actor.mustChangePassword && actor.role !== 'director' && action !== 'changePassword' && action !== 'logout') {
-    throw new Error('Vui lòng đổi mật khẩu khởi tạo trước khi tiếp tục.');
-  }
   if (action === 'logout') {
     CacheService.getScriptCache().remove('tracker:' + String(payload.token));
     return { status: 'success' };
@@ -727,7 +724,6 @@ function verifyLogin_(username, password) {
       recordLoginFailure_(cache, attemptKey);
       return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
     }
-    const mustChangePassword = secret === DEFAULT_DIRECTOR_PASSWORD;
     if (!isPasswordHash_(validPassword)) {
       teacherSheet.getRange(row, 2).setValue(hashPassword_(secret));
     }
@@ -735,7 +731,7 @@ function verifyLogin_(username, password) {
       status: 'success',
       name: name,
       role: 'teacher',
-      mustChangePassword: mustChangePassword
+      mustChangePassword: false
     };
   }
 

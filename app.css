@@ -2241,6 +2241,7 @@
       justify-content: center;
       gap: .35em;
     }
+    .ui-icon-button.hidden { display: none; }
     .ui-button-icon {
       display: inline-flex;
       flex: 0 0 auto;

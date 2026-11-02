@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwntHgx-H6pSexW8HFpN3vXSfZZtFflDGg7Cu1nA7qyqKQJTRIl9uN3jXTg4JG8Kn3B/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyM0c7rIUVP6iVXqOFx-kwDjSXHz87mkoymSwcaU8drRtmnqxM-SV3c4Ao5gqzPN3ly/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -406,6 +406,8 @@
     }
 
     let assistantTeachers = [], currentUserRole = null, currentUserName = '', trackerManagerName = '', trackerManagerLoaded = false;
+    let loginTeacherOptionsLoading = false;
+    let loginTeacherOptionsError = '';
     let teacherTrackerTasks = [];
     let teacherProgressReportTaskId = '';
     let studentsData = [], inactiveStudentsData = [];
@@ -1660,11 +1662,6 @@
     };
 
     function showPage(pageId) {
-      if (currentUserRole !== 'director'
-        && sessionStorage.getItem('TV_GLOBAL_MUST_CHANGE_PASSWORD') === 'true'
-        && pageId !== 'page-change-password') {
-        pageId = 'page-change-password';
-      }
       if (pageId === 'page-director-attendance' && currentUserRole !== 'director') {
         showToast('Chức năng điểm danh riêng chỉ dành cho giám đốc.', 'error');
         pageId = 'page-teacher-attendance';
@@ -3837,7 +3834,6 @@
 
       try {
         await apiCall('changePassword', { username: accountName, oldPassword: oldPwd, newPassword: newPwd });
-        sessionStorage.removeItem('TV_GLOBAL_MUST_CHANGE_PASSWORD');
         saveAllDataToLocalStorage();
         void refreshDataAfterMutation();
         showToast("Đã đổi mật khẩu và cập nhật lên Sheet thành công!");
@@ -3860,26 +3856,43 @@
       const desiredName = previousName || sessionName;
       select.innerHTML = assistantTeachers.length
         ? assistantTeachers.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')
-        : `<option value="">-- Chưa có trợ giảng --</option>`;
+        : `<option value="">${loginTeacherOptionsLoading ? 'Đang tải danh sách...' : loginTeacherOptionsError ? 'Không tải được danh sách' : '-- Chưa có trợ giảng --'}</option>`;
 
       if (desiredName && assistantTeachers.includes(desiredName)) {
         select.value = desiredName;
       }
+      const status = document.getElementById('login-teacher-status');
+      if (status) {
+        status.textContent = loginTeacherOptionsLoading
+          ? 'Đang kết nối để tải tài khoản trợ giảng...'
+          : loginTeacherOptionsError
+            ? `Không tải được danh sách: ${loginTeacherOptionsError}`
+            : assistantTeachers.length ? '' : 'Hiện chưa có tài khoản trợ giảng.';
+      }
+      const retryButton = document.getElementById('login-teacher-retry');
+      if (retryButton) retryButton.style.display = loginTeacherOptionsError ? 'inline-flex' : 'none';
+      const submitButton = document.getElementById('login-teacher-submit');
+      if (submitButton) submitButton.disabled = loginTeacherOptionsLoading || assistantTeachers.length === 0;
     }
 
     async function loadLoginTeacherOptions() {
+      loginTeacherOptionsLoading = true;
+      loginTeacherOptionsError = '';
+      initLoginTeacherList();
       try {
         const result = await apiCall('getLoginOptions');
         if (result?.status !== 'success' || !Array.isArray(result.teachers)) {
           throw new Error(result?.message || 'Không tải được danh sách tài khoản trợ giảng.');
         }
-        assistantTeachers = result.teachers;
-        initLoginTeacherList();
+        assistantTeachers = result.teachers
+          .map(name => String(name || '').trim())
+          .filter(Boolean);
       } catch (error) {
         console.error('Không tải được danh sách tài khoản đăng nhập:', error);
-        const message = document.getElementById('login-error-msg');
-        message.textContent = 'Không tải được danh sách tài khoản. Vui lòng kiểm tra kết nối rồi tải lại trang.';
-        message.classList.remove('hidden');
+        loginTeacherOptionsError = error.message || 'Lỗi kết nối không xác định.';
+      } finally {
+        loginTeacherOptionsLoading = false;
+        initLoginTeacherList();
       }
     }
 
@@ -3925,19 +3938,10 @@
         sessionStorage.setItem('TV_GLOBAL_TRACKER_TOKEN', identity.token);
         sessionStorage.setItem('TV_GLOBAL_ROLE', identity.role);
         sessionStorage.setItem('TV_GLOBAL_USER', identityName);
-        if (identity.mustChangePassword) {
-          sessionStorage.setItem('TV_GLOBAL_MUST_CHANGE_PASSWORD', 'true');
-        } else {
-          sessionStorage.removeItem('TV_GLOBAL_MUST_CHANGE_PASSWORD');
-        }
         teacherTrackerTasks = [];
         saveAllDataToLocalStorage();
         loginAs(identity.role, identityName);
-        if (identity.mustChangePassword) {
-          showToast('Mật khẩu khởi tạo cần được đổi trước khi tiếp tục.', 'error');
-        } else {
-          void fetchDataFromGoogleSheet();
-        }
+        void fetchDataFromGoogleSheet();
         if (!isDirector && teacherSelect) teacherSelect.value = identityName;
         pwdInput.value = '';
       } catch (error) {
@@ -4032,7 +4036,6 @@
         return;
       }
       if (role && name) {
-        if (role === 'director') sessionStorage.removeItem('TV_GLOBAL_MUST_CHANGE_PASSWORD');
         loginAs(role, name, true);
       }
     }
@@ -4066,8 +4069,7 @@
       initLoginTeacherList();
       updateAllViews();
       restoreSession();
-      if (currentUserRole && (currentUserRole === 'director'
-        || sessionStorage.getItem('TV_GLOBAL_MUST_CHANGE_PASSWORD') !== 'true')) {
+      if (currentUserRole) {
         await fetchDataFromGoogleSheet();
       } else if (!currentUserRole) {
         await loadLoginTeacherOptions();
