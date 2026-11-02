@@ -19,6 +19,17 @@ const TAB = {
 };
 
 const DEFAULT_DIRECTOR_PASSWORD = '123456';
+const API_QUEUE_SHEET_NAME_ = 'ApiRequestQueue';
+const API_QUEUE_HEADERS_ = [
+  'Request ID', 'Status', 'Created At', 'Updated At', 'Owner Name',
+  'Owner Role', 'Action', 'Payload JSON', 'Result JSON', 'Error'
+];
+const API_QUEUE_RETENTION_MS_ = 7 * 24 * 60 * 60 * 1000;
+const API_QUEUE_CLEANUP_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
+const API_QUEUE_WORKER_LEASE_MS_ = 8 * 60 * 1000;
+const API_QUEUE_WORKER_BATCH_MS_ = 4 * 60 * 1000;
+const API_QUEUE_MAX_PAYLOAD_LENGTH_ = 45000;
+const API_QUEUE_WORKER_PROPERTY_ = 'API_QUEUE_WORKER_ACTIVE';
 
 function getSpreadsheet() {
   if (SPREADSHEET_ID && SPREADSHEET_ID.trim() !== '') {
@@ -393,6 +404,390 @@ const API_WRITE_ACTIONS_ = new Set([
   'addTeacher', 'deleteTeacher', 'initDatabase'
 ]);
 
+function apiQueueSheet_() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(API_QUEUE_SHEET_NAME_);
+  if (!sheet) {
+    sheet = ss.insertSheet(API_QUEUE_SHEET_NAME_);
+    sheet.getRange(1, 1, 1, API_QUEUE_HEADERS_.length).setValues([API_QUEUE_HEADERS_]);
+    sheet.setFrozenRows(1);
+    sheet.hideSheet();
+    return sheet;
+  }
+
+  const headers = sheet.getRange(1, 1, 1, API_QUEUE_HEADERS_.length)
+    .getValues()[0]
+    .map(value => String(value || '').trim());
+  if (API_QUEUE_HEADERS_.some((header, index) => headers[index] !== header)) {
+    throw new Error(`Cấu trúc sheet "${API_QUEUE_SHEET_NAME_}" không đúng.`);
+  }
+  return sheet;
+}
+
+function cleanupApiQueue_(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+
+  const cutoff = Date.now() - API_QUEUE_RETENTION_MS_;
+  const rows = sheet.getRange(2, 1, lastRow - 1, API_QUEUE_HEADERS_.length).getValues();
+  const expiredRows = [];
+  rows.forEach((row, index) => {
+    if (!['DONE', 'FAILED'].includes(String(row[1] || ''))) return;
+    const updatedAt = row[3] instanceof Date
+      ? row[3].getTime()
+      : Date.parse(String(row[3] || ''));
+    if (Number.isFinite(updatedAt) && updatedAt < cutoff) expiredRows.push(index + 2);
+  });
+  expiredRows.reverse().forEach(rowNumber => sheet.deleteRow(rowNumber));
+}
+
+function cleanupApiQueueIfDue_(sheet) {
+  const properties = PropertiesService.getScriptProperties();
+  const lastCleanup = Number(properties.getProperty('API_QUEUE_LAST_CLEANUP') || 0);
+  if (Date.now() - lastCleanup < API_QUEUE_CLEANUP_INTERVAL_MS_) return;
+  cleanupApiQueue_(sheet);
+  properties.setProperty('API_QUEUE_LAST_CLEANUP', String(Date.now()));
+}
+
+function deleteApiQueueWorkerTriggers_() {
+  ScriptApp.getProjectTriggers()
+    .filter(trigger => trigger.getHandlerFunction() === 'processQueuedApiRequests_')
+    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+}
+
+function ensureApiQueueWorkerTrigger_(delayMs) {
+  const triggerExists = ScriptApp.getProjectTriggers().some(trigger =>
+    trigger.getHandlerFunction() === 'processQueuedApiRequests_'
+  );
+  if (!triggerExists) {
+    ScriptApp.newTrigger('processQueuedApiRequests_')
+      .timeBased()
+      .after(delayMs || 1000)
+      .create();
+  }
+}
+
+function initializeApiQueue() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    apiQueueSheet_();
+    ensureApiQueueWorkerTrigger_(1000);
+  } finally {
+    lock.releaseLock();
+  }
+  return { status: 'success', message: 'Hàng đợi ghi dữ liệu đã sẵn sàng.' };
+}
+
+function queueApiAction_(payload, actor) {
+  const requestId = String(payload.queueRequestId || '');
+  if (!/^[a-zA-Z0-9_-]{1,100}$/.test(requestId)) {
+    throw new Error('Mã yêu cầu xử lý nền không hợp lệ.');
+  }
+
+  const queuedPayload = { ...payload };
+  delete queuedPayload.token;
+  delete queuedPayload.queueRequestId;
+  const payloadJson = JSON.stringify(queuedPayload);
+  if (payloadJson.length > API_QUEUE_MAX_PAYLOAD_LENGTH_) return null;
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheet = apiQueueSheet_();
+    cleanupApiQueueIfDue_(sheet);
+    const lastRow = sheet.getLastRow();
+    if (lastRow >= 2) {
+      const existingCell = sheet.getRange(2, 1, lastRow - 1, 1)
+        .createTextFinder(requestId)
+        .matchEntireCell(true)
+        .findNext();
+      if (existingCell) {
+        const existing = sheet.getRange(existingCell.getRow(), 1, 1, API_QUEUE_HEADERS_.length)
+          .getValues()[0];
+        if (String(existing[4]) !== actor.name
+          || String(existing[5]) !== actor.role
+          || String(existing[6]) !== payload.action
+          || String(existing[7]) !== payloadJson) {
+          throw new Error('Mã yêu cầu đã được sử dụng cho thao tác khác.');
+        }
+        return { status: 'queued', requestId: requestId, duplicate: true };
+      }
+    }
+
+    const now = new Date();
+    sheet.appendRow([
+      requestId, 'QUEUED', now, now, actor.name, actor.role,
+      payload.action, payloadJson, '', ''
+    ]);
+    try {
+      ensureApiQueueWorkerTrigger_();
+    } catch (error) {
+      const rowNumber = sheet.getLastRow();
+      sheet.getRange(rowNumber, 2, 1, 9).setValues([[
+        'FAILED', now, new Date(), actor.name, actor.role, payload.action,
+        payloadJson, '', `Không khởi chạy được tiến trình nền: ${error.message || error}`
+      ]]);
+      throw new Error(`Không thể xếp hàng thao tác: ${error.message || error}`);
+    }
+    return { status: 'queued', requestId: requestId };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function apiQueueActor_(name, role) {
+  if (role === 'director') {
+    return { name: 'Giám Đốc', role: 'director', mustChangePassword: false };
+  }
+
+  const teacherName = String(name || '').trim();
+  if (!teacherName || !findRowByTeacherName(requireSheet_(TAB.TEACHERS), teacherName)) {
+    throw new Error('Tài khoản trợ giảng không còn tồn tại.');
+  }
+  const configValues = requireSheet_(TAB.CONFIG).getDataRange().getValues();
+  const manager = configValues.slice(1).find(row =>
+    String(row[0] || '').trim() === 'trackerManager'
+    && String(row[1] || '').trim() === teacherName
+  );
+  return {
+    name: teacherName,
+    role: manager ? 'manager' : 'teacher',
+    mustChangePassword: false
+  };
+}
+
+function findApiQueueRequestRow_(sheet, requestId) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  const cell = sheet.getRange(2, 1, lastRow - 1, 1)
+    .createTextFinder(String(requestId))
+    .matchEntireCell(true)
+    .findNext();
+  return cell ? cell.getRow() : null;
+}
+
+function processQueuedApiRequests_() {
+  const lock = LockService.getScriptLock();
+  const properties = PropertiesService.getScriptProperties();
+  const workerId = Utilities.getUuid();
+  lock.waitLock(30000);
+  try {
+    deleteApiQueueWorkerTriggers_();
+
+    const activeWorkerJson = properties.getProperty(API_QUEUE_WORKER_PROPERTY_);
+    if (activeWorkerJson) {
+      let activeWorker;
+      try {
+        activeWorker = JSON.parse(activeWorkerJson);
+      } catch (error) {
+        activeWorker = null;
+      }
+      if (activeWorker && Date.now() - Number(activeWorker.startedAt) < API_QUEUE_WORKER_LEASE_MS_) {
+        const remainingLease = API_QUEUE_WORKER_LEASE_MS_
+          - (Date.now() - Number(activeWorker.startedAt)) + 1000;
+        ensureApiQueueWorkerTrigger_(Math.max(1000, remainingLease));
+        return;
+      }
+      const staleSheet = getSpreadsheet().getSheetByName(API_QUEUE_SHEET_NAME_);
+      if (staleSheet && staleSheet.getLastRow() >= 2) {
+        const rows = staleSheet.getRange(
+          2, 1, staleSheet.getLastRow() - 1, API_QUEUE_HEADERS_.length
+        ).getValues();
+        rows.forEach((row, index) => {
+          if (String(row[1]) !== 'RUNNING') return;
+          staleSheet.getRange(index + 2, 2, 1, 9).setValues([[
+            'FAILED', row[2], new Date(), row[4], row[5],
+            row[6], row[7], '', 'Tiến trình xử lý nền đã dừng trước khi hoàn tất.'
+          ]]);
+        });
+      }
+      properties.deleteProperty(API_QUEUE_WORKER_PROPERTY_);
+    }
+    ensureApiQueueWorkerTrigger_(API_QUEUE_WORKER_LEASE_MS_ + 1000);
+    properties.setProperty(API_QUEUE_WORKER_PROPERTY_, JSON.stringify({
+      id: workerId,
+      startedAt: Date.now()
+    }));
+  } finally {
+    lock.releaseLock();
+  }
+
+  const deadline = Date.now() + API_QUEUE_WORKER_BATCH_MS_;
+  try {
+    while (Date.now() < deadline) {
+      let sheet;
+      let rowNumber = null;
+      let row = null;
+      lock.waitLock(30000);
+      try {
+        const activeWorker = JSON.parse(
+          properties.getProperty(API_QUEUE_WORKER_PROPERTY_) || '{}'
+        );
+        if (activeWorker.id !== workerId) return;
+
+        sheet = apiQueueSheet_();
+        const lastRow = sheet.getLastRow();
+        if (lastRow >= 2) {
+          const rows = sheet.getRange(2, 1, lastRow - 1, API_QUEUE_HEADERS_.length).getValues();
+          const queuedIndex = rows.findIndex(item => String(item[1]) === 'QUEUED');
+          if (queuedIndex !== -1) {
+            rowNumber = queuedIndex + 2;
+            row = rows[queuedIndex];
+            sheet.getRange(rowNumber, 2, 1, 9).setValues([[
+              'RUNNING', row[2], new Date(), row[4], row[5],
+              row[6], row[7], row[8], row[9]
+            ]]);
+          }
+        }
+        if (rowNumber === null) {
+          properties.deleteProperty(API_QUEUE_WORKER_PROPERTY_);
+          return;
+        }
+      } finally {
+        lock.releaseLock();
+      }
+
+      let resultJson = '';
+      let errorMessage = '';
+      try {
+        const action = String(row[6] || '');
+        const payload = JSON.parse(String(row[7] || '{}'));
+        const actor = apiQueueActor_(row[4], row[5]);
+        payload.token = issueTrackerSession_(actor);
+        if (!action.startsWith('tracker')) authorizeLegacyApiAction_(actor, action, payload);
+        const result = dispatchApiAction_(payload, actor);
+        if (!result || result.status === 'error') {
+          throw new Error(result?.message || 'Apps Script không xác nhận thao tác.');
+        }
+        resultJson = JSON.stringify(result);
+      } catch (error) {
+        errorMessage = String(error?.message || error);
+      }
+
+      lock.waitLock(30000);
+      try {
+        const activeWorker = JSON.parse(
+          properties.getProperty(API_QUEUE_WORKER_PROPERTY_) || '{}'
+        );
+        if (activeWorker.id !== workerId) return;
+        sheet.getRange(rowNumber, 2, 1, 9).setValues([[
+          errorMessage ? 'FAILED' : 'DONE', row[2], new Date(), row[4], row[5],
+          row[6], row[7], resultJson, errorMessage
+        ]]);
+      } finally {
+        lock.releaseLock();
+      }
+    }
+  } finally {
+    lock.waitLock(30000);
+    try {
+      const activeWorker = JSON.parse(
+        properties.getProperty(API_QUEUE_WORKER_PROPERTY_) || '{}'
+      );
+      if (activeWorker.id === workerId) {
+        properties.deleteProperty(API_QUEUE_WORKER_PROPERTY_);
+        deleteApiQueueWorkerTriggers_();
+        const sheet = getSpreadsheet().getSheetByName(API_QUEUE_SHEET_NAME_);
+        if (sheet && sheet.getLastRow() >= 2) {
+          const states = sheet.getRange(2, 2, sheet.getLastRow() - 1, 1).getValues();
+          if (states.some(state => String(state[0]) === 'QUEUED')) {
+            ensureApiQueueWorkerTrigger_();
+          }
+        }
+      }
+    } finally {
+      lock.releaseLock();
+    }
+  }
+}
+
+function trackerQueueStatus_(token, requestId) {
+  const actor = trackerActor_(token);
+  const sheet = getSpreadsheet().getSheetByName(API_QUEUE_SHEET_NAME_);
+  if (!sheet) return requestId
+    ? { status: 'error', message: 'Không tìm thấy yêu cầu xử lý nền.' }
+    : { status: 'success', requests: [] };
+
+  const formatRow = row => ({
+    requestId: String(row[0] || ''),
+    state: String(row[1] || ''),
+    action: String(row[6] || ''),
+    createdAt: row[2] instanceof Date ? row[2].toISOString() : String(row[2] || ''),
+    updatedAt: row[3] instanceof Date ? row[3].toISOString() : String(row[3] || ''),
+    error: String(row[9] || '')
+  });
+  if (requestId) {
+    const rowNumber = findApiQueueRequestRow_(sheet, requestId);
+    if (!rowNumber) return { status: 'error', message: 'Không tìm thấy yêu cầu xử lý nền.' };
+    const row = sheet.getRange(rowNumber, 1, 1, API_QUEUE_HEADERS_.length).getValues()[0];
+    const ownerRoleMatches = actor.role === 'director'
+      ? String(row[5]) === 'director'
+      : ['teacher', 'manager'].includes(String(row[5]));
+    if (String(row[4]) !== actor.name || !ownerRoleMatches) {
+      return { status: 'error', message: 'Không tìm thấy yêu cầu xử lý nền.' };
+    }
+    const request = formatRow(row);
+    if (request.state === 'DONE') {
+      try {
+        request.result = JSON.parse(String(row[8] || 'null'));
+      } catch (error) {
+        throw new Error('Không đọc được kết quả request đã xử lý.');
+      }
+    }
+    return { status: 'success', request: request };
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: 'success', requests: [] };
+  const requests = sheet.getRange(2, 1, lastRow - 1, API_QUEUE_HEADERS_.length).getValues()
+    .filter(row => String(row[4]) === actor.name
+      && (actor.role === 'director'
+        ? String(row[5]) === 'director'
+        : ['teacher', 'manager'].includes(String(row[5]))))
+    .slice(-20)
+    .map(formatRow);
+  return { status: 'success', requests: requests };
+}
+
+function acquireApiWriteLock_() {
+  const lock = LockService.getScriptLock();
+  const deadline = Date.now() + 10 * 60 * 1000;
+  while (Date.now() < deadline) {
+    lock.waitLock(30000);
+    let keepLock = false;
+    try {
+      const properties = PropertiesService.getScriptProperties();
+      const activeWorker = properties.getProperty(API_QUEUE_WORKER_PROPERTY_);
+      const ss = getSpreadsheet();
+      const sheet = ss.getSheetByName
+        ? ss.getSheetByName(API_QUEUE_SHEET_NAME_)
+        : null;
+      const hasQueuedRequests = sheet && sheet.getLastRow() >= 2
+        && sheet.getRange(2, 2, sheet.getLastRow() - 1, 1)
+          .getValues()
+          .some(row => String(row[0]) === 'QUEUED' || String(row[0]) === 'RUNNING');
+      if (!activeWorker && !hasQueuedRequests) {
+        keepLock = true;
+        return lock;
+      }
+    } finally {
+      if (!keepLock) lock.releaseLock();
+    }
+    Utilities.sleep(250);
+  }
+  throw new Error('Hàng đợi đang bận quá lâu. Vui lòng thử lại sau.');
+}
+
+function dispatchApiWriteWithLock_(payload, actor) {
+  const lock = acquireApiWriteLock_();
+  try {
+    return dispatchApiAction_(payload, actor);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function handleApiAction(payload) {
   const action = payload && payload.action;
   if (!action) throw new Error('Thiếu action API.');
@@ -402,8 +797,7 @@ function handleApiAction(payload) {
   }
 
   if (action === 'verifyLogin') {
-    const lock = LockService.getScriptLock();
-    lock.waitLock(30000);
+    const lock = acquireApiWriteLock_();
     try {
       return dispatchApiAction_(payload);
     } finally {
@@ -423,13 +817,11 @@ function handleApiAction(payload) {
 
   if (!API_WRITE_ACTIONS_.has(action)) return dispatchApiAction_(payload);
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    return dispatchApiAction_(payload, actor);
-  } finally {
-    lock.releaseLock();
+  if (payload.queueRequestId) {
+    const queued = queueApiAction_(payload, actor);
+    if (queued) return queued;
   }
+  return dispatchApiWriteWithLock_(payload, actor);
 }
 
 function authorizeLegacyApiAction_(actor, action, payload) {
@@ -486,6 +878,8 @@ function dispatchApiAction_(payload, actor) {
       };
     case 'trackerBootstrap':
       return trackerBootstrap_(payload.token);
+    case 'trackerQueueStatus':
+      return trackerQueueStatus_(payload.token, payload.requestId);
     case 'trackerSetManager':
       return trackerSetManager_(payload.token, payload.manager);
     case 'trackerCreateTask':
@@ -627,6 +1021,7 @@ const PASSWORD_HASH_PREFIX_ = 'TVG-HMAC-SHA256$10000$';
 const PASSWORD_HASH_ITERATIONS_ = 10000;
 const LOGIN_ATTEMPT_LIMIT_ = 10;
 const LOGIN_ATTEMPT_TTL_SECONDS_ = 600;
+const LOGIN_PASSWORD_CACHE_TTL_SECONDS_ = 21600;
 
 function loginAttemptCacheKey_(username) {
   const normalized = String(username || '').trim().toLowerCase()
@@ -672,6 +1067,31 @@ function verifyPassword_(password, storedValue) {
   return mismatch === 0;
 }
 
+function loginPasswordCacheKey_(username, password, storedValue) {
+  const stored = String(storedValue || '');
+  if (!isPasswordHash_(stored)) return '';
+  const parts = stored.slice(PASSWORD_HASH_PREFIX_.length).split('$');
+  if (parts.length !== 2 || !/^[a-f0-9]{32}$/i.test(parts[0])) return '';
+  const fingerprint = Utilities.computeHmacSha256Signature(String(password), parts[0])
+    .map(byte => (Number(byte) & 255).toString(16).padStart(2, '0'))
+    .join('');
+  const storedDigest = parts[1].replace(/[^a-zA-Z0-9]/g, '');
+  return `LOGIN_OK_${loginAttemptCacheKey_(username)}_${parts[0]}_${storedDigest}_${fingerprint}`;
+}
+
+function verifyLoginPassword_(username, password, storedValue, cache) {
+  const cacheKey = loginPasswordCacheKey_(username, password, storedValue);
+  if (cacheKey && cache.get(cacheKey) === '1') return true;
+  if (!verifyPassword_(password, storedValue)) return false;
+  if (cacheKey) cache.put(cacheKey, '1', LOGIN_PASSWORD_CACHE_TTL_SECONDS_);
+  return true;
+}
+
+function cacheVerifiedLoginPassword_(username, password, storedValue, cache) {
+  const cacheKey = loginPasswordCacheKey_(username, password, storedValue);
+  if (cacheKey) cache.put(cacheKey, '1', LOGIN_PASSWORD_CACHE_TTL_SECONDS_);
+}
+
 function verifyLogin_(username, password) {
   const name = String(username || '').trim();
   const secret = String(password ?? '').trim();
@@ -694,7 +1114,7 @@ function verifyLogin_(username, password) {
       ? ''
       : String(values[passwordRow][1] || '').trim();
     const storedPassword = configuredValue || DEFAULT_DIRECTOR_PASSWORD;
-    if (!verifyPassword_(secret, storedPassword)) {
+    if (!verifyLoginPassword_(name, secret, storedPassword, cache)) {
       recordLoginFailure_(cache, attemptKey);
       return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
     }
@@ -702,6 +1122,7 @@ function verifyLogin_(username, password) {
       const nextHash = hashPassword_(secret);
       if (passwordRow === -1) sheet.appendRow(['directorPassword', nextHash]);
       else sheet.getRange(passwordRow + 1, 2).setValue(nextHash);
+      cacheVerifiedLoginPassword_(name, secret, nextHash, cache);
     }
     identity = {
       status: 'success',
@@ -720,12 +1141,14 @@ function verifyLogin_(username, password) {
     const rawStoredPassword = teacherSheet.getRange(row, 2).getDisplayValue();
     const storedPassword = String(rawStoredPassword ?? '').trim();
     const validPassword = storedPassword || DEFAULT_DIRECTOR_PASSWORD;
-    if (!verifyPassword_(secret, validPassword)) {
+    if (!verifyLoginPassword_(name, secret, validPassword, cache)) {
       recordLoginFailure_(cache, attemptKey);
       return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
     }
     if (!isPasswordHash_(validPassword)) {
-      teacherSheet.getRange(row, 2).setValue(hashPassword_(secret));
+      const nextHash = hashPassword_(secret);
+      teacherSheet.getRange(row, 2).setValue(nextHash);
+      cacheVerifiedLoginPassword_(name, secret, nextHash, cache);
     }
     identity = {
       status: 'success',
@@ -897,11 +1320,10 @@ function trackerBootstrap_(token) {
   const teachers = readTeachers(requireSheet_(TAB.TEACHERS))
     .map(teacher => teacher.name);
   const taskSheet = requireSheet_(TAB.TRACKER_TASKS);
-  trackerEnsureOutputColumn_(taskSheet);
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  const lock = acquireApiWriteLock_();
   let allTasks;
   try {
+    trackerEnsureOutputColumn_(taskSheet);
     allTasks = trackerTaskRecords_();
     allTasks.forEach(task => {
       if (!trackerIsPersonalTask_(task)

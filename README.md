@@ -96,7 +96,7 @@ Mặc định API chạy tại `http://127.0.0.1:3002`; kiểm tra máy chủ b�
 
 `server.js` không phục vụ các trang HTML; cần giữ máy chủ tĩnh ở bước trên. Đây chỉ là proxy phát triển, không phải backend production; không đổi bind address ra Internet.
 
-Khi có nhiều người dùng trên các thiết bị khác nhau, mỗi trình duyệt vẫn kết nối cùng deployment Apps Script/Google Sheets. Apps Script tuần tự hóa các thao tác ghi để tránh hai yêu cầu cùng ghi đè một lúc; không cần bật API Node trên máy người dùng. Dữ liệu học viên chỉ được tải sau đăng nhập và không còn lưu vào `localStorage`; ứng dụng cần kết nối mạng để tải dữ liệu.
+Khi có nhiều người dùng trên các thiết bị khác nhau, mỗi trình duyệt vẫn kết nối cùng deployment Apps Script/Google Sheets. Các thao tác ghi từ giao diện được đưa vào hàng đợi Apps Script và worker xử lý lần lượt; không cần bật API Node trên máy người dùng. Dữ liệu học viên chỉ được tải sau đăng nhập và không còn lưu vào `localStorage`; ứng dụng cần kết nối mạng để tải dữ liệu.
 
 ## Cấu hình Google Sheets và Apps Script
 
@@ -108,11 +108,12 @@ Khi có nhiều người dùng trên các thiết bị khác nhau, mỗi trình 
 2. Tạo/mở một Apps Script project gắn với Spreadsheet hoặc dùng Spreadsheet ID riêng.
 3. Dán nội dung `tracker-backend.gs.txt` vào Apps Script; cập nhật `SPREADSHEET_ID` nếu cần.
 4. Chạy hàm `initDatabase` một lần trong trình chỉnh sửa Apps Script và cấp quyền được yêu cầu. Hàm tạo các sheet còn thiếu, không xoá dữ liệu hiện có.
-5. Triển khai Apps Script dưới dạng **Web app**, chọn **Execute as: Me**. Chọn phạm vi người dùng có thể truy cập phù hợp với chính sách dữ liệu của tổ chức.
-6. Sao chép URL `/exec` của deployment vào cấu hình trong `app.js`, `executive-tracker.html` và `server.js` nếu URL đã thay đổi.
-7. Tạo tài khoản trợ giảng trong sheet `TroGiang`, cập nhật cấu hình trong `CauHinh`, rồi kiểm thử đăng nhập và đọc/ghi dữ liệu.
-8. Khi cập nhật mã Apps Script đã triển khai, vào **Deploy → Manage deployments → Edit → New version**. Giữ URL deployment hiện tại nếu có thể; nếu URL đổi, cập nhật lại các cấu hình ở bước 6.
-9. Sau khi triển khai, đăng nhập bằng mật khẩu đang dùng. Mật khẩu dạng văn bản cũ được chuyển thành hash có salt khi đăng nhập thành công. Nếu tài khoản chưa có mật khẩu riêng hoặc vẫn dùng `123456`, ứng dụng bắt buộc đổi sang mật khẩu từ 12 đến 128 ký tự trước khi dùng tiếp. Mật khẩu mới và mật khẩu tài khoản trợ giảng được lưu dạng hash, không xóa/ghi đè dữ liệu tài khoản khi nâng cấp backend.
+5. Chạy hàm `initializeApiQueue` một lần để tạo sheet hàng đợi ẩn và cấp quyền tạo trigger xử lý nền.
+6. Triển khai Apps Script dưới dạng **Web app**, chọn **Execute as: Me**. Chọn phạm vi người dùng có thể truy cập phù hợp với chính sách dữ liệu của tổ chức.
+7. Sao chép URL `/exec` của deployment vào cấu hình trong `app.js`, `executive-tracker.html` và `server.js` nếu URL đã thay đổi.
+8. Tạo tài khoản trợ giảng trong sheet `TroGiang`, cập nhật cấu hình trong `CauHinh`, rồi kiểm thử đăng nhập và đọc/ghi dữ liệu.
+9. Khi cập nhật mã Apps Script đã triển khai, vào **Deploy → Manage deployments → Edit → New version**. Giữ URL deployment hiện tại nếu có thể; nếu URL đổi, cập nhật lại các cấu hình ở bước 7.
+10. Sau khi triển khai, đăng nhập bằng mật khẩu đang dùng. Mật khẩu dạng văn bản cũ được chuyển thành hash có salt khi đăng nhập thành công. Nếu tài khoản chưa có mật khẩu riêng hoặc vẫn dùng `123456`, ứng dụng bắt buộc đổi sang mật khẩu từ 12 đến 128 ký tự trước khi dùng tiếp. Mật khẩu mới và mật khẩu tài khoản trợ giảng được lưu dạng hash, không xóa/ghi đè dữ liệu tài khoản khi nâng cấp backend.
 
 ### Các sheet được khởi tạo
 
@@ -164,7 +165,7 @@ Tracker sử dụng cùng Google Apps Script và Spreadsheet với ứng dụng 
 
 ### Cập nhật tức thời và đồng bộ
 
-Một số thao tác Tracker cập nhật giao diện ngay để giảm cảm giác chờ, đồng thời gửi yêu cầu lưu lên Apps Script. Khi lưu lỗi, giao diện hoàn tác thay đổi và thông báo lỗi. Đây không phải hàng đợi ghi offline: nếu mất mạng, thao tác chưa được xác nhận là đã lưu.
+Các thao tác ghi được xếp vào sheet ẩn `ApiRequestQueue` và xử lý tuần tự bằng time trigger để giảm xung đột khi nhiều người cùng cập nhật. Giao diện theo dõi trạng thái nền và chỉ đồng bộ lại dữ liệu sau khi Apps Script xác nhận hoàn tất; nếu lưu lỗi, lỗi được trả về để giao diện thông báo. Hàng đợi này không hỗ trợ ghi offline: cần giữ kết nối mạng cho tới khi thao tác được xác nhận.
 
 ### Cập nhật Apps Script cho Tracker
 
@@ -225,6 +226,6 @@ Kiểm tra cú pháp không thay thế cho việc thử đăng nhập và thao t
 - `initDatabase` kiểm tra header sheet hiện hữu và dừng rõ ràng nếu sai cấu trúc. Chuyển/khôi phục học viên có rollback bù khi một bước ghi thất bại; vẫn cần sao lưu Spreadsheet trước migration hoặc chỉnh sửa cấu trúc.
 - Deployment Apps Script chạy với quyền tài khoản triển khai có thể đọc/ghi Spreadsheet và Drive. Chỉ triển khai trong phạm vi người dùng phù hợp với mức độ nhạy cảm của dữ liệu; không xem URL deployment như cơ chế xác thực.
 - `server.js` chỉ bind `127.0.0.1`, CORS có allowlist phát triển và các endpoint upload/xóa ảnh cũ đã được gỡ. Không đưa server này lên Internet.
-- Tối ưu Tracker hiện làm giao diện phản hồi nhanh hơn nhưng không giảm độ trễ xử lý của chính Google Apps Script/Google Sheets. Không thực hiện thao tác ghi khi offline và không đảm bảo lưu thành công cho tới khi nhận được phản hồi xác nhận.
+- Hàng đợi tuần tự giảm xung đột giữa các thao tác ghi nhưng không loại bỏ độ trễ của Google Apps Script/Google Sheets; giao diện chỉ báo lưu thành công sau khi nhận kết quả từ worker. Không thực hiện thao tác ghi khi offline.
 
 Nếu ứng dụng cần dùng với dữ liệu cá nhân thật trên diện rộng, cần rà soát quyền triển khai và chính sách truy cập Spreadsheet/Drive; đặc biệt thay cơ chế avatar chia sẻ bằng liên kết bằng kho lưu trữ ảnh riêng tư.

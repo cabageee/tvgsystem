@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwMfY7z4iJCecBvGgpuPJyMp8WuvTXJ-OEUg7lifzVl7FlncD-qlNunX7KlYWBXXuhF/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxREzwNTQnLFGGhk3KPUlXi5Ho1_jx-B5naYdleFRn96xZKPkJeattSIMqJ2gAvxeWU/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -426,6 +426,17 @@
     const NOTIFICATION_HISTORY_LIMIT = 30;
     const attendanceSavingStudentIds = new Set();
     const inFlightApiCalls = new Map();
+    const API_QUEUED_WRITE_ACTIONS = new Set([
+      'trackerSetManager', 'trackerCreateTask', 'trackerUpdateTask',
+      'trackerAcceptTask', 'trackerRequestCompletion', 'trackerCompletePersonalTask',
+      'trackerReviewTask', 'trackerDeleteTask', 'trackerClearArchivedMonth',
+      'trackerSaveNote', 'trackerReportProgress', 'trackerSubmitSchedule',
+      'trackerReviewSchedule', 'updateFeeStatus', 'processPayment', 'addLevel',
+      'deleteLevel', 'changePassword', 'addStudent', 'updateAttendance',
+      'updateAssistants', 'update_assistants', 'updateLevel', 'update_level',
+      'updateStudentInfo', 'moveToInactive', 'restoreStudent', 'saveMasterData',
+      'addTeacher', 'deleteTeacher', 'initDatabase'
+    ]);
     let localProxyUnavailableUntil = 0;
     let dataRefreshPromise = null;
     let dataRefreshVersion = 0;
@@ -655,6 +666,9 @@
       const key = JSON.stringify([request, sessionToken]);
       if (inFlightApiCalls.has(key)) return inFlightApiCalls.get(key);
 
+      if (API_QUEUED_WRITE_ACTIONS.has(action)) {
+        request.queueRequestId = `api_${Date.now()}_${Math.random().toString(36).slice(2, 14)}`;
+      }
       const pending = performApiCall(request).finally(() => {
         if (inFlightApiCalls.get(key) === pending) inFlightApiCalls.delete(key);
       });
@@ -663,6 +677,45 @@
     }
 
     async function performApiCall(request) {
+      const result = await performApiRequest(request);
+      if (result?.status !== 'queued') return result;
+      if (!result.requestId) {
+        throw new Error(`Apps Script không trả mã yêu cầu cho thao tác "${request.action}".`);
+      }
+      return waitForQueuedApiCall(result.requestId, request.action);
+    }
+
+    async function waitForQueuedApiCall(requestId, action) {
+      const token = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') || '';
+      const startedAt = Date.now();
+      let delay = 400;
+      while (Date.now() - startedAt < 10 * 60 * 1000) {
+        if (sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') !== token) {
+          throw new Error(`Đã đổi phiên đăng nhập khi thao tác "${action}" đang chờ xử lý.`);
+        }
+
+        const response = await apiCall('trackerQueueStatus', { requestId, token });
+        if (!response || response.status !== 'success') {
+          throw new Error(response?.message || `Không đọc được trạng thái thao tác "${action}".`);
+        }
+        const queuedRequest = response.request;
+        if (queuedRequest?.state === 'DONE') return queuedRequest.result;
+        if (queuedRequest?.state === 'FAILED') {
+          throw new Error(queuedRequest.error || `Thao tác "${action}" thất bại trong hàng đợi.`);
+        }
+        if (!['QUEUED', 'RUNNING'].includes(queuedRequest?.state)) {
+          throw new Error(`Trạng thái xử lý thao tác "${action}" không hợp lệ.`);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay = Math.min(1500, Math.round(delay * 1.35));
+      }
+      throw new Error(
+        `Thao tác "${action}" vẫn chưa hoàn tất sau 10 phút. Mã yêu cầu: ${requestId}.`
+      );
+    }
+
+    async function performApiRequest(request) {
       const action = request.action;
       const token = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN');
       if (action !== 'verifyLogin' && action !== 'getLoginOptions') {
@@ -3872,10 +3925,23 @@
       const retryButton = document.getElementById('login-teacher-retry');
       if (retryButton) retryButton.style.display = loginTeacherOptionsError ? 'inline-flex' : 'none';
       const submitButton = document.getElementById('login-teacher-submit');
-      if (submitButton) submitButton.disabled = loginTeacherOptionsLoading || assistantTeachers.length === 0;
+      if (submitButton) submitButton.disabled = assistantTeachers.length === 0;
     }
 
     async function loadLoginTeacherOptions() {
+      const cachedTeachersKey = 'TV_GLOBAL_LOGIN_TEACHERS';
+      if (!assistantTeachers.length) {
+        try {
+          const cachedTeachers = JSON.parse(localStorage.getItem(cachedTeachersKey) || '[]');
+          if (Array.isArray(cachedTeachers)) {
+            assistantTeachers = cachedTeachers
+              .map(name => String(name || '').trim())
+              .filter(Boolean);
+          }
+        } catch (error) {
+          console.warn('Không đọc được danh sách trợ giảng đã lưu:', error);
+        }
+      }
       loginTeacherOptionsLoading = true;
       loginTeacherOptionsError = '';
       initLoginTeacherList();
@@ -3887,6 +3953,11 @@
         assistantTeachers = result.teachers
           .map(name => String(name || '').trim())
           .filter(Boolean);
+        try {
+          localStorage.setItem(cachedTeachersKey, JSON.stringify(assistantTeachers));
+        } catch (error) {
+          console.warn('Không lưu được danh sách trợ giảng để đăng nhập nhanh:', error);
+        }
       } catch (error) {
         console.error('Không tải được danh sách tài khoản đăng nhập:', error);
         loginTeacherOptionsError = error.message || 'Lỗi kết nối không xác định.';

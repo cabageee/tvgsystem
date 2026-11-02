@@ -20,7 +20,7 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(express.json({ limit: '100kb' }));
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwMfY7z4iJCecBvGgpuPJyMp8WuvTXJ-OEUg7lifzVl7FlncD-qlNunX7KlYWBXXuhF/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxREzwNTQnLFGGhk3KPUlXi5Ho1_jx-B5naYdleFRn96xZKPkJeattSIMqJ2gAvxeWU/exec';
 
 app.get('/api/health', (req, res) => res.json({ status: 'success', service: 'tvgsystem-api' }));
 

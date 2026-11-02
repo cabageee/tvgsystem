@@ -12,7 +12,9 @@ let lockDepth = 0;
 let maximumLockDepth = 0;
 let lockCount = 0;
 let lastHtml = '';
+let hmacCallCount = 0;
 const scriptCache = new Map();
+const scriptProperties = new Map();
 const writes = [];
 const taskSheet = {
   getRange(row, column, _numRows, numColumns) {
@@ -38,6 +40,7 @@ const context = {
   Utilities: {
     getUuid: () => '01234567-89ab-cdef-0123-456789abcdef',
     computeHmacSha256Signature(value, key) {
+      hmacCallCount++;
       assert.strictEqual(typeof value, 'string', 'HMAC iterations must pass the digest as a supported string input.');
       return Array.from(crypto.createHmac('sha256', key).update(value).digest());
     },
@@ -73,6 +76,15 @@ const context = {
       };
     }
   },
+  PropertiesService: {
+    getScriptProperties() {
+      return {
+        getProperty: key => scriptProperties.get(key) || null,
+        setProperty: (key, value) => scriptProperties.set(key, value),
+        deleteProperty: key => scriptProperties.delete(key)
+      };
+    }
+  },
   HtmlService: {
     createHtmlOutput(html) {
       lastHtml = html;
@@ -92,7 +104,10 @@ const context = {
       };
     }
   },
-  SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSpreadsheetTimeZone: () => 'GMT' }) },
+  SpreadsheetApp: {
+    getActiveSpreadsheet: () => ({ getSpreadsheetTimeZone: () => 'GMT' }),
+    openById: () => ({ getSpreadsheetTimeZone: () => 'GMT', getSheetByName: () => null })
+  },
   getSpreadsheet: () => ({ getSpreadsheetTimeZone: () => 'GMT' })
 };
 vm.createContext(context);
@@ -141,6 +156,16 @@ assert.strictEqual(
   context.verifyLogin_('director', 'new-secret').status,
   'success',
   'Migrated password hashes must continue to authenticate.'
+);
+const hmacCallsBeforeCachedLogin = hmacCallCount;
+assert.strictEqual(
+  context.verifyLogin_('director', 'new-secret').status,
+  'success',
+  'A recently verified password must continue to authenticate from the short-lived login cache.'
+);
+assert(
+  hmacCallCount - hmacCallsBeforeCachedLogin < 10,
+  'A cached valid login must avoid repeating the full password-hash iteration loop.'
 );
 directorStoredPassword = '';
 assert.strictEqual(
@@ -193,14 +218,14 @@ assert.throws(
   /hết hạn/,
   'Legacy write APIs must reject requests without an authenticated session.'
 );
-const originalDispatchApiAction = context.dispatchApiAction_;
+const queueOriginalDispatchApiAction = context.dispatchApiAction_;
 context.dispatchApiAction_ = () => ({ status: 'success' });
 assert.strictEqual(
   context.handleApiAction({ action: 'getData', token: 'forced-change' }).status,
   'success',
   'Existing teacher sessions must not be blocked by a stale password-change requirement.'
 );
-context.dispatchApiAction_ = originalDispatchApiAction;
+context.dispatchApiAction_ = queueOriginalDispatchApiAction;
 assert.throws(
   () => context.authorizeLegacyApiAction_(
     { name: 'An', role: 'teacher' },
@@ -389,6 +414,110 @@ task = {
 context.trackerActor_ = () => ({ name: actorName, role: 'teacher' });
 context.trackerIsPersonalTask_ = () => false;
 context.trackerEnsureOutputColumn_ = () => {};
+actorName = 'An';
+const originalQueueApiAction = context.queueApiAction_;
+context.queueApiAction_ = (payload, actor) => {
+  assert.strictEqual(payload.queueRequestId, 'queue-test-1');
+  assert.strictEqual(actor.name, 'An');
+  return { status: 'queued', requestId: payload.queueRequestId };
+};
+const queuedWrite = context.handleApiAction({
+  action: 'trackerRequestCompletion',
+  token: 'token',
+  queueRequestId: 'queue-test-1',
+  taskId: 'task-1',
+  note: 'Queued output'
+});
+assert.strictEqual(queuedWrite.status, 'queued', 'Queued writes must return their request ID immediately.');
+context.queueApiAction_ = originalQueueApiAction;
+const originalGetSpreadsheet = context.getSpreadsheet;
+const originalTrackerActor = context.trackerActor_;
+const originalDispatchApiAction = context.dispatchApiAction_;
+const originalScriptApp = context.ScriptApp;
+const queueRows = [];
+const queueSheet = {
+  getLastRow: () => queueRows.length,
+  getRange(row, column, numRows = 1, numColumns = 1) {
+    return {
+      getValues() {
+        return queueRows.slice(row - 1, row - 1 + numRows)
+          .map(values => values.slice(column - 1, column - 1 + numColumns));
+      },
+      setValues(values) {
+        values.forEach((value, index) => {
+          const targetRow = row - 1 + index;
+          while (queueRows.length <= targetRow) queueRows.push([]);
+          queueRows[targetRow].splice(column - 1, value.length, ...value);
+        });
+      },
+      createTextFinder(value) {
+        return {
+          matchEntireCell() { return this; },
+          findNext() {
+            const index = queueRows.findIndex(values => String(values[column - 1]) === value);
+            return index < 0 ? null : { getRow: () => index + 1 };
+          }
+        };
+      }
+    };
+  },
+  appendRow(row) { queueRows.push(row); },
+  setFrozenRows() {},
+  hideSheet() {},
+  deleteRow(row) { queueRows.splice(row - 1, 1); }
+};
+context.getSpreadsheet = () => ({
+  getSheetByName: name => name === 'ApiRequestQueue' && queueRows.length ? queueSheet : null,
+  insertSheet: () => queueSheet
+});
+context.trackerActor_ = () => ({ name: 'Giám Đốc', role: 'director' });
+const processedQueueNotes = [];
+context.dispatchApiAction_ = payload => {
+  processedQueueNotes.push(payload.note);
+  return { status: 'success', note: payload.note };
+};
+let queueTriggers = [];
+context.ScriptApp = {
+  getProjectTriggers: () => queueTriggers.slice(),
+  deleteTrigger: trigger => { queueTriggers = queueTriggers.filter(item => item !== trigger); },
+  newTrigger(handler) {
+    return {
+      timeBased() { return this; },
+      after() { return this; },
+      create() {
+        const trigger = { getHandlerFunction: () => handler };
+        queueTriggers.push(trigger);
+        return trigger;
+      }
+    };
+  }
+};
+const queuedFirst = context.handleApiAction({
+  action: 'trackerSaveNote',
+  token: 'director-token',
+  queueRequestId: 'queue-worker-1',
+  taskId: 'task-1',
+  note: 'First'
+});
+const queuedSecond = context.handleApiAction({
+  action: 'trackerSaveNote',
+  token: 'director-token',
+  queueRequestId: 'queue-worker-2',
+  taskId: 'task-1',
+  note: 'Second'
+});
+assert.strictEqual(queuedFirst.status, 'queued');
+assert.strictEqual(queuedSecond.status, 'queued');
+context.processQueuedApiRequests_();
+assert.deepStrictEqual(processedQueueNotes, ['First', 'Second'], 'The queue worker must process writes in order.');
+context.trackerActor_ = () => ({ name: 'Giám Đốc', role: 'director' });
+const completedQueueStatus = context.trackerQueueStatus_('director-token', 'queue-worker-2');
+assert.strictEqual(completedQueueStatus.request.state, 'DONE');
+assert.strictEqual(completedQueueStatus.request.result.note, 'Second');
+context.getSpreadsheet = originalGetSpreadsheet;
+context.trackerActor_ = originalTrackerActor;
+context.dispatchApiAction_ = originalDispatchApiAction;
+context.ScriptApp = originalScriptApp;
 lockDepth = 0;
 maximumLockDepth = 0;
 lockCount = 0;
@@ -417,6 +546,11 @@ const localServer = fs.readFileSync('server.js', 'utf8');
 assert(
   frontend.includes("retryButton.style.display = loginTeacherOptionsError ? 'inline-flex' : 'none'"),
   'The retry button must stay hidden after successful loading even when UI icon styles are applied.'
+);
+assert(
+  frontend.includes("const cachedTeachersKey = 'TV_GLOBAL_LOGIN_TEACHERS'")
+    && frontend.includes('submitButton.disabled = assistantTeachers.length === 0'),
+  'Cached teacher names must keep the login selector usable while the server refreshes in the background.'
 );
 assert.match(
   backend,
