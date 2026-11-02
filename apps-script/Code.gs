@@ -30,6 +30,7 @@ const API_QUEUE_WORKER_LEASE_MS_ = 8 * 60 * 1000;
 const API_QUEUE_WORKER_BATCH_MS_ = 4 * 60 * 1000;
 const API_QUEUE_MAX_PAYLOAD_LENGTH_ = 45000;
 const API_QUEUE_WORKER_PROPERTY_ = 'API_QUEUE_WORKER_ACTIVE';
+const TRACKER_WEEKLY_MAINTENANCE_PROPERTY_ = 'TRACKER_LAST_WEEKLY_MAINTENANCE';
 
 function getSpreadsheet() {
   if (SPREADSHEET_ID && SPREADSHEET_ID.trim() !== '') {
@@ -146,6 +147,19 @@ function apiPostMessageResponse_(requestId, result) {
   return HtmlService.createHtmlOutput(
     `<!doctype html><html><body><script>window.parent.postMessage(${message}, '*');</script></body></html>`
   ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function trackerSessionPropertyKey_(token) {
+  const value = String(token || '');
+  if (!/^[a-f0-9]{64}$/i.test(value)) return '';
+  return 'TRACKER_SESSION_' + value;
+}
+
+function revokeTrackerSession_(token) {
+  const cache = CacheService.getScriptCache();
+  cache.remove('tracker:' + String(token || ''));
+  const propertyKey = trackerSessionPropertyKey_(token);
+  if (propertyKey) PropertiesService.getScriptProperties().deleteProperty(propertyKey);
 }
 
 function getAvatarUploadStatus_(requestId) {
@@ -825,11 +839,11 @@ function handleApiAction(payload) {
     }
   }
 
-  const actor = trackerActor_(payload.token);
   if (action === 'logout') {
-    CacheService.getScriptCache().remove('tracker:' + String(payload.token));
+    revokeTrackerSession_(payload.token);
     return { status: 'success' };
   }
+  const actor = trackerActor_(payload.token);
 
   if (!action.startsWith('tracker')) {
     authorizeLegacyApiAction_(actor, action, payload);
@@ -837,10 +851,6 @@ function handleApiAction(payload) {
 
   if (!API_WRITE_ACTIONS_.has(action)) return dispatchApiAction_(payload);
 
-  if (payload.queueRequestId) {
-    const queued = queueApiAction_(payload, actor);
-    if (queued) return queued;
-  }
   return dispatchApiWriteWithLock_(payload, actor);
 }
 
@@ -889,7 +899,7 @@ function dispatchApiAction_(payload, actor) {
     case 'verifyLogin':
       return verifyLogin_(payload.username, payload.password);
     case 'logout':
-      CacheService.getScriptCache().remove('tracker:' + String(payload.token || ''));
+      revokeTrackerSession_(payload.token);
       return { status: 'success' };
     case 'getLoginOptions':
       return {
@@ -1029,14 +1039,37 @@ function issueTrackerSession_(identity) {
     initDatabase();
   }
   const token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
-  CacheService.getScriptCache().put('tracker:' + token, JSON.stringify({
+  const expiresAt = Date.now() + TRACKER_SESSION_TTL_MS_;
+  const session = {
     name: identity.name,
     role: identity.role,
-    mustChangePassword: identity.mustChangePassword === true
-  }), 21600);
+    mustChangePassword: identity.mustChangePassword === true,
+    expiresAt: expiresAt
+  };
+  const properties = PropertiesService.getScriptProperties();
+  const existing = properties.getProperties();
+  Object.keys(existing).forEach(key => {
+    if (!key.startsWith('TRACKER_SESSION_')) return;
+    try {
+      const saved = JSON.parse(existing[key]);
+      if (!Number.isFinite(Number(saved.expiresAt)) || Number(saved.expiresAt) <= Date.now()) {
+        properties.deleteProperty(key);
+      }
+    } catch (error) {
+      properties.deleteProperty(key);
+    }
+  });
+  properties.setProperty(trackerSessionPropertyKey_(token), JSON.stringify(session));
+  CacheService.getScriptCache().put(
+    'tracker:' + token,
+    JSON.stringify(session),
+    TRACKER_SESSION_CACHE_TTL_SECONDS_
+  );
   return token;
 }
 
+const TRACKER_SESSION_TTL_MS_ = 7 * 24 * 60 * 60 * 1000;
+const TRACKER_SESSION_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
 const PASSWORD_HASH_PREFIX_ = 'TVG-HMAC-SHA256$10000$';
 const PASSWORD_HASH_ITERATIONS_ = 10000;
 const LOGIN_ATTEMPT_LIMIT_ = 10;
@@ -1180,9 +1213,40 @@ function verifyLogin_(username, password) {
 }
 
 function trackerActor_(token) {
-  const value = CacheService.getScriptCache().get('tracker:' + String(token || ''));
-  if (!value) throw new Error('Phiên đăng nhập Tracker đã hết hạn. Vui lòng đăng nhập lại.');
+  const sessionToken = String(token || '');
+  const propertyKey = trackerSessionPropertyKey_(sessionToken);
+  if (!propertyKey) throw new Error('Phiên đăng nhập Tracker đã hết hạn. Vui lòng đăng nhập lại.');
+
+  const cache = CacheService.getScriptCache();
+  let value = cache.get('tracker:' + sessionToken);
+  if (!value) {
+    value = PropertiesService.getScriptProperties().getProperty(propertyKey);
+    if (!value) throw new Error('Phiên đăng nhập Tracker đã hết hạn. Vui lòng đăng nhập lại.');
+    let savedSession;
+    try {
+      savedSession = JSON.parse(value);
+    } catch (error) {
+      revokeTrackerSession_(sessionToken);
+      throw new Error('Phiên đăng nhập Tracker không hợp lệ. Vui lòng đăng nhập lại.');
+    }
+    if (!Number.isFinite(Number(savedSession.expiresAt)) || Number(savedSession.expiresAt) <= Date.now()) {
+      revokeTrackerSession_(sessionToken);
+      throw new Error('Phiên đăng nhập Tracker đã hết hạn. Vui lòng đăng nhập lại.');
+    }
+    cache.put('tracker:' + sessionToken, value, TRACKER_SESSION_CACHE_TTL_SECONDS_);
+  }
+
   const actor = JSON.parse(value);
+  if (actor.expiresAt && Number(actor.expiresAt) <= Date.now()) {
+    revokeTrackerSession_(sessionToken);
+    throw new Error('Phiên đăng nhập Tracker đã hết hạn. Vui lòng đăng nhập lại.');
+  }
+  if (!actor.expiresAt) {
+    actor.expiresAt = Date.now() + TRACKER_SESSION_TTL_MS_;
+    value = JSON.stringify(actor);
+    PropertiesService.getScriptProperties().setProperty(propertyKey, value);
+    cache.put('tracker:' + sessionToken, value, TRACKER_SESSION_CACHE_TTL_SECONDS_);
+  }
   if (actor.role === 'director') return actor;
 
   const teacherRow = findRowByTeacherName(requireSheet_(TAB.TEACHERS), actor.name);
@@ -1340,14 +1404,7 @@ function trackerBootstrap_(token) {
   let allTasks;
   try {
     trackerEnsureOutputColumn_(taskSheet);
-    allTasks = trackerTaskRecords_();
-    allTasks.forEach(task => {
-      if (!trackerIsPersonalTask_(task)
-        && (['COMPLETED', 'ARCHIVED'].includes(task.status) || task.archiveMonth)) {
-        trackerClearTaskPenalties_(taskSheet, task);
-      }
-    });
-    trackerApplyWeeklyTaskChanges_(taskSheet, allTasks);
+    trackerMaintainWeeklyTasks_(taskSheet);
     allTasks = trackerTaskRecords_();
   } finally {
     lock.releaseLock();
@@ -1369,6 +1426,23 @@ function trackerBootstrap_(token) {
     tasks: tasks,
     requests: requests
   };
+}
+
+function trackerMaintainWeeklyTasks_(sheet) {
+  const properties = PropertiesService.getScriptProperties();
+  const currentWeek = trackerCurrentWeekStart_();
+  if (properties.getProperty(TRACKER_WEEKLY_MAINTENANCE_PROPERTY_) === currentWeek) return false;
+
+  const tasks = trackerTaskRecords_();
+  tasks.forEach(task => {
+    if (!trackerIsPersonalTask_(task)
+      && (['COMPLETED', 'ARCHIVED'].includes(task.status) || task.archiveMonth)) {
+      trackerClearTaskPenalties_(sheet, task);
+    }
+  });
+  trackerApplyWeeklyTaskChanges_(sheet, tasks);
+  properties.setProperty(TRACKER_WEEKLY_MAINTENANCE_PROPERTY_, currentWeek);
+  return true;
 }
 
 function trackerSetManager_(token, manager) {
@@ -1761,6 +1835,14 @@ function trackerReviewTask_(token, taskId, decision, note) {
     throw new Error('Bạn không có quyền duyệt nhiệm vụ này.');
   }
   const row = task.rowNumber;
+  const completedStatus = decision === 'approve' ? 'COMPLETED' : 'IN_PROGRESS';
+  const currentWeek = trackerCurrentWeekStart_();
+  const archiveMonth = completedStatus === 'COMPLETED'
+    && !task.repeatWeekly
+    && task.deadline
+    && task.deadline < currentWeek
+    ? task.deadline.slice(0, 7)
+    : '';
   if (decision === 'approve') {
     if (!trackerIsPersonalTask_(task)) trackerClearTaskPenalties_(sheet, task);
     const performance = task.performanceByAssignee || {};
@@ -1784,7 +1866,8 @@ function trackerReviewTask_(token, taskId, decision, note) {
     });
     sheet.getRange(row, 24).setValue(JSON.stringify(performance));
   }
-  sheet.getRange(row, 9).setValue(decision === 'approve' ? 'COMPLETED' : 'IN_PROGRESS');
+  sheet.getRange(row, 9).setValue(archiveMonth ? 'ARCHIVED' : completedStatus);
+  if (archiveMonth) sheet.getRange(row, 25).setValue(archiveMonth);
   sheet.getRange(row, 12).setValue(0);
   sheet.getRange(row, 13).setValue(String(note || '').slice(0, 1000));
   sheet.getRange(row, 15).setValue(new Date().toISOString());

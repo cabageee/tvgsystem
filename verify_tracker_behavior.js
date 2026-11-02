@@ -80,6 +80,7 @@ const context = {
     getScriptProperties() {
       return {
         getProperty: key => scriptProperties.get(key) || null,
+        getProperties: () => Object.fromEntries(scriptProperties),
         setProperty: (key, value) => scriptProperties.set(key, value),
         deleteProperty: key => scriptProperties.delete(key)
       };
@@ -113,6 +114,7 @@ const context = {
 vm.createContext(context);
 vm.runInContext(backend, context, { filename: 'tracker-backend.gs.txt' });
 
+const issueTrackerSession = context.issueTrackerSession_;
 context.issueTrackerSession_ = () => 'test-token';
 let directorStoredPassword = 'new-secret';
 const configSheet = {
@@ -204,6 +206,56 @@ assert.strictEqual(
   'Teacher accounts using the default password must not require a password-change redirect.'
 );
 assert.strictEqual(teacherPassword, '123456', 'Existing teacher hashes must migrate to plain text on successful login.');
+const originalSessionSpreadsheet = context.getSpreadsheet;
+context.getSpreadsheet = () => ({
+  getSheetByName: () => ({})
+});
+const durableSessionToken = issueTrackerSession({ name: 'Giám Đốc', role: 'director' });
+const durableSessionKey = context.trackerSessionPropertyKey_(durableSessionToken);
+const durableSession = JSON.parse(scriptProperties.get(durableSessionKey));
+assert(
+  durableSession.expiresAt - Date.now() <= 7 * 24 * 60 * 60 * 1000
+    && durableSession.expiresAt - Date.now() > 0,
+  'Tracker sessions must have a seven-day persistent expiry.'
+);
+scriptCache.delete(`tracker:${durableSessionToken}`);
+assert.strictEqual(
+  context.trackerActor_(durableSessionToken).name,
+  'Giám Đốc',
+  'A valid session must be restored from ScriptProperties after its cache entry is removed.'
+);
+assert(scriptCache.has(`tracker:${durableSessionToken}`), 'Restored sessions must repopulate the acceleration cache.');
+context.handleApiAction({ action: 'logout', token: durableSessionToken });
+assert(!scriptProperties.has(durableSessionKey), 'Logout must delete the persistent session.');
+assert(!scriptCache.has(`tracker:${durableSessionToken}`), 'Logout must delete the cached session.');
+const expiredSessionToken = 'a'.repeat(64);
+scriptProperties.set(context.trackerSessionPropertyKey_(expiredSessionToken), JSON.stringify({
+  name: 'Giám Đốc',
+  role: 'director',
+  expiresAt: Date.now() - 1
+}));
+assert.throws(
+  () => context.trackerActor_(expiredSessionToken),
+  /hết hạn/,
+  'Expired persistent sessions must be rejected.'
+);
+assert(
+  !scriptProperties.has(context.trackerSessionPropertyKey_(expiredSessionToken)),
+  'Expired persistent sessions must be cleaned up on access.'
+);
+const legacySessionToken = 'b'.repeat(64);
+scriptCache.set(`tracker:${legacySessionToken}`, JSON.stringify({
+  name: 'Giám Đốc',
+  role: 'director',
+  mustChangePassword: false
+}));
+assert.strictEqual(context.trackerActor_(legacySessionToken).name, 'Giám Đốc');
+assert(
+  JSON.parse(scriptProperties.get(context.trackerSessionPropertyKey_(legacySessionToken))).expiresAt > Date.now(),
+  'Valid cache-only sessions from before deployment must migrate to persistent storage.'
+);
+context.revokeTrackerSession_(legacySessionToken);
+context.getSpreadsheet = originalSessionSpreadsheet;
 const passwordHash = context.hashPassword_('a-secure-test-password');
 assert(context.verifyPassword_('a-secure-test-password', passwordHash));
 assert(!context.verifyPassword_('wrong-password', passwordHash));
@@ -426,6 +478,21 @@ assert(
   writes.some(write => write.column === 20 && write.numColumns === 3 && write.clear),
   'Recurring tasks must clear the prior cycle progress, blocker, and report timestamp.'
 );
+scriptProperties.delete('TRACKER_LAST_WEEKLY_MAINTENANCE');
+let weeklyTaskReadCount = 0;
+const originalTrackerTaskRecords = context.trackerTaskRecords_;
+context.trackerTaskRecords_ = () => {
+  weeklyTaskReadCount++;
+  return [task];
+};
+assert.strictEqual(context.trackerMaintainWeeklyTasks_(taskSheet), true);
+assert.strictEqual(context.trackerMaintainWeeklyTasks_(taskSheet), false);
+assert.strictEqual(
+  weeklyTaskReadCount,
+  1,
+  'Weekly archive and recurring-task maintenance must scan tasks only once per week.'
+);
+context.trackerTaskRecords_ = originalTrackerTaskRecords;
 
 task = {
   ...sourceTask(),
@@ -439,20 +506,26 @@ context.trackerIsPersonalTask_ = () => false;
 context.trackerEnsureOutputColumn_ = () => {};
 actorName = 'An';
 const originalQueueApiAction = context.queueApiAction_;
-context.queueApiAction_ = (payload, actor) => {
+const originalDispatchApiWriteWithLock = context.dispatchApiWriteWithLock_;
+context.queueApiAction_ = () => {
+  throw new Error('New writes must not enter the queue.');
+};
+context.dispatchApiWriteWithLock_ = (payload, actor) => {
   assert.strictEqual(payload.queueRequestId, 'queue-test-1');
   assert.strictEqual(actor.name, 'An');
-  return { status: 'queued', requestId: payload.queueRequestId };
+  return { status: 'success', mode: 'direct' };
 };
 const queuedWrite = context.handleApiAction({
   action: 'trackerRequestCompletion',
   token: 'token',
   queueRequestId: 'queue-test-1',
   taskId: 'task-1',
-  note: 'Queued output'
+  note: 'Direct output'
 });
-assert.strictEqual(queuedWrite.status, 'queued', 'Queued writes must return their request ID immediately.');
+assert.strictEqual(queuedWrite.status, 'success', 'Legacy queue IDs must not queue new writes.');
+assert.strictEqual(queuedWrite.mode, 'direct', 'New writes must use the direct locked path.');
 context.queueApiAction_ = originalQueueApiAction;
+context.dispatchApiWriteWithLock_ = originalDispatchApiWriteWithLock;
 const originalGetSpreadsheet = context.getSpreadsheet;
 const originalTrackerActor = context.trackerActor_;
 const originalDispatchApiAction = context.dispatchApiAction_;
@@ -515,20 +588,18 @@ context.ScriptApp = {
     };
   }
 };
-const queuedFirst = context.handleApiAction({
+const queuedFirst = context.queueApiAction_({
   action: 'trackerSaveNote',
-  token: 'director-token',
   queueRequestId: 'queue-worker-1',
   taskId: 'task-1',
   note: 'First'
-});
-const queuedSecond = context.handleApiAction({
+}, { name: 'Giám Đốc', role: 'director' });
+const queuedSecond = context.queueApiAction_({
   action: 'trackerSaveNote',
-  token: 'director-token',
   queueRequestId: 'queue-worker-2',
   taskId: 'task-1',
   note: 'Second'
-});
+}, { name: 'Giám Đốc', role: 'director' });
 assert.strictEqual(queuedFirst.status, 'queued');
 assert.strictEqual(queuedSecond.status, 'queued');
 context.processQueuedApiRequests_();
@@ -566,6 +637,22 @@ assert.strictEqual(maximumLockDepth, 1, 'Completion submission must not acquire 
 const frontend = fs.readFileSync('app.js', 'utf8');
 const trackerPage = fs.readFileSync('executive-tracker.html', 'utf8');
 const localServer = fs.readFileSync('server.js', 'utf8');
+assert.doesNotMatch(
+  frontend,
+  /queueRequestId|waitForQueuedApiCall|API_QUEUED_WRITE_ACTIONS/,
+  'New frontend writes must not be queued or poll the queue status endpoint.'
+);
+assert(
+  frontend.includes('DATA_REFRESH_DEBOUNCE_MS = 1000')
+    && frontend.includes('DATA_REFRESH_MIN_INTERVAL_MS = 15000')
+    && frontend.includes('dataFetchedMutationVersion >= dataRefreshVersion'),
+  'Full-sheet refreshes after mutations must be coalesced and rate-limited.'
+);
+assert.doesNotMatch(
+  backend,
+  /if\s*\(payload\.queueRequestId\)\s*\{\s*const queued = queueApiAction_/,
+  'New backend writes must not enter the legacy queue based on a client request ID.'
+);
 assert(
   frontend.includes("retryButton.style.display = loginTeacherOptionsError ? 'inline-flex' : 'none'"),
   'The retry button must stay hidden after successful loading even when UI icon styles are applied.'
@@ -637,6 +724,12 @@ assert(trackerPage.includes('Tuần hiện tại:')
 assert(trackerPage.includes('@media (min-width: 701px) and (max-width: 1100px)')
   && trackerPage.includes('#management-section tbody tr'),
   'Assignment and approval tables must reflow into readable cards on compact desktop widths.');
+assert(trackerPage.includes('id="tracker-loading"')
+  && trackerPage.includes('id="tracker-sync-status"')
+  && trackerPage.includes('id="tracker-manual-refresh"'),
+  'Tracker must expose loading, synchronization and manual refresh states.');
+assert(trackerPage.includes('const TRACKER_REFRESH_INTERVAL_MS = 30000;'),
+  'Tracker background refresh must use the optimized 30-second interval.');
 scriptCache.set('LOGIN_ATTEMPTS_director', '10');
 assert.match(
   context.verifyLogin_('director', 'anything').message,

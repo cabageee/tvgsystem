@@ -71,9 +71,9 @@ if (!reviewTask
   console.error(backendFile, 'ERROR: Approval must waive group penalties and rejection must record late submissions.');
   process.exit(1);
 }
-const bootstrap = backendSource.match(/function trackerBootstrap_\([\s\S]*?\nfunction trackerSetManager_/);
-if (!bootstrap || !bootstrap[0].includes('trackerClearTaskPenalties_(taskSheet, task)')) {
-  console.error(backendFile, 'ERROR: Previously approved group-task penalties must be cleaned up on bootstrap.');
+const weeklyMaintenance = backendSource.match(/function trackerMaintainWeeklyTasks_\([\s\S]*?\nfunction trackerSetManager_/);
+if (!weeklyMaintenance || !weeklyMaintenance[0].includes('trackerClearTaskPenalties_(sheet, task)')) {
+  console.error(backendFile, 'ERROR: Weekly maintenance must clean up previously approved group-task penalties.');
   process.exit(1);
 }
 

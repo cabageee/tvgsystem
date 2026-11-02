@@ -114,6 +114,16 @@
     .small-button.danger { color: #a52835; background: #fff0f1; }
     .empty-state { padding: 40px 18px; color: var(--muted); text-align: center; }
     .empty-state strong { display: block; margin-bottom: 5px; color: #364255; }
+    .tracker-loading { display: grid; place-items: center; min-height: 220px; border: 1px solid var(--line); border-radius: 14px; color: var(--muted); background: #fff; text-align: center; }
+    .tracker-loading-card { display: grid; justify-items: center; gap: 10px; padding: 24px; }
+    .tracker-loading-spinner { width: 28px; height: 28px; border: 3px solid #e7d5d8; border-top-color: var(--wine); border-radius: 50%; animation: tracker-spin .8s linear infinite; }
+    @keyframes tracker-spin { to { transform: rotate(360deg); } }
+    .sync-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; color: var(--muted); font-size: 10px; }
+    .sync-status { display: inline-flex; align-items: center; gap: 7px; }
+    .sync-status::before { width: 7px; height: 7px; border-radius: 50%; background: #527b69; content: ''; }
+    .sync-status.is-syncing::before { background: #98743d; animation: tracker-pulse 1s ease-in-out infinite alternate; }
+    .sync-status.is-error::before { background: #a42b37; }
+    @keyframes tracker-pulse { to { opacity: .35; } }
     dialog { width: min(720px, calc(100vw - 24px)); max-height: min(90vh, 780px); max-height: min(90svh, 780px); padding: 0; border: 0; border-radius: 16px; box-shadow: 0 20px 70px #0005; }
     #task-dialog[open] { display: flex; flex-direction: column; overflow: hidden; }
     #task-dialog .dialog-form { flex: 1 1 auto; min-height: 0; align-content: start; }
@@ -276,6 +286,11 @@
       #management-section .gantt-inline { width: 100%; max-width: 520px; }
     }
     @media (max-width: 700px) {
+      main { padding-bottom: max(32px, env(safe-area-inset-bottom)); }
+      .topbar-inner, main { padding-right: 13px; padding-left: 13px; }
+      .top-actions { min-width: 0; }
+      .sync-bar { align-items: flex-start; }
+      .sync-bar .button { min-height: 40px; padding: 8px 10px; }
       .teacher-task-card { gap: 9px; padding: 12px; }
       .teacher-task-top { align-items: flex-start; gap: 7px 9px; }
       .teacher-task-title { flex-basis: 100%; font-size: 14px; }
@@ -590,6 +605,13 @@
   </header>
 
   <main>
+    <section id="tracker-loading" class="tracker-loading" role="status" aria-live="polite">
+      <div class="tracker-loading-card">
+        <span class="tracker-loading-spinner" aria-hidden="true"></span>
+        <strong>Đang tải Tracker công việc...</strong>
+        <span>Đang xác thực phiên và đồng bộ dữ liệu gần nhất.</span>
+      </div>
+    </section>
     <section id="tracker-error" class="empty-state" role="alert" hidden>
       <strong id="tracker-error-title">Không thể mở trang theo dõi công việc</strong>
       <p id="tracker-error-message"></p>
@@ -599,6 +621,10 @@
       </div>
     </section>
     <section id="tracker-screen" hidden>
+      <div class="sync-bar" aria-label="Trạng thái đồng bộ">
+        <span id="tracker-sync-status" class="sync-status is-syncing">Đang đồng bộ dữ liệu...</span>
+        <button id="tracker-manual-refresh" class="button button-light" type="button">Làm mới</button>
+      </div>
       <section class="role-intro">
         <span id="role-pill" class="role-pill"></span>
         <h2 id="tracker-title" style="margin-top:8px">Điều phối công việc</h2>
@@ -849,7 +875,7 @@
     (() => {
       const API_URL = window.GOOGLE_APPS_SCRIPT_URL || '';
       const TOKEN_KEY = 'TV_GLOBAL_TRACKER_TOKEN';
-      const TRACKER_REFRESH_INTERVAL_MS = 15000;
+      const TRACKER_REFRESH_INTERVAL_MS = 30000;
       const entryMode = new URLSearchParams(window.location.search).get('view') || '';
       const entryRoles = { director: 'director', manager: 'manager', teacher: 'teacher' };
       const $ = id => document.getElementById(id);
@@ -1007,11 +1033,20 @@
       }
 
       function showTrackerError(title, message) {
+        $('tracker-loading').hidden = true;
         $('tracker-error-title').textContent = title;
         $('tracker-error-message').textContent = message;
         $('tracker-retry').hidden = !token;
         $('tracker-error').hidden = false;
         $('tracker-screen').hidden = true;
+      }
+
+      function setSyncStatus(message, state = '') {
+        const status = $('tracker-sync-status');
+        if (!status) return;
+        status.textContent = message;
+        status.classList.remove('is-syncing', 'is-error');
+        if (state) status.classList.add(state);
       }
 
       function callAppsScriptPostMessage(action, payload) {
@@ -1696,8 +1731,8 @@
       async function loadTrackerBootstrap(isBackground = false) {
         let invalidSession = false;
         try {
+          setSyncStatus(isBackground ? 'Đang làm mới dữ liệu...' : 'Đang xác thực và tải dữ liệu...', 'is-syncing');
           const nextSession = await apiCall('trackerBootstrap', { token });
-          const previousSnapshot = JSON.stringify({ session, tasks, requests, teachers, manager });
           session = nextSession;
           const role = actorRole();
           const canOpenEntry = role === entryRoles[entryMode]
@@ -1716,10 +1751,14 @@
           requests = Array.isArray(session.requests) ? session.requests : [];
           teachers = Array.isArray(session.teachers) ? session.teachers : [];
           manager = session.manager || '';
+          $('tracker-loading').hidden = true;
+          $('tracker-error').hidden = true;
           $('tracker-screen').hidden = false;
           $('logout-button').hidden = false;
           $('create-task').hidden = false;
-          if (previousSnapshot !== JSON.stringify({ session, tasks, requests, teachers, manager })) render();
+          render();
+          const lastSyncTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          setSyncStatus(`Đã đồng bộ lúc ${lastSyncTime}`);
         } catch (error) {
           if (isBackground) console.warn('Tracker background refresh failed:', error);
           else console.error('Tracker bootstrap failed:', error);
@@ -1737,6 +1776,8 @@
                 ? `${message} Hãy quay lại hệ thống và đăng nhập lại.`
                 : `${message} Phiên đăng nhập vẫn được giữ; hãy thử lại sau.`
             );
+          } else {
+            setSyncStatus('Đồng bộ nền bị gián đoạn; dữ liệu gần nhất vẫn đang hiển thị.', 'is-error');
           }
         }
       }
@@ -2295,6 +2336,11 @@
       $('manager-submit-schedule').addEventListener('click', openScheduleDialog);
       $('save-manager').addEventListener('click', saveManager);
       $('tracker-retry').addEventListener('click', refresh);
+      $('tracker-manual-refresh').addEventListener('click', () => {
+        if (bootstrapInFlight) return;
+        $('tracker-manual-refresh').disabled = true;
+        refresh(false).finally(() => { $('tracker-manual-refresh').disabled = false; });
+      });
       $('clear-previous-archive').addEventListener('click', clearPreviousArchive);
       $('team-penalty-body').addEventListener('click', event => {
         const button = event.target.closest('[data-team-penalty-detail]');

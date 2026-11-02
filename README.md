@@ -96,7 +96,7 @@ Mặc định API chạy tại `http://127.0.0.1:3002`; kiểm tra máy chủ b�
 
 `server.js` không phục vụ các trang HTML; cần giữ máy chủ tĩnh ở bước trên. Đây chỉ là proxy phát triển, không phải backend production; không đổi bind address ra Internet.
 
-Khi có nhiều người dùng trên các thiết bị khác nhau, mỗi trình duyệt vẫn kết nối cùng deployment Apps Script/Google Sheets. Các thao tác ghi từ giao diện được đưa vào hàng đợi Apps Script và worker xử lý lần lượt; không cần bật API Node trên máy người dùng. Dữ liệu học viên chỉ được tải sau đăng nhập và không còn lưu vào `localStorage`; ứng dụng cần kết nối mạng để tải dữ liệu.
+Khi có nhiều người dùng trên các thiết bị khác nhau, mỗi trình duyệt vẫn kết nối cùng deployment Apps Script/Google Sheets. Các thao tác ghi mới được xử lý trực tiếp dưới `ScriptLock`, tránh độ trễ do time trigger và polling; không cần bật API Node trên máy người dùng. Queue/worker cũ vẫn được giữ để hoàn tất yêu cầu từ client phiên bản trước. Dữ liệu học viên chỉ được tải sau đăng nhập và không còn lưu vào `localStorage`; ứng dụng cần kết nối mạng để tải dữ liệu.
 
 ## Cấu hình Google Sheets và Apps Script
 
@@ -142,13 +142,13 @@ Khi thêm hoặc đổi tệp giao diện cần cache, cập nhật danh sách `
 - **Giám đốc:** tổng quan, hồ sơ học viên, phân công, điểm danh, tổng kết, học viên nghỉ, quản lý trợ giảng/cấp độ và đổi mật khẩu.
 - **Trợ giảng:** danh sách lớp được phân công, điểm danh hôm nay, ghi chú tiến độ và Tracker nhiệm vụ.
 - Trong giao diện trợ giảng, nút **Điểm danh hôm nay** ghi ngày hiện tại vào buổi còn trống tiếp theo. Nút không khả dụng nếu học viên đã được điểm danh trong ngày hoặc đã hết buổi học.
-- Việc chuyển trang dùng URL HTML riêng. Token phiên có thời hạn 6 giờ được lưu trong `sessionStorage` để duy trì khi chuyển trang trong cùng tab; đăng xuất thu hồi token phía Apps Script.
+- Việc chuyển trang dùng URL HTML riêng. Token phiên có thời hạn 7 ngày được lưu bền trong `ScriptProperties`, còn `CacheService` chỉ tăng tốc truy cập. Trình duyệt giữ token trong `sessionStorage` để đóng tab sẽ kết thúc phiên; đăng xuất thu hồi token ở cả hai nơi.
 - Thông báo sinh nhật xuất hiện tối đa một lần mỗi ngày trên trình duyệt đang dùng. Trung tâm thông báo lưu tối đa 30 thông báo gần nhất trong ngày cục bộ; đây là thông báo trong ứng dụng, không phải Web Push.
 - Lịch sử ở nút **Thông báo** được làm mới theo ngày. Mỗi lần trợ giảng đăng nhập, popup tổng quan ưu tiên hiển thị số học viên cần chăm sóc và cần gia hạn, sau đó là task cần nhận và thời gian còn lại đến deadline.
 
 ## Tracker công việc
 
-Tracker sử dụng cùng Google Apps Script và Spreadsheet với ứng dụng chính. Phiên Tracker được Apps Script cấp khi đăng nhập website, có thời hạn 6 giờ; người dùng không cần đăng nhập lại ở trang Tracker.
+Tracker sử dụng cùng Google Apps Script và Spreadsheet với ứng dụng chính. Phiên Tracker được Apps Script cấp khi đăng nhập website, có thời hạn 7 ngày; nếu cache tạm bị dọn, backend đọc lại phiên từ `ScriptProperties`. Người dùng không cần đăng nhập lại ở trang Tracker.
 
 ### Vai trò và luồng công việc
 
@@ -165,7 +165,7 @@ Tracker sử dụng cùng Google Apps Script và Spreadsheet với ứng dụng 
 
 ### Cập nhật tức thời và đồng bộ
 
-Các thao tác ghi được xếp vào sheet ẩn `ApiRequestQueue` và xử lý tuần tự bằng time trigger để giảm xung đột khi nhiều người cùng cập nhật. Giao diện theo dõi trạng thái nền và chỉ đồng bộ lại dữ liệu sau khi Apps Script xác nhận hoàn tất; nếu lưu lỗi, lỗi được trả về để giao diện thông báo. Hàng đợi này không hỗ trợ ghi offline: cần giữ kết nối mạng cho tới khi thao tác được xác nhận.
+Các thao tác ghi mới được thực hiện đồng bộ và tuần tự bằng `ScriptLock`; giao diện nhận kết quả ngay trong lần gọi API, không phải chờ time trigger hay gọi lặp API để kiểm tra trạng thái. Backend vẫn giữ sheet `ApiRequestQueue` và worker để xử lý các yêu cầu còn lại từ client cũ trong giai đoạn cập nhật. Việc lưu lại dữ liệu học viên sau các thay đổi được gom theo đợt và giới hạn tối đa một lần tải toàn bộ Sheet mỗi 15 giây; thao tác vẫn cần kết nối mạng cho tới khi được xác nhận.
 
 ### Cập nhật Apps Script cho Tracker
 

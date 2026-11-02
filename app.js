@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby3AWaEghtGzpuTaFZuCad_VSoxjYPHN6e1CpsSDFyIZ9x49RdUX_Aocdm0EVt8HwNu/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzmZYtfv60zUzclYGeYl_SYAAsbDo5m3oGGxbmR--DUrucHJDPJhmtqIkB659X-FpD4/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -426,20 +426,13 @@
     const NOTIFICATION_HISTORY_LIMIT = 30;
     const attendanceSavingStudentIds = new Set();
     const inFlightApiCalls = new Map();
-    const API_QUEUED_WRITE_ACTIONS = new Set([
-      'trackerSetManager', 'trackerCreateTask', 'trackerUpdateTask',
-      'trackerAcceptTask', 'trackerRequestCompletion', 'trackerCompletePersonalTask',
-      'trackerReviewTask', 'trackerDeleteTask', 'trackerClearArchivedMonth',
-      'trackerSaveNote', 'trackerReportProgress', 'trackerSubmitSchedule',
-      'trackerReviewSchedule', 'updateFeeStatus', 'processPayment', 'addLevel',
-      'deleteLevel', 'changePassword', 'addStudent', 'updateAttendance',
-      'updateAssistants', 'update_assistants', 'updateLevel', 'update_level',
-      'updateStudentInfo', 'moveToInactive', 'restoreStudent', 'saveMasterData',
-      'addTeacher', 'deleteTeacher', 'initDatabase'
-    ]);
     let localProxyUnavailableUntil = 0;
-    let dataRefreshPromise = null;
+    const DATA_REFRESH_DEBOUNCE_MS = 1000;
+    const DATA_REFRESH_MIN_INTERVAL_MS = 15000;
+    let dataRefreshTimer = null;
     let dataRefreshVersion = 0;
+    let dataFetchedMutationVersion = 0;
+    let lastDataRefreshAt = 0;
     let dataFetchPromise = null;
     let dataFetchToken = null;
 
@@ -666,53 +659,11 @@
       const key = JSON.stringify([request, sessionToken]);
       if (inFlightApiCalls.has(key)) return inFlightApiCalls.get(key);
 
-      if (API_QUEUED_WRITE_ACTIONS.has(action)) {
-        request.queueRequestId = `api_${Date.now()}_${Math.random().toString(36).slice(2, 14)}`;
-      }
-      const pending = performApiCall(request).finally(() => {
+      const pending = performApiRequest(request).finally(() => {
         if (inFlightApiCalls.get(key) === pending) inFlightApiCalls.delete(key);
       });
       inFlightApiCalls.set(key, pending);
       return pending;
-    }
-
-    async function performApiCall(request) {
-      const result = await performApiRequest(request);
-      if (result?.status !== 'queued') return result;
-      if (!result.requestId) {
-        throw new Error(`Apps Script không trả mã yêu cầu cho thao tác "${request.action}".`);
-      }
-      return waitForQueuedApiCall(result.requestId, request.action);
-    }
-
-    async function waitForQueuedApiCall(requestId, action) {
-      const token = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') || '';
-      const startedAt = Date.now();
-      let delay = 400;
-      while (Date.now() - startedAt < 10 * 60 * 1000) {
-        if (sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN') !== token) {
-          throw new Error(`Đã đổi phiên đăng nhập khi thao tác "${action}" đang chờ xử lý.`);
-        }
-
-        const response = await apiCall('trackerQueueStatus', { requestId, token });
-        if (!response || response.status !== 'success') {
-          throw new Error(response?.message || `Không đọc được trạng thái thao tác "${action}".`);
-        }
-        const queuedRequest = response.request;
-        if (queuedRequest?.state === 'DONE') return queuedRequest.result;
-        if (queuedRequest?.state === 'FAILED') {
-          throw new Error(queuedRequest.error || `Thao tác "${action}" thất bại trong hàng đợi.`);
-        }
-        if (!['QUEUED', 'RUNNING'].includes(queuedRequest?.state)) {
-          throw new Error(`Trạng thái xử lý thao tác "${action}" không hợp lệ.`);
-        }
-
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay = Math.min(1500, Math.round(delay * 1.35));
-      }
-      throw new Error(
-        `Thao tác "${action}" vẫn chưa hoàn tất sau 10 phút. Mã yêu cầu: ${requestId}.`
-      );
     }
 
     async function performApiRequest(request) {
@@ -825,6 +776,7 @@
       }
 
       dataFetchToken = requestToken;
+      const requestMutationVersion = dataRefreshVersion;
       dataFetchPromise = (async () => {
         try {
           const res = await apiCall('getData');
@@ -836,6 +788,8 @@
             return false;
           }
 
+          lastDataRefreshAt = Date.now();
+          dataFetchedMutationVersion = requestMutationVersion;
           const previousData = JSON.stringify([
             studentsData,
             inactiveStudentsData,
@@ -926,29 +880,27 @@
 
     function refreshDataAfterMutation() {
       dataRefreshVersion++;
-      if (!dataRefreshPromise) {
-        dataRefreshPromise = (async () => {
-          let refreshed = false;
-          let processedVersion = 0;
-          while (processedVersion < dataRefreshVersion) {
-            processedVersion = dataRefreshVersion;
-            if (dataFetchPromise) await dataFetchPromise;
-            refreshed = await fetchDataFromGoogleSheet();
-          }
-          dataRefreshPromise = null;
-          if (!refreshed) {
+      if (dataRefreshTimer) clearTimeout(dataRefreshTimer);
+      const cooldown = Math.max(
+        0,
+        DATA_REFRESH_MIN_INTERVAL_MS - (Date.now() - lastDataRefreshAt)
+      );
+      dataRefreshTimer = setTimeout(async () => {
+        dataRefreshTimer = null;
+        try {
+          if (dataFetchPromise) await dataFetchPromise;
+          if (dataFetchedMutationVersion >= dataRefreshVersion) return;
+          const refreshed = await fetchDataFromGoogleSheet();
+          if (!refreshed && currentUserRole) {
             showToast('Đã lưu thao tác nhưng chưa tải được dữ liệu mới nhất. Vui lòng thử tải lại Sheet.', 'error');
           }
-          return refreshed;
-        })().catch(error => {
-          dataRefreshPromise = null;
+        } catch (error) {
           console.error('Lỗi đồng bộ lại dữ liệu Google Sheet:', error);
-          showToast(`Đã lưu thao tác nhưng không thể tải lại dữ liệu: ${error.message}`, 'error');
-          return false;
-        });
-      }
-
-      return dataRefreshPromise;
+          if (currentUserRole) {
+            showToast(`Đã lưu thao tác nhưng không thể tải lại dữ liệu: ${error.message}`, 'error');
+          }
+        }
+      }, Math.max(DATA_REFRESH_DEBOUNCE_MS, cooldown));
     }
 
     function fetchAvatarUploadStatus(requestId) {
@@ -4041,6 +3993,10 @@
         void apiCall('logout', { token }).catch(error => {
           console.warn('Không thể thu hồi phiên đăng nhập trên máy chủ:', error);
         });
+      }
+      if (dataRefreshTimer) {
+        clearTimeout(dataRefreshTimer);
+        dataRefreshTimer = null;
       }
       sessionStorage.clear();
       studentsData = [];
