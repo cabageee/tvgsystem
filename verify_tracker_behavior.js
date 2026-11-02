@@ -620,7 +620,10 @@ assert.strictEqual(
   0,
   'A task awaiting review must not be presented as returned.'
 );
-assert(frontend.includes("['apiPayload', JSON.stringify(request)]"), 'Main frontend must POST API payloads.');
+assert(frontend.includes("method: 'POST'")
+  && frontend.includes("'text/plain;charset=utf-8'")
+  && frontend.includes('requestApi(GOOGLE_APPS_SCRIPT_URL)'),
+  'Main frontend must POST API payloads directly to Apps Script from static hosting.');
 assert(frontend.includes('request.token || token ||'), 'Main frontend must attach the active session token to API calls.');
 assert(!frontend.includes('docs.google.com/spreadsheets/d/${spreadsheetId}/gviz'), 'Frontend must not read teacher passwords from public Sheets CSV.');
 assert(frontend.includes("const requestToken = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN');")
@@ -644,11 +647,8 @@ scriptCache.delete('LOGIN_ATTEMPTS_director');
 assert(localServer.includes("app.listen(PORT, '127.0.0.1'"), 'The local API must not bind to public network interfaces.');
 assert(!localServer.includes("app.use('/uploads'"), 'The legacy public upload directory must stay disabled.');
 assert(trackerPage.includes("['apiPayload', JSON.stringify({ action, ...payload })]"), 'Tracker frontend must POST API payloads.');
-assert(frontend.includes("event.origin === 'https://script.google.com'")
-  && frontend.includes("event.origin === 'https://script.googleusercontent.com'")
-  && frontend.includes('event.data.requestId !== requestId')
-  && !frontend.includes('event.source !== frame.contentWindow'),
-  'Main frontend must validate the Apps Script origin and request ID.');
+assert(!frontend.includes('callAppsScriptPostMessage'),
+  'Main frontend must not rely on the Apps Script iframe postMessage bridge.');
 assert(trackerPage.includes('event.source !== frame.contentWindow'), 'Tracker frontend must validate the iframe message source.');
 assert(!frontend.includes('callJsonp'), 'Main frontend must not fall back to JSONP.');
 assert(!trackerPage.includes('callJsonp'), 'Tracker frontend must not call APIs with JSONP.');

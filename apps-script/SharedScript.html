@@ -722,95 +722,64 @@
       if (action !== 'verifyLogin' && action !== 'getLoginOptions') {
         request = { ...request, token: request.token || token || '' };
       }
-      const callAppsScriptPostMessage = () => new Promise((resolve, reject) => {
-        const requestId = `tvg_${window.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
-        const frame = document.createElement('iframe');
-        const form = document.createElement('form');
-        let timeoutId;
-        const cleanup = () => {
-          clearTimeout(timeoutId);
-          window.removeEventListener('message', handleMessage);
-          form.remove();
-          frame.remove();
-        };
-        const handleMessage = event => {
-          const trustedGoogleOrigin = event.origin === 'https://script.google.com'
-            || event.origin === 'https://script.googleusercontent.com'
-            || /^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/i.test(event.origin);
-          if (!trustedGoogleOrigin
-            || event.data?.type !== 'tvg-api-response'
-            || event.data.requestId !== requestId) return;
-          cleanup();
-          const result = event.data.result;
-          if (!result || result.status === 'error') {
-            reject(new Error(result?.message || `Google Apps Script bị lỗi khi thực hiện "${action}".`));
-          } else {
-            resolve(result);
-          }
-        };
-        frame.name = requestId;
-        frame.hidden = true;
-        form.method = 'POST';
-        form.action = GOOGLE_APPS_SCRIPT_URL;
-        form.target = requestId;
-        form.hidden = true;
-        [
-          ['apiRequestId', requestId],
-          ['apiPayload', JSON.stringify(request)]
-        ].forEach(([name, value]) => {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = name;
-          input.value = value;
-          form.appendChild(input);
-        });
-        window.addEventListener('message', handleMessage);
-        document.body.append(frame, form);
-        timeoutId = setTimeout(() => {
-          cleanup();
-          reject(new Error(`Apps Script không phản hồi thao tác "${action}". Hãy kiểm tra deployment và thử lại.`));
-        }, 30000);
-        try {
-          form.submit();
-        } catch (error) {
-          cleanup();
-          reject(error);
-        }
-      });
-
       if (!window.google?.script?.run) {
-        try {
-          const proxyBase = window.location.protocol === 'http:' && Date.now() >= localProxyUnavailableUntil
-            ? 'http://127.0.0.1:3002'
-            : '';
-          if (proxyBase) {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const requestApi = async (url, isLocalProxy = false) => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          try {
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': isLocalProxy
+                  ? 'application/json'
+                  : 'text/plain;charset=utf-8'
+              },
+              body: JSON.stringify(request),
+              signal: controller.signal,
+              cache: 'no-store'
+            });
+            let result;
             try {
-              const response = await fetch(`${proxyBase}/api/google-script`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(request),
-                signal: controller.signal,
-                cache: 'no-store'
-              });
-              const result = await response.json();
-              if (!response.ok || result?.status === 'error') throw new Error(result?.message || 'Google Apps Script bị lỗi.');
-              return result;
-            } catch (error) {
-              if (error?.name === 'AbortError') throw new Error('Kết nối quá chậm hoặc bị gián đoạn. Vui lòng thử lại.');
-              if (!(error instanceof TypeError)) throw error;
-              localProxyUnavailableUntil = Date.now() + 15000;
-              return await callAppsScriptPostMessage();
-            } finally {
-              clearTimeout(timeoutId);
+              result = await response.json();
+            } catch {
+              throw new Error(`Apps Script trả phản hồi không hợp lệ khi thực hiện "${action}".`);
             }
+            if (!response.ok || result?.status === 'error') {
+              throw new Error(result?.message || `Google Apps Script bị lỗi khi thực hiện "${action}".`);
+            }
+            return result;
+          } catch (error) {
+            if (error?.name === 'AbortError') {
+              throw new Error(`Kết nối quá chậm khi thực hiện "${action}". Vui lòng thử lại.`);
+            }
+            throw error;
+          } finally {
+            clearTimeout(timeoutId);
           }
-          return await callAppsScriptPostMessage();
+        };
+
+        const proxyBase = window.location.protocol === 'http:' && Date.now() >= localProxyUnavailableUntil
+          ? 'http://127.0.0.1:3002'
+          : '';
+        if (proxyBase) {
+          try {
+            return await requestApi(`${proxyBase}/api/google-script`, true);
+          } catch (error) {
+            if (!(error instanceof TypeError)) throw error;
+            localProxyUnavailableUntil = Date.now() + 15000;
+          }
+        }
+
+        try {
+          return await requestApi(GOOGLE_APPS_SCRIPT_URL);
         } catch (error) {
-          throw error?.name === 'AbortError'
-            ? new Error('Kết nối quá chậm hoặc bị gián đoạn. Vui lòng thử lại.')
-            : error;
+          if (error instanceof TypeError) {
+            throw new Error(
+              `Không kết nối được Apps Script từ trang này khi thực hiện "${action}". `
+              + 'Kiểm tra quyền deployment và kết nối mạng.'
+            );
+          }
+          throw error;
         }
       }
 

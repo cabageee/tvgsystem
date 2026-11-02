@@ -92,7 +92,7 @@ Trong một terminal khác:
 node server.js
 ```
 
-Mặc định API chạy tại `http://127.0.0.1:3002`; kiểm tra máy chủ bằng `http://127.0.0.1:3002/api/health`. Có thể đổi cổng bằng biến môi trường `PORT`. Proxy chỉ lắng nghe trên loopback; CORS mặc định chỉ cho phép origin localhost/127.0.0.1 ở cổng 5500 và 8000. Có thể khai báo thêm origin phát triển bằng danh sách phân tách dấu phẩy trong `TVG_ALLOWED_ORIGINS`. Khi proxy không khả dụng, trình duyệt gửi yêu cầu POST trực tiếp tới Apps Script qua iframe để tránh lỗi CORS mà không đưa mật khẩu/token vào URL.
+Mặc định API chạy tại `http://127.0.0.1:3002`; kiểm tra máy chủ bằng `http://127.0.0.1:3002/api/health`. Có thể đổi cổng bằng biến môi trường `PORT`. Proxy chỉ lắng nghe trên loopback; CORS mặc định chỉ cho phép origin localhost/127.0.0.1 ở cổng 5500 và 8000. Có thể khai báo thêm origin phát triển bằng danh sách phân tách dấu phẩy trong `TVG_ALLOWED_ORIGINS`. Khi không dùng proxy, trình duyệt gửi POST trực tiếp tới Apps Script; mật khẩu/token nằm trong body, không nằm trong URL.
 
 `server.js` không phục vụ các trang HTML; cần giữ máy chủ tĩnh ở bước trên. Đây chỉ là proxy phát triển, không phải backend production; không đổi bind address ra Internet.
 
@@ -210,7 +210,7 @@ Kiểm tra cú pháp không thay thế cho việc thử đăng nhập và thao t
 | Không đăng nhập được hoặc báo chưa cấp quyền Tracker | Kiểm tra URL `/exec`, quyền triển khai và phiên bản Apps Script; xác nhận backend có `verifyLogin` và cấp token Tracker. |
 | Báo thiếu sheet | Mở Apps Script, chạy `initDatabase`, cấp quyền nếu được hỏi rồi tải lại trang. |
 | Trang tải được nhưng dữ liệu không đồng bộ | Kiểm tra Internet, URL Apps Script và quyền truy cập Spreadsheet của tài khoản triển khai. Xem thông báo lỗi trên trang và log Apps Script. |
-| API proxy local không hoạt động | Kiểm tra `node server.js`, cổng `3002` hoặc giá trị `PORT`; trình duyệt sẽ thử gửi POST trực tiếp qua iframe. Nếu vẫn không phản hồi, cập nhật deployment Apps Script lên phiên bản mới nhất. |
+| API proxy local không hoạt động | Kiểm tra `node server.js`, cổng `3002` hoặc giá trị `PORT`; trình duyệt sẽ gửi POST trực tiếp tới Apps Script. Nếu vẫn không phản hồi, kiểm tra URL `/exec`, quyền triển khai và kết nối mạng. |
 | Tracker/website vẫn hiện phiên bản cũ | Kiểm tra deployment đã chọn **New version**; làm mới cache trình duyệt/service worker. |
 | PWA không cài được | Dùng HTTPS hoặc `localhost`, kiểm tra manifest, icon và service worker trong DevTools. |
 | Avatar tải thất bại | Kiểm tra quyền Drive của Apps Script, giới hạn định dạng/kích thước, deployment mới nhất và dung lượng Drive. |
