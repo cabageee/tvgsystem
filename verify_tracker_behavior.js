@@ -146,16 +146,17 @@ assert.strictEqual(
   'error',
   'The default director password must not bypass a configured password.'
 );
+directorStoredPassword = context.hashPassword_('new-secret');
 assert.strictEqual(
   context.verifyLogin_('director', 'new-secret').status,
   'success',
-  'The configured director password must continue to work.'
+  'Existing hashed passwords must continue to work.'
 );
-assert.match(directorStoredPassword, /^TVG-HMAC-SHA256\$10000\$/);
+assert.strictEqual(directorStoredPassword, 'new-secret', 'A successful login must migrate an existing hash to plain text.');
 assert.strictEqual(
   context.verifyLogin_('director', 'new-secret').status,
   'success',
-  'Migrated password hashes must continue to authenticate.'
+  'Plain-text passwords must continue to authenticate.'
 );
 const hmacCallsBeforeCachedLogin = hmacCallCount;
 assert.strictEqual(
@@ -189,6 +190,7 @@ const teacherSheet = {
     };
   }
 };
+teacherPassword = context.hashPassword_('123456');
 context.requireSheet_ = name => {
   assert.strictEqual(name, 'TroGiang');
   return teacherSheet;
@@ -201,10 +203,31 @@ assert.strictEqual(
   false,
   'Teacher accounts using the default password must not require a password-change redirect.'
 );
-assert.match(teacherPassword, /^TVG-HMAC-SHA256\$10000\$/);
+assert.strictEqual(teacherPassword, '123456', 'Existing teacher hashes must migrate to plain text on successful login.');
 const passwordHash = context.hashPassword_('a-secure-test-password');
 assert(context.verifyPassword_('a-secure-test-password', passwordHash));
 assert(!context.verifyPassword_('wrong-password', passwordHash));
+const originalRequireSheet = context.requireSheet_;
+const originalReadTeachers = context.readTeachers;
+let addedTeacherRow;
+context.requireSheet_ = () => ({ appendRow: row => { addedTeacherRow = row; } });
+context.readTeachers = () => [];
+assert.strictEqual(context.addTeacher('Bình', 'plain-pass').status, 'success');
+assert.strictEqual(
+  Array.from(addedTeacherRow).join('|'),
+  'Bình|plain-pass',
+  'New teacher passwords must be stored as plain text.'
+);
+directorStoredPassword = 'new-secret';
+context.requireSheet_ = () => configSheet;
+assert.strictEqual(
+  context.changePassword('director', 'new-secret', 'plain-pass-2').status,
+  'success'
+);
+assert.strictEqual(directorStoredPassword, 'plain-pass-2', 'Changed passwords must be stored as plain text.');
+context.requireSheet_ = originalRequireSheet;
+context.readTeachers = originalReadTeachers;
+directorStoredPassword = 'new-secret';
 
 context.trackerActor_ = token => {
   if (token === 'forced-change') {
@@ -321,7 +344,7 @@ const postResponse = context.doPost({
     apiPayload: JSON.stringify({ action: 'verifyLogin', username: 'director', password: 'secret' })
   }
 });
-assert.match(lastHtml, /window\.top\.postMessage/);
+assert.match(lastHtml, /window\.parent\.postMessage/);
 assert.match(lastHtml, /tvg-api-response/);
 assert.match(lastHtml, /tvg_test_1/);
 assert.match(lastHtml, /\\u003c\/script>/, 'API responses must escape script-breaking content.');
@@ -622,7 +645,9 @@ assert(localServer.includes("app.listen(PORT, '127.0.0.1'"), 'The local API must
 assert(!localServer.includes("app.use('/uploads'"), 'The legacy public upload directory must stay disabled.');
 assert(trackerPage.includes("['apiPayload', JSON.stringify({ action, ...payload })]"), 'Tracker frontend must POST API payloads.');
 assert(frontend.includes("event.origin === 'https://script.google.com'")
-  && frontend.includes('event.data.requestId !== requestId'),
+  && frontend.includes("event.origin === 'https://script.googleusercontent.com'")
+  && frontend.includes('event.data.requestId !== requestId')
+  && !frontend.includes('event.source !== frame.contentWindow'),
   'Main frontend must validate the Apps Script origin and request ID.');
 assert(trackerPage.includes('event.source !== frame.contentWindow'), 'Tracker frontend must validate the iframe message source.');
 assert(!frontend.includes('callJsonp'), 'Main frontend must not fall back to JSONP.');

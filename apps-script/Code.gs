@@ -144,7 +144,7 @@ function apiPostMessageResponse_(requestId, result) {
     result: result
   }).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   return HtmlService.createHtmlOutput(
-    `<!doctype html><html><body><script>window.top.postMessage(${message}, '*');</script></body></html>`
+    `<!doctype html><html><body><script>window.parent.postMessage(${message}, '*');</script></body></html>`
   ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -1138,11 +1138,9 @@ function verifyLogin_(username, password) {
       recordLoginFailure_(cache, attemptKey);
       return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
     }
-    if (!isPasswordHash_(storedPassword)) {
-      const nextHash = hashPassword_(secret);
-      if (passwordRow === -1) sheet.appendRow(['directorPassword', nextHash]);
-      else sheet.getRange(passwordRow + 1, 2).setValue(nextHash);
-      cacheVerifiedLoginPassword_(name, secret, nextHash, cache);
+    if (isPasswordHash_(storedPassword)) {
+      if (passwordRow === -1) sheet.appendRow(['directorPassword', secret]);
+      else sheet.getRange(passwordRow + 1, 2).setValue(secret);
     }
     identity = {
       status: 'success',
@@ -1165,10 +1163,8 @@ function verifyLogin_(username, password) {
       recordLoginFailure_(cache, attemptKey);
       return { status: 'error', message: 'Tài khoản hoặc mật khẩu không đúng.' };
     }
-    if (!isPasswordHash_(validPassword)) {
-      const nextHash = hashPassword_(secret);
-      teacherSheet.getRange(row, 2).setValue(nextHash);
-      cacheVerifiedLoginPassword_(name, secret, nextHash, cache);
+    if (isPasswordHash_(validPassword)) {
+      teacherSheet.getRange(row, 2).setValue(secret);
     }
     identity = {
       status: 'success',
@@ -2145,8 +2141,8 @@ function changePassword(username, oldPassword, newPassword) {
       return { status: 'error', message: 'Mật khẩu hiện tại không đúng' };
     }
 
-    if (rowNumber) sheet.getRange(rowNumber, 2).setValue(hashPassword_(newValue));
-    else sheet.appendRow(['directorPassword', hashPassword_(newValue)]);
+    if (rowNumber) sheet.getRange(rowNumber, 2).setValue(newValue);
+    else sheet.appendRow(['directorPassword', newValue]);
   } else {
     const sheet = requireSheet_(TAB.TEACHERS);
     const row = findRowByTeacherName(sheet, user);
@@ -2157,7 +2153,7 @@ function changePassword(username, oldPassword, newPassword) {
       return { status: 'error', message: 'Mật khẩu hiện tại không đúng' };
     }
 
-    sheet.getRange(row, 2).setValue(hashPassword_(newValue));
+    sheet.getRange(row, 2).setValue(newValue);
   }
 
   return { status: 'success', message: 'Đã cập nhật mật khẩu lên Sheet' };
@@ -2621,7 +2617,7 @@ function addTeacher(teacherName, password) {
     };
   }
 
-  sheet.appendRow([name, hashPassword_(pwd)]);
+  sheet.appendRow([name, pwd]);
 
   return {
     status: 'success',

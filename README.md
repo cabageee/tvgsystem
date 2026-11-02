@@ -113,7 +113,7 @@ Khi có nhiều người dùng trên các thiết bị khác nhau, mỗi trình 
 7. Sao chép URL `/exec` của deployment vào cấu hình trong `app.js`, `executive-tracker.html` và `server.js` nếu URL đã thay đổi.
 8. Tạo tài khoản trợ giảng trong sheet `TroGiang`, cập nhật cấu hình trong `CauHinh`, rồi kiểm thử đăng nhập và đọc/ghi dữ liệu.
 9. Khi cập nhật mã Apps Script đã triển khai, vào **Deploy → Manage deployments → Edit → New version**. Giữ URL deployment hiện tại nếu có thể; nếu URL đổi, cập nhật lại các cấu hình ở bước 7.
-10. Sau khi triển khai, đăng nhập bằng mật khẩu đang dùng. Mật khẩu dạng văn bản cũ được chuyển thành hash có salt khi đăng nhập thành công. Nếu tài khoản chưa có mật khẩu riêng hoặc vẫn dùng `123456`, ứng dụng bắt buộc đổi sang mật khẩu từ 12 đến 128 ký tự trước khi dùng tiếp. Mật khẩu mới và mật khẩu tài khoản trợ giảng được lưu dạng hash, không xóa/ghi đè dữ liệu tài khoản khi nâng cấp backend.
+10. Sau khi triển khai, đăng nhập bằng mật khẩu đang dùng. Mật khẩu mới cần từ 4 đến 128 ký tự; nếu tài khoản chưa có mật khẩu riêng thì mật khẩu mặc định là `123456`, nên đổi khi bắt đầu sử dụng.
 
 ### Các sheet được khởi tạo
 
@@ -216,16 +216,8 @@ Kiểm tra cú pháp không thay thế cho việc thử đăng nhập và thao t
 | Avatar tải thất bại | Kiểm tra quyền Drive của Apps Script, giới hạn định dạng/kích thước, deployment mới nhất và dung lượng Drive. |
 | CSS mới không xuất hiện | Chạy `npm run build:css`, xác nhận `tailwind.css` được cập nhật và triển khai tệp đó cùng HTML. |
 
-## Bảo mật và giới hạn hiện tại
+## Lưu ý
 
-- Không đưa mật khẩu hoặc dữ liệu nhạy cảm vào mã frontend, README, repository công khai hay log.
-- Mật khẩu lưu trong Google Sheet dưới dạng hash HMAC-SHA-256 có salt và 10.000 vòng lặp; mật khẩu cũ được hash lại khi xác thực thành công. Bảo vệ quyền xem/sửa Spreadsheet vì sheet vẫn chứa dữ liệu nhạy cảm khác.
-- Mật khẩu mặc định `123456` chỉ được dùng để đăng nhập lần đầu và bắt buộc đổi trước khi truy cập dữ liệu; mật khẩu mới cần từ 12 đến 128 ký tự. Đăng nhập bị giới hạn sau 10 lần sai trong 10 phút.
-- Website gửi API bằng POST; trang tĩnh nhận phản hồi qua iframe `postMessage`, còn trang Apps Script dùng `google.script.run`. API JSONP tổng quát đã bị tắt; sau khi cập nhật backend cần triển khai phiên bản Apps Script mới nhất để đăng nhập và gọi dữ liệu hoạt động.
-- API dữ liệu yêu cầu token phiên ở backend. Trợ giảng chỉ đọc học viên được phân công và chỉ được điểm danh, cập nhật avatar học viên được phân công hoặc đổi mật khẩu; các thao tác quản trị học viên do Giám đốc thực hiện. Danh sách tên trợ giảng để hiển thị biểu mẫu đăng nhập là dữ liệu công khai tối thiểu.
-- `initDatabase` kiểm tra header sheet hiện hữu và dừng rõ ràng nếu sai cấu trúc. Chuyển/khôi phục học viên có rollback bù khi một bước ghi thất bại; vẫn cần sao lưu Spreadsheet trước migration hoặc chỉnh sửa cấu trúc.
-- Deployment Apps Script chạy với quyền tài khoản triển khai có thể đọc/ghi Spreadsheet và Drive. Chỉ triển khai trong phạm vi người dùng phù hợp với mức độ nhạy cảm của dữ liệu; không xem URL deployment như cơ chế xác thực.
-- `server.js` chỉ bind `127.0.0.1`, CORS có allowlist phát triển và các endpoint upload/xóa ảnh cũ đã được gỡ. Không đưa server này lên Internet.
-- Hàng đợi tuần tự giảm xung đột giữa các thao tác ghi nhưng không loại bỏ độ trễ của Google Apps Script/Google Sheets; giao diện chỉ báo lưu thành công sau khi nhận kết quả từ worker. Không thực hiện thao tác ghi khi offline.
-
-Nếu ứng dụng cần dùng với dữ liệu cá nhân thật trên diện rộng, cần rà soát quyền triển khai và chính sách truy cập Spreadsheet/Drive; đặc biệt thay cơ chế avatar chia sẻ bằng liên kết bằng kho lưu trữ ảnh riêng tư.
+- Mật khẩu cần từ 4 đến 128 ký tự và được lưu trực tiếp trong Google Sheet để tiện quản lý nội bộ. Tài khoản đang lưu hash sẽ chuyển sang dạng chữ thường sau lần đăng nhập thành công tiếp theo.
+- Ứng dụng dùng nội bộ; chỉ chia sẻ website và Spreadsheet với người cần sử dụng, vì Spreadsheet có thông tin học viên.
+- Các thao tác ghi được xử lý lần lượt; cần có Internet để lưu và đồng bộ dữ liệu.
