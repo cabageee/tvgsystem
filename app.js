@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby8cS8KYUZivKAsWtLu6RKUALoR22jXNdt-UMDejt4NtvrVVkYBQdrik9sKwCLFrcax/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhfHhqhL2c3vXLs3hEloQXl-6D4ktZx8V_r0fkhYxpPnuhn38dCylmnJJfbpmi936R/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
