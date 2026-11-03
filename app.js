@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwz6Scb7zhV8Pi1A9ZDL-NGgrDOSTICbnoP-NBjO-GlbY52noWBgofL8iyjkQhNJT5j/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby8cS8KYUZivKAsWtLu6RKUALoR22jXNdt-UMDejt4NtvrVVkYBQdrik9sKwCLFrcax/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -2893,16 +2893,15 @@
         return;
       }
 
-      inactiveStudentsData.splice(inactiveIdx, 1);
-      studentsData.push(restoredStudent);
-      saveAllDataToLocalStorage();
-      updateAllViews();
-      showToast(`Đã khôi phục học viên ${student.name}`);
-
       try {
         const result = await apiCall('restoreStudent', { student: restoredStudent });
         if (result?.status !== 'success') throw new Error(result?.message || 'Khôi phục lên Sheet thất bại');
+        inactiveStudentsData.splice(inactiveIdx, 1);
+        studentsData.push(restoredStudent);
+        saveAllDataToLocalStorage();
+        updateAllViews();
         void refreshDataAfterMutation();
+        showToast(`Đã khôi phục học viên ${student.name}`);
       } catch (err) {
         showToast(`✕ Lỗi đồng bộ khôi phục lên Sheet: ${err.message}`, 'error');
       }
@@ -2914,8 +2913,7 @@
       const confirmOk = await showConfirmModal(`Chuyển học viên "${student.name}" sang danh sách Nghỉ Học?`);
       if (!confirmOk) return;
 
-      studentsData.splice(studentIdx, 1);
-      inactiveStudentsData.push({
+      const inactiveStudent = {
         stt: inactiveStudentsData.length + 1,
         id: student.id,
         name: student.name,
@@ -2931,19 +2929,26 @@
         note: student.note || 'Nghỉ học',
         avatar: student.avatar,
         assistants: normalizeAssistants(student.assistants)
-      });
-
-      updateAllViews();
-      showToast(`Đã chuyển ${student.name} sang tab Nghỉ Học`);
+      };
 
       try {
-        await apiCall('moveToInactive', {
+        const result = await apiCall('moveToInactive', {
           studentId: student.id,
           reason: student.note || 'Đã dừng học'
         });
+        if (result?.status !== 'success') {
+          throw new Error(result?.message || 'Không đồng bộ được sang Sheet nghỉ học.');
+        }
+
+        studentsData.splice(studentIdx, 1);
+        inactiveStudentsData.push(inactiveStudent);
+        saveAllDataToLocalStorage();
+        updateAllViews();
         void refreshDataAfterMutation();
+        showToast(`Đã chuyển ${student.name} sang tab Nghỉ Học`);
       } catch (e) {
-        showToast("Lỗi đồng bộ xóa lên Sheet!", "error");
+        console.error('Lỗi đồng bộ chuyển học viên sang nghỉ học:', e);
+        showToast(`Lỗi đồng bộ dừng học lên Sheet: ${e.message}`, "error");
       }
     }
 

@@ -2448,6 +2448,9 @@ function moveToInactive(studentId, reason) {
   const sheetAttendance = requireSheet_(TAB.ATTENDANCE);
   const sheetInactive = requireSheet_(TAB.INACTIVE);
   const id = String(studentId || '').trim();
+  if (!id) {
+    return { status: 'error', message: 'Thiếu mã học viên cần chuyển sang nghỉ học.' };
+  }
 
   const studentsData = sheetStudents.getDataRange().getValues();
   const inactiveData = sheetInactive.getDataRange().getValues();
