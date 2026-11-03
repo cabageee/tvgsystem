@@ -1325,6 +1325,38 @@ function trackerIsPersonalTask_(task) {
     && assignees[0] === String(task.createdBy || '').trim();
 }
 
+function trackerTaskClassification_(task) {
+  const priority = Number(task.priority);
+  if (trackerIsPersonalTask_(task)) {
+    return {
+      code: 'PERSONAL',
+      label: 'Cá nhân tự tạo',
+      description: priority === 3
+        ? 'Việc cá nhân · ưu tiên trước'
+        : 'Việc cá nhân · có thể làm sau'
+    };
+  }
+  if (priority === 1) {
+    return {
+      code: 'DIRECTOR_ASSIGNED',
+      label: 'Giám đốc giao',
+      description: 'Nhiệm vụ tuần · Giám đốc giao'
+    };
+  }
+  if (priority === 2) {
+    return {
+      code: 'MANAGER_ASSIGNED',
+      label: 'Quản lý giao',
+      description: 'Nhiệm vụ tuần · Quản lý giao'
+    };
+  }
+  return {
+    code: 'ASSIGNED',
+    label: 'Nhiệm vụ được giao',
+    description: 'Nhiệm vụ được giao'
+  };
+}
+
 function trackerTaskRecords_() {
   const sheet = requireSheet_(TAB.TRACKER_TASKS);
   trackerEnsureOutputColumn_(sheet);
@@ -1365,6 +1397,7 @@ function trackerTaskRecords_() {
         performanceByAssignee: trackerParseTaskObject_(row[23], 'teacher performance', row[0]),
         archiveMonth: String(row[24] || '')
       };
+      task.classification = trackerTaskClassification_(task);
       Object.defineProperty(task, 'rowNumber', { value: rowNumber });
       return task;
     });
@@ -1527,7 +1560,12 @@ function trackerCreateTask_(token, input) {
     repeatWeekly, repeatWeekly ? weekStart : '', '', '', ''
   ];
   sheet.appendRow(row);
-  return { status: 'success', taskId: id };
+  const classification = trackerTaskClassification_({
+    priority,
+    assignees,
+    createdBy: creator
+  });
+  return { status: 'success', taskId: id, classification: classification };
 }
 
 function trackerUpdateTask_(token, taskId, input) {
