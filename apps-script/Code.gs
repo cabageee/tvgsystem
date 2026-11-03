@@ -872,6 +872,11 @@ function authorizeLegacyApiAction_(actor, action, payload) {
     throw new Error('Bạn không có quyền cập nhật điểm danh học viên này.');
   }
 
+  if (action === 'processPayment') {
+    if (actor.role === 'director' || trackerTeacherCanAccessStudent_(actor, payload.studentId)) return;
+    throw new Error('Bạn chỉ có thể gia hạn học viên được phân công cho mình.');
+  }
+
   if (action === 'updateStudentInfo' && actor.role !== 'director') {
     const student = payload.student || {};
     const keys = Object.keys(student).filter(key => key !== 'id');
@@ -1325,38 +1330,6 @@ function trackerIsPersonalTask_(task) {
     && assignees[0] === String(task.createdBy || '').trim();
 }
 
-function trackerTaskClassification_(task) {
-  const priority = Number(task.priority);
-  if (trackerIsPersonalTask_(task)) {
-    return {
-      code: 'PERSONAL',
-      label: 'Cá nhân tự tạo',
-      description: priority === 3
-        ? 'Việc cá nhân · ưu tiên trước'
-        : 'Việc cá nhân · có thể làm sau'
-    };
-  }
-  if (priority === 1) {
-    return {
-      code: 'DIRECTOR_ASSIGNED',
-      label: 'Giám đốc giao',
-      description: 'Nhiệm vụ tuần · Giám đốc giao'
-    };
-  }
-  if (priority === 2) {
-    return {
-      code: 'MANAGER_ASSIGNED',
-      label: 'Quản lý giao',
-      description: 'Nhiệm vụ tuần · Quản lý giao'
-    };
-  }
-  return {
-    code: 'ASSIGNED',
-    label: 'Nhiệm vụ được giao',
-    description: 'Nhiệm vụ được giao'
-  };
-}
-
 function trackerTaskRecords_() {
   const sheet = requireSheet_(TAB.TRACKER_TASKS);
   trackerEnsureOutputColumn_(sheet);
@@ -1397,7 +1370,6 @@ function trackerTaskRecords_() {
         performanceByAssignee: trackerParseTaskObject_(row[23], 'teacher performance', row[0]),
         archiveMonth: String(row[24] || '')
       };
-      task.classification = trackerTaskClassification_(task);
       Object.defineProperty(task, 'rowNumber', { value: rowNumber });
       return task;
     });
@@ -1560,12 +1532,7 @@ function trackerCreateTask_(token, input) {
     repeatWeekly, repeatWeekly ? weekStart : '', '', '', ''
   ];
   sheet.appendRow(row);
-  const classification = trackerTaskClassification_({
-    priority,
-    assignees,
-    createdBy: creator
-  });
-  return { status: 'success', taskId: id, classification: classification };
+  return { status: 'success', taskId: id };
 }
 
 function trackerUpdateTask_(token, taskId, input) {
@@ -2513,7 +2480,7 @@ function moveToInactive(studentId, reason) {
       studentInfo[5],
       studentInfo[6],
       studentInfo[7],
-      'Nghỉ học',
+      normalizeFeeStatus(studentInfo[9]),
       studentInfo[8],
       studentInfo[10],
       studentInfo[11],
@@ -2599,8 +2566,28 @@ function restoreStudent(student) {
     return { status: 'error', message: 'Không tìm thấy học viên trong danh sách nghỉ học' };
   }
 
-  const assistants = splitAssistants(student.assistants).join(', ');
-  const feeStatus = normalizeFeeStatus(student.feeStatus);
+  const inactiveRowValues = inactiveValues[inactiveRow - 1] || [];
+  const valueOr = (columnIndex, fallback) => {
+    const value = inactiveRowValues[columnIndex];
+    return value == null || String(value).trim() === ''
+      ? fallback
+      : value;
+  };
+  const restoredStudent = {
+    name: String(valueOr(1, student.name) || ''),
+    dob: formatCell(valueOr(2, student.dob)),
+    gender: String(valueOr(3, student.gender) || ''),
+    level: String(valueOr(4, student.level) || ''),
+    regDate: formatCell(valueOr(5, student.regDate)),
+    parentName: String(valueOr(6, student.parentName) || ''),
+    parentPhone: String(valueOr(7, student.parentPhone || student.phone) || ''),
+    address: String(valueOr(9, student.address) || ''),
+    feeStatus: normalizeFeeStatus(valueOr(8, student.feeStatus)),
+    note: String(valueOr(10, student.note) || ''),
+    avatar: String(valueOr(11, student.avatar) || ''),
+    assistants: splitAssistants(valueOr(12, student.assistants))
+  };
+  const assistants = restoredStudent.assistants.join(', ');
 
   const attendanceValues = attendanceSheet.getDataRange().getValues();
   const existsInAttendance = attendanceValues.slice(1).some(row =>
@@ -2611,17 +2598,17 @@ function restoreStudent(student) {
   try {
     studentSheet.appendRow([
       studentId,
-      student.name || '',
-      student.dob || '',
-      student.gender || '',
-      student.level || '',
-      student.regDate || '',
-      student.parentName || '',
-      student.parentPhone || '',
-      student.address || '',
-      feeStatus,
-      student.note || '',
-      student.avatar || '',
+      restoredStudent.name,
+      restoredStudent.dob,
+      restoredStudent.gender,
+      restoredStudent.level,
+      restoredStudent.regDate,
+      restoredStudent.parentName,
+      restoredStudent.parentPhone,
+      restoredStudent.address,
+      restoredStudent.feeStatus,
+      restoredStudent.note,
+      restoredStudent.avatar,
       assistants
     ]);
     activeRowAdded = true;

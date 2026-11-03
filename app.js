@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwoKrSQL0CwufiqEaPW7cJYH18k6O6d26kxGj5QjJ8oqP12g2tf7mGBKzaFPtRP6Vcx/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwz6Scb7zhV8Pi1A9ZDL-NGgrDOSTICbnoP-NBjO-GlbY52noWBgofL8iyjkQhNJT5j/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -1520,13 +1520,17 @@
     }
 
     function openPaymentPopup(studentId) {
-      if (currentUserRole !== 'director') {
-        showToast('Chỉ giám đốc mới có quyền xử lý thanh toán.', 'error');
+      if (currentUserRole !== 'director' && currentUserRole !== 'teacher') {
+        showToast('Bạn không có quyền xử lý thanh toán.', 'error');
         return;
       }
 
       const student = studentsData.find(s => s.id === studentId);
       if (!student) return;
+      if (currentUserRole === 'teacher' && !normalizeAssistants(student.assistants).includes(currentUserName)) {
+        showToast('Bạn chỉ có thể gia hạn học viên được phân công cho mình.', 'error');
+        return;
+      }
 
       const studentName = document.getElementById('payment-student-name');
       const classType = document.getElementById('payment-class-type');
@@ -1588,14 +1592,18 @@
     }
 
     async function processStudentPayment(studentId) {
-      if (currentUserRole !== 'director') {
-        showToast('Chỉ giám đốc mới có quyền xử lý thanh toán.', 'error');
+      if (currentUserRole !== 'director' && currentUserRole !== 'teacher') {
+        showToast('Bạn không có quyền xử lý thanh toán.', 'error');
         return;
       }
 
       const student = studentsData.find(s => s.id === studentId);
       const confirmButton = document.getElementById('btn-confirm-payment');
       if (!student || !confirmButton) return;
+      if (currentUserRole === 'teacher' && !normalizeAssistants(student.assistants).includes(currentUserName)) {
+        showToast('Bạn chỉ có thể gia hạn học viên được phân công cho mình.', 'error');
+        return;
+      }
 
       const packageSessions = Number(document.getElementById('payment-package').value);
       const errorMessage = document.getElementById('payment-error-message');
@@ -2867,15 +2875,18 @@
       const restoredStudent = {
         ...student,
         id: String(student.id || '').trim(),
+        dob: String(student.dob || ''),
+        gender: String(student.gender || ''),
+        level: String(student.level || ''),
+        regDate: String(student.regDate || ''),
+        parentName: String(student.parentName || ''),
+        parentPhone: String(student.parentPhone || student.phone || ''),
+        address: String(student.address || ''),
+        note: String(student.note || ''),
+        avatar: String(student.avatar || ''),
         assistants: normalizeAssistants(student.assistants),
-        sessions: Array.isArray(student.sessions) ? student.sessions.slice(0, 40).concat(Array(40).fill('')).slice(0, 40) : Array(40).fill(''),
-        completedSessions: 0,
         feeStatus: String(student.feeStatus || 'Chưa đóng').trim() || 'Chưa đóng'
       };
-      restoredStudent.sessions = restoredStudent.sessions.map(value => {
-        const entry = parseSessionEntry(value);
-        return serializeSessionEntry(normalizeAttendanceDate(entry.date) || entry.date, entry.note);
-      });
 
       if (!restoredStudent.id) {
         showToast('Không thể khôi phục vì thiếu mã học viên.', 'error');
@@ -2908,10 +2919,18 @@
         stt: inactiveStudentsData.length + 1,
         id: student.id,
         name: student.name,
+        dob: student.dob,
+        gender: student.gender,
+        level: student.level,
         parentName: student.parentName,
         phone: student.parentPhone || student.phone,
+        parentPhone: student.parentPhone || student.phone,
+        address: student.address,
         regDate: student.regDate,
-        note: student.note || 'Nghỉ học'
+        feeStatus: student.feeStatus,
+        note: student.note || 'Nghỉ học',
+        avatar: student.avatar,
+        assistants: normalizeAssistants(student.assistants)
       });
 
       updateAllViews();

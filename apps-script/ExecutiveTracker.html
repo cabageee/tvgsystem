@@ -686,7 +686,7 @@
 
       <section class="toolbar" aria-label="Bộ lọc và thao tác">
         <div class="filters">
-          <div id="priority-filter-field" class="field"><label for="filter-priority">Nguồn / loại công việc</label><select id="filter-priority"><option value="">Tất cả công việc</option><option value="1">Giám đốc giao · Nhiệm vụ tuần</option><option value="2">Quản lý giao · Nhiệm vụ tuần</option><option value="3">Cá nhân tự tạo · ưu tiên trước</option><option value="4">Cá nhân tự tạo · có thể làm sau</option></select></div>
+          <div id="priority-filter-field" class="field"><label for="filter-priority">Loại nhiệm vụ</label><select id="filter-priority"><option value="">Tất cả</option><option value="1">Nhiệm vụ tuần · Giám đốc giao</option><option value="2">Nhiệm vụ tuần · Quản lý giao</option><option value="3">Việc cá nhân · ưu tiên trước</option><option value="4">Việc cá nhân · có thể làm sau</option></select></div>
           <div id="teacher-filter-field" class="field"><label for="filter-teacher">Trợ giảng</label><select id="filter-teacher"><option value="">Tất cả</option></select></div>
           <div class="field"><label for="filter-status">Trạng thái</label><select id="filter-status"><option value="">Tất cả</option><option value="NEW">Mới giao</option><option value="IN_PROGRESS">Đang làm</option><option value="PENDING">Chờ duyệt</option><option value="COMPLETED">Hoàn thành</option><option value="OVERDUE">Quá hạn</option></select></div>
           <div class="field"><label for="task-search">Tìm nhiệm vụ</label><input id="task-search" placeholder="Tên việc, người giao..."></div>
@@ -778,7 +778,6 @@
   <dialog id="task-dialog">
     <div class="dialog-head"><h2 id="task-dialog-title">Tạo nhiệm vụ</h2><button type="button" data-close="task-dialog" aria-label="Đóng">&times;</button></div>
     <form id="task-form" class="dialog-form">
-      <p id="task-classification-guide" class="task-action-guidance full"></p>
       <div class="field full"><label for="task-title">Tên nhiệm vụ</label><input id="task-title" required maxlength="300"></div>
       <div id="assignee-field" class="field full"><label>Giao cho trợ giảng</label><div id="assignee-options" class="assignee-options"></div></div>
       <div id="task-personal-priority-field" class="field full" hidden>
@@ -1192,12 +1191,6 @@
         if (isPersonalTask(task)) {
           return `Việc cá nhân · ưu tiên ${Number(task.priority) === 3 ? 'trước' : 'sau'}`;
         }
-        if (Number(task.priority) === 1) {
-          return `${task.classification?.label || 'Giám đốc giao'} · nhiệm vụ tuần${task.repeatWeekly ? ' · lặp hàng tuần' : ''}`;
-        }
-        if (Number(task.priority) === 2) {
-          return `${task.classification?.label || 'Quản lý giao'} · nhiệm vụ tuần${task.repeatWeekly ? ' · lặp hàng tuần' : ''}`;
-        }
         return `Nhiệm vụ được giao${task.repeatWeekly ? ' · lặp hàng tuần' : ''}`;
       }
 
@@ -1513,7 +1506,7 @@
         $('accepted-description').textContent = role === 'director'
           ? 'Xem báo cáo hoàn thành tại đây; chỉ duyệt sau khi đã kiểm tra kết quả.'
           : 'Kiểm tra báo cáo hoàn thành và duyệt tại đây; không duyệt ở bảng điều phối phía trên.';
-        $('create-task').textContent = role === 'director' ? 'Giám đốc giao việc' : role === 'manager' ? 'Quản lý giao việc / tạo việc cá nhân' : 'Cá nhân tạo việc';
+        $('create-task').textContent = role === 'director' ? 'Giao nhiệm vụ tuần' : role === 'manager' ? 'Giao nhiệm vụ tuần / việc cá nhân' : 'Thêm việc cá nhân';
         const activeTasks = tasks.filter(task => !task.archiveMonth && task.status !== 'ARCHIVED');
         const currentMonth = dateInputValue(new Date()).slice(0, 7);
         const archivedTasks = tasks.filter(task => Boolean(task.archiveMonth));
@@ -1888,16 +1881,6 @@
         const canRepeat = role === 'director' || (role === 'manager' && hasAssignees);
         $('task-repeat-field').hidden = !canRepeat;
         if (!canRepeat) $('task-repeat-weekly').checked = false;
-        const guide = $('task-classification-guide');
-        if (role === 'director') {
-          guide.textContent = 'Phân loại: GIÁM ĐỐC GIAO — nhiệm vụ được giao cho một hoặc nhiều trợ giảng; không lưu là việc cá nhân.';
-        } else if (role === 'manager') {
-          guide.textContent = hasAssignees
-            ? 'Phân loại: QUẢN LÝ GIAO — nhiệm vụ tuần được giao cho trợ giảng khác.'
-            : 'Phân loại: CÁ NHÂN — Manager tự tạo việc cho chính mình. Không chọn trợ giảng ở mục trên.';
-        } else {
-          guide.textContent = 'Phân loại: CÁ NHÂN — việc tự tạo, chỉ giao cho chính bạn và có thể chọn ưu tiên trước hoặc sau.';
-        }
       }
 
       function openProgressReport(task) {

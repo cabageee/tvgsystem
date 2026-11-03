@@ -310,6 +310,27 @@ assert.throws(
   /Chỉ Giám đốc/,
   'Teachers must not edit student profile data.'
 );
+const originalTeacherAccessCheck = context.trackerTeacherCanAccessStudent_;
+context.trackerTeacherCanAccessStudent_ = (_actor, studentId) => studentId === 'HV001';
+assert.doesNotThrow(
+  () => context.authorizeLegacyApiAction_(
+    { name: 'An', role: 'teacher' },
+    'processPayment',
+    { studentId: 'HV001' }
+  ),
+  'Assigned teachers must be allowed to process payment renewal.'
+);
+context.trackerTeacherCanAccessStudent_ = () => false;
+assert.throws(
+  () => context.authorizeLegacyApiAction_(
+    { name: 'An', role: 'teacher' },
+    'processPayment',
+    { studentId: 'HV999' }
+  ),
+  /gia hạn học viên được phân công/,
+  'Teachers must not renew students assigned to another teacher.'
+);
+context.trackerTeacherCanAccessStudent_ = originalTeacherAccessCheck;
 
 function makeSheet(rows) {
   return {
@@ -357,6 +378,18 @@ assert.strictEqual(moveSheets.ThongTinHocSinh.rows.filter(row => row[0] === 'HV0
 assert.strictEqual(moveSheets.DiemDanh.rows.filter(row => row[0] === 'HV001').length, 1);
 assert.strictEqual(moveSheets.HocVienNghiHoc.rows.length, 1);
 
+const moveSuccessSheets = {
+  ThongTinHocSinh: makeSheet([['ID'], ['HV003', 'C', '2002-03-04', 'M', 'L2', '2026-02-01', 'PH C', '0912', 'Dia chi C', 'Đã đóng', 'Ghi chu C', 'Avatar C', 'An,Binh']]),
+  DiemDanh: makeSheet([['ID'], ['HV003', 'C', '2026-02-01', ...Array(40).fill('')]]),
+  HocVienNghiHoc: makeSheet([['ID']])
+};
+context.requireSheet_ = name => moveSuccessSheets[name];
+assert.strictEqual(context.moveToInactive('HV003', 'Nghỉ do chuyển nhà').status, 'success');
+const inactiveRow = moveSuccessSheets.HocVienNghiHoc.rows[1];
+assert.strictEqual(inactiveRow[8], 'Đã đóng', 'Inactive sheet must preserve fee status in the correct column.');
+assert.strictEqual(inactiveRow[9], 'Dia chi C', 'Inactive sheet must preserve address in the correct column.');
+assert.strictEqual(inactiveRow[13], 'Nghỉ do chuyển nhà', 'Inactive sheet must preserve the inactive reason.');
+
 const restoreSheets = {
   ThongTinHocSinh: makeSheet([['ID']]),
   DiemDanh: makeSheet([['ID']]),
@@ -372,6 +405,23 @@ assert.throws(
 assert.strictEqual(restoreSheets.ThongTinHocSinh.rows.filter(row => row[0] === 'HV002').length, 0);
 assert.strictEqual(restoreSheets.DiemDanh.rows.filter(row => row[0] === 'HV002').length, 0);
 assert.strictEqual(restoreSheets.HocVienNghiHoc.rows.filter(row => row[0] === 'HV002').length, 1);
+
+const restoreSuccessSheets = {
+  ThongTinHocSinh: makeSheet([['ID']]),
+  DiemDanh: makeSheet([['ID']]),
+  HocVienNghiHoc: makeSheet([['ID'], [
+    'HV004', 'D', '2001-01-01', 'F', 'L3', '2026-01-01',
+    'PH D', '0988', 'Đã đóng', 'Dia chi D', 'Ghi chu D', 'Avatar D', 'An', 'Ly do'
+  ]])
+};
+context.requireSheet_ = name => restoreSuccessSheets[name];
+assert.strictEqual(context.restoreStudent({ id: 'HV004' }).status, 'success');
+const restoredRow = restoreSuccessSheets.ThongTinHocSinh.rows[1];
+assert.strictEqual(restoredRow[1], 'D');
+assert.strictEqual(restoredRow[8], 'Dia chi D');
+assert.strictEqual(restoredRow[9], 'Đã đóng');
+assert.strictEqual(restoredRow[12], 'An');
+assert.strictEqual(restoreSuccessSheets.HocVienNghiHoc.rows.some(row => row[0] === 'HV004'), false);
 
 context.readStudents = () => [
   { id: 'HV001', assistants: ['An'] },
