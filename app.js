@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhfHhqhL2c3vXLs3hEloQXl-6D4ktZx8V_r0fkhYxpPnuhn38dCylmnJJfbpmi936R/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwpw9ESSS08dXR6xMTXinbwL7l14Q6fgrLjo2tHpbE2n11QAR0z2Svwe-ptN3jJzov1/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -1520,14 +1520,14 @@
     }
 
     function openPaymentPopup(studentId) {
-      if (currentUserRole !== 'director' && currentUserRole !== 'teacher') {
+      if (!['director', 'teacher', 'manager'].includes(currentUserRole)) {
         showToast('Bạn không có quyền xử lý thanh toán.', 'error');
         return;
       }
 
       const student = studentsData.find(s => s.id === studentId);
       if (!student) return;
-      if (currentUserRole === 'teacher' && !normalizeAssistants(student.assistants).includes(currentUserName)) {
+      if (['teacher', 'manager'].includes(currentUserRole) && !normalizeAssistants(student.assistants).includes(currentUserName)) {
         showToast('Bạn chỉ có thể gia hạn học viên được phân công cho mình.', 'error');
         return;
       }
@@ -1592,7 +1592,7 @@
     }
 
     async function processStudentPayment(studentId) {
-      if (currentUserRole !== 'director' && currentUserRole !== 'teacher') {
+      if (!['director', 'teacher', 'manager'].includes(currentUserRole)) {
         showToast('Bạn không có quyền xử lý thanh toán.', 'error');
         return;
       }
@@ -1600,7 +1600,7 @@
       const student = studentsData.find(s => s.id === studentId);
       const confirmButton = document.getElementById('btn-confirm-payment');
       if (!student || !confirmButton) return;
-      if (currentUserRole === 'teacher' && !normalizeAssistants(student.assistants).includes(currentUserName)) {
+      if (['teacher', 'manager'].includes(currentUserRole) && !normalizeAssistants(student.assistants).includes(currentUserName)) {
         showToast('Bạn chỉ có thể gia hạn học viên được phân công cho mình.', 'error');
         return;
       }
@@ -1676,8 +1676,8 @@
       const teacherLink = document.getElementById('teacher-tracker-link');
       const managerLink = document.getElementById('manager-tracker-link');
       const nav = document.getElementById('teacher-tracker-nav');
-      const isAssistant = currentUserRole === 'teacher';
-      const isManager = isAssistant && trackerManagerLoaded && currentUserName === trackerManagerName;
+      const isAssistant = ['teacher', 'manager'].includes(currentUserRole);
+      const isManager = currentUserRole === 'manager';
       if (nav) nav.classList.toggle('hidden', !isAssistant || !trackerManagerLoaded);
       if (teacherLink) teacherLink.classList.toggle('hidden', !isAssistant);
       if (managerLink) managerLink.classList.toggle('hidden', !isManager);
@@ -2117,7 +2117,7 @@
     async function loadTeacherTrackerTasks() {
       const list = document.getElementById('teacher-task-list');
       const status = document.getElementById('teacher-task-status');
-      if (!list || !status || currentUserRole !== 'teacher') return;
+      if (!list || !status || !['teacher', 'manager'].includes(currentUserRole)) return;
       const token = sessionStorage.getItem('TV_GLOBAL_TRACKER_TOKEN');
       if (!token) {
         status.textContent = 'Phiên theo dõi chưa sẵn sàng. Vui lòng đăng xuất rồi đăng nhập lại.';
@@ -3370,7 +3370,7 @@
     }
 
     function openTeacherPriorityStudentsPopup(priority) {
-      if (currentUserRole !== 'teacher') {
+      if (!['teacher', 'manager'].includes(currentUserRole)) {
         showToast('Danh sách này chỉ dành cho tài khoản trợ giảng.', 'error');
         return;
       }
@@ -3430,7 +3430,7 @@
     }
 
     async function markTeacherAttendance(studentIndex) {
-      if (currentUserRole !== 'teacher') {
+      if (!['teacher', 'manager'].includes(currentUserRole)) {
         showToast('Chức năng này chỉ dành cho tài khoản trợ giảng.', 'error');
         return;
       }
@@ -3987,8 +3987,8 @@
     function loginAs(role, name, fromSession = false) {
       currentUserRole = role;
       currentUserName = name;
-      teacherLoginSummaryPending = role === 'teacher';
-      teacherLoginSummaryTrackerReady = role !== 'teacher';
+      teacherLoginSummaryPending = ['teacher', 'manager'].includes(role);
+      teacherLoginSummaryTrackerReady = !['teacher', 'manager'].includes(role);
       teacherTrackerLoadSucceeded = false;
       updateTrackerNavigation();
       sessionStorage.setItem('TV_GLOBAL_ROLE', role);
@@ -4010,7 +4010,7 @@
         document.getElementById('admin-nav-buttons')?.classList.remove('hidden');
         showPage(fromSession ? document.body.dataset.appPage : 'page-admin-master');
       } else {
-        badge.innerText = 'Trợ Giảng';
+        badge.innerText = role === 'manager' ? 'Manager' : 'Trợ Giảng';
         badge.className = "text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-emerald-500 text-white sm:inline-block hidden";
         document.getElementById('admin-nav-buttons')?.classList.add('hidden');
         const teacherClassName = document.getElementById('teacher-class-name');
@@ -4018,7 +4018,7 @@
         showPage(fromSession ? document.body.dataset.appPage : 'page-teacher-attendance');
       }
       updateAllViews();
-      if (role === 'teacher') loadTeacherTrackerTasks();
+      if (['teacher', 'manager'].includes(role)) loadTeacherTrackerTasks();
     }
 
     function logout() {
