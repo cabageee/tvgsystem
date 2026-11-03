@@ -730,6 +730,10 @@ assert(trackerPage.includes('id="tracker-loading"')
   'Tracker must expose loading, synchronization and manual refresh states.');
 assert(trackerPage.includes('const TRACKER_REFRESH_INTERVAL_MS = 30000;'),
   'Tracker background refresh must use the optimized 30-second interval.');
+assert(trackerPage.includes('TV_GLOBAL_TRACKER_PENDING_VIEW')
+  && frontend.includes('TV_GLOBAL_TRACKER_PENDING_VIEW')
+  && frontend.includes('window.location.replace(`executive-tracker.html?view=${encodeURIComponent(pendingView)}`)'),
+  'Expired Tracker sessions must return users to login and reopen the same role entry after reauthentication.');
 scriptCache.set('LOGIN_ATTEMPTS_director', '10');
 assert.match(
   context.verifyLogin_('director', 'anything').message,

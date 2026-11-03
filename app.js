@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzmZYtfv60zUzclYGeYl_SYAAsbDo5m3oGGxbmR--DUrucHJDPJhmtqIkB659X-FpD4/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZCTQV9JgP_1CLK3J4b39i2X5yo0Abe8x8421soWVZWo2SjjIYQXfIyJRVjuxHQF9e/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -3939,6 +3939,16 @@
         void fetchDataFromGoogleSheet();
         if (!isDirector && teacherSelect) teacherSelect.value = identityName;
         pwdInput.value = '';
+        const pendingView = sessionStorage.getItem('TV_GLOBAL_TRACKER_PENDING_VIEW');
+        const canAutoOpenTracker = pendingView === 'director' && identity.role === 'director'
+          || pendingView === 'manager' && identity.role === 'manager'
+          || pendingView === 'teacher' && ['teacher', 'manager'].includes(identity.role);
+        if (pendingView && canAutoOpenTracker) {
+          sessionStorage.removeItem('TV_GLOBAL_TRACKER_PENDING_VIEW');
+          window.location.replace(`executive-tracker.html?view=${encodeURIComponent(pendingView)}`);
+          return;
+        }
+        if (pendingView) sessionStorage.removeItem('TV_GLOBAL_TRACKER_PENDING_VIEW');
       } catch (error) {
         errorMessage.textContent = error.message || 'Không thể xác minh tài khoản. Vui lòng thử lại.';
         errorMessage.classList.remove('hidden');
@@ -4050,6 +4060,14 @@
     // Khởi chạy khi nạp xong trang
     window.onload = async function() {
       initializeAccessibility();
+      if (new URLSearchParams(window.location.search).get('session') === 'tracker-expired') {
+        const loginError = document.getElementById('login-error-msg');
+        if (loginError) {
+          loginError.textContent = 'Phiên theo dõi công việc đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại để nhận phiên mới.';
+          loginError.classList.remove('hidden');
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      }
       document.getElementById('teacher-task-list')?.addEventListener('click', handleTeacherTrackerAction);
       document.getElementById('teacher-priority-student-list')?.addEventListener('click', handleTeacherPriorityStudentAction);
       document.getElementById('teacher-progress-report-form')?.addEventListener('submit', submitTeacherProgressReport);

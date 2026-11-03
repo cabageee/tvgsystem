@@ -872,7 +872,7 @@
 
   <script>
     (() => {
-      const API_URL = 'https://script.google.com/macros/s/AKfycbzmZYtfv60zUzclYGeYl_SYAAsbDo5m3oGGxbmR--DUrucHJDPJhmtqIkB659X-FpD4/exec';
+      const API_URL = 'https://script.google.com/macros/s/AKfycbxZCTQV9JgP_1CLK3J4b39i2X5yo0Abe8x8421soWVZWo2SjjIYQXfIyJRVjuxHQF9e/exec';
       const TOKEN_KEY = 'TV_GLOBAL_TRACKER_TOKEN';
       const TRACKER_REFRESH_INTERVAL_MS = 30000;
       const entryMode = new URLSearchParams(window.location.search).get('view') || '';
@@ -1765,16 +1765,24 @@
           const expiredSession = /phiên đăng nhập Tracker đã hết hạn|phiên đăng nhập không hợp lệ/i.test(message);
           if (invalidSession || expiredSession) {
             sessionStorage.removeItem(TOKEN_KEY);
+            sessionStorage.removeItem('TV_GLOBAL_ROLE');
+            sessionStorage.removeItem('TV_GLOBAL_USER');
+            sessionStorage.removeItem('TV_GLOBAL_PAGE');
             token = '';
             session = null;
+            if (entryRoles[entryMode]) {
+              sessionStorage.setItem('TV_GLOBAL_TRACKER_PENDING_VIEW', entryMode);
+            }
           }
           if (!isBackground || invalidSession || expiredSession) {
-            showTrackerError(
-              invalidSession || expiredSession ? 'Phiên theo dõi công việc không hợp lệ' : 'Chưa kết nối được với hệ thống theo dõi công việc',
-              invalidSession || expiredSession
-                ? `${message} Hãy quay lại hệ thống và đăng nhập lại.`
-                : `${message} Phiên đăng nhập vẫn được giữ; hãy thử lại sau.`
-            );
+            if (invalidSession || expiredSession) {
+              window.location.replace('index.html?session=tracker-expired');
+            } else {
+              showTrackerError(
+                'Chưa kết nối được với hệ thống theo dõi công việc',
+                `${message} Phiên đăng nhập vẫn được giữ; hãy thử lại sau.`
+              );
+            }
           } else {
             setSyncStatus('Đồng bộ nền bị gián đoạn; dữ liệu gần nhất vẫn đang hiển thị.', 'is-error');
           }
@@ -2312,7 +2320,11 @@
       }
 
       function logout() {
-        window.location.href = 'index.html';
+        sessionStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem('TV_GLOBAL_ROLE');
+        sessionStorage.removeItem('TV_GLOBAL_USER');
+        sessionStorage.removeItem('TV_GLOBAL_PAGE');
+        window.location.replace('index.html');
       }
 
       $('task-form').addEventListener('submit', saveTask);
@@ -2391,16 +2403,20 @@
       const globalName = sessionStorage.getItem('TV_GLOBAL_USER') || '';
       const requestedRole = entryRoles[entryMode];
       if (!globalRole || !globalName || !requestedRole) {
+        if (requestedRole) sessionStorage.setItem('TV_GLOBAL_TRACKER_PENDING_VIEW', entryMode);
         window.location.replace('index.html');
       } else if (entryMode === 'director' && globalRole !== 'director') {
+        sessionStorage.setItem('TV_GLOBAL_TRACKER_PENDING_VIEW', 'director');
         window.location.replace('index.html');
       } else if ((entryMode === 'teacher' || entryMode === 'manager') && globalRole !== 'teacher') {
+        sessionStorage.setItem('TV_GLOBAL_TRACKER_PENDING_VIEW', entryMode);
         window.location.replace('index.html');
       } else if (!token) {
-        showTrackerError(
-          'Chưa có phiên theo dõi công việc',
-          'Hệ thống chưa cấp quyền truy cập trang điều phối công việc. Hãy đăng nhập lại; nếu vẫn gặp lỗi, quản trị viên cần cập nhật Apps Script bằng tracker-backend.gs.txt. Trang điều phối không yêu cầu đăng nhập riêng.'
-        );
+        sessionStorage.removeItem('TV_GLOBAL_ROLE');
+        sessionStorage.removeItem('TV_GLOBAL_USER');
+        sessionStorage.removeItem('TV_GLOBAL_PAGE');
+        if (entryRoles[entryMode]) sessionStorage.setItem('TV_GLOBAL_TRACKER_PENDING_VIEW', entryMode);
+        window.location.replace('index.html?session=tracker-expired');
       } else {
         refresh();
         scheduleTrackerRefresh();
