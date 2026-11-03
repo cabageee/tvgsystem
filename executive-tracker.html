@@ -1142,6 +1142,29 @@
             clearTimeout(timeout);
           }
         }
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000);
+        try {
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(request),
+            signal: controller.signal,
+            cache: 'no-store'
+          });
+          const result = await response.json();
+          if (!response.ok || result?.status === 'error') {
+            throw new Error(result?.message || `Không thể hoàn tất thao tác ${action}.`);
+          }
+          return result;
+        } catch (error) {
+          if (error?.name === 'AbortError') {
+            throw new Error('Máy chủ kết nối trang điều phối công việc không phản hồi sau 30 giây. Hãy thử lại.');
+          }
+          if (!(error instanceof TypeError)) throw error;
+        } finally {
+          clearTimeout(timeout);
+        }
         return callAppsScriptPostMessage(action, request);
       }
 
