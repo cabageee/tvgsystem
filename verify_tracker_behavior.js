@@ -242,6 +242,48 @@ assert.strictEqual(formatDateInputValue('1203'), '12/03/', 'The month separator 
 assert.strictEqual(formatDateInputValue('12032026'), '12/03/2026');
 assert.strictEqual(formatDateInputValue('1203', false), '12/03');
 
+const trackerHtml = fs.readFileSync('executive-tracker.html', 'utf8');
+const trackerDateHelpersSource = trackerHtml.match(/const localDate = value => \{[\s\S]*?const requestTypeLabel = type =>/);
+assert(trackerDateHelpersSource, 'Tracker date and time formatters must be present.');
+const trackerDateHelpers = new Function(
+  `${trackerDateHelpersSource[0].slice(0, trackerDateHelpersSource[0].lastIndexOf('const requestTypeLabel'))}return { scheduleDateLabel, timeLabel };`
+)();
+assert.strictEqual(trackerDateHelpers.scheduleDateLabel('2026-11-16'), '16/11');
+assert.strictEqual(
+  trackerDateHelpers.timeLabel('Sat Dec 30 1899 17:00:00 GMT+0706 (Giờ Đông Dương)'),
+  '17:00',
+  'Legacy Google Sheets time values must display as HH:mm.'
+);
+
+const originalRequestRequireSheet = context.requireSheet_;
+const originalRequestGetSpreadsheet = context.getSpreadsheet;
+const originalFormatDate = context.Utilities.formatDate;
+const requestSheet = {
+  getLastRow: () => 2,
+  getRange: () => ({
+    getValues: () => [[
+      'request-1', 'An', 'LEAVE', '2026-11-16',
+        vm.runInContext("new Date('1899-12-30T10:00:00Z')", context),
+        vm.runInContext("new Date('1899-12-30T10:30:00Z')", context),
+      'test', 'APPROVED', '', '', ''
+    ]]
+  })
+};
+context.requireSheet_ = name => {
+  assert.strictEqual(name, 'TrackerRequests');
+  return requestSheet;
+};
+context.getSpreadsheet = () => ({ getSpreadsheetTimeZone: () => 'Asia/Ho_Chi_Minh' });
+context.Utilities.formatDate = (date, _timezone, format) => format === 'HH:mm'
+  ? `${String((date.getUTCHours() + 7) % 24).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`
+  : originalFormatDate(date, _timezone, format);
+const normalizedRequests = context.trackerRequestRecords_();
+assert.strictEqual(normalizedRequests[0].startTime, '17:00');
+assert.strictEqual(normalizedRequests[0].endTime, '17:30');
+context.requireSheet_ = originalRequestRequireSheet;
+context.getSpreadsheet = originalRequestGetSpreadsheet;
+context.Utilities.formatDate = originalFormatDate;
+
 const originalSessionSpreadsheet = context.getSpreadsheet;
 context.getSpreadsheet = () => ({
   getSheetByName: () => ({})

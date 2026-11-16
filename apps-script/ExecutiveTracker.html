@@ -916,6 +916,12 @@
         const date = localDate(value);
         return date ? date.toLocaleDateString('vi-VN') : '—';
       };
+      const scheduleDateLabel = value => {
+        const date = localDate(value);
+        return date
+          ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`
+          : '—';
+      };
       const dateTimeLabel = value => {
         const date = value instanceof Date ? value : new Date(String(value || ''));
         return Number.isFinite(date.getTime())
@@ -929,11 +935,14 @@
         const raw = String(value || '').trim();
         const timeOnly = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
         if (timeOnly) return `${timeOnly[1].padStart(2, '0')}:${timeOnly[2]}`;
+        const embeddedTime = raw.match(/\b(\d{1,2}):([0-5]\d)(?::[0-5]\d)?\b/);
+        if (embeddedTime) return `${embeddedTime[1].padStart(2, '0')}:${embeddedTime[2]}`;
         const parsed = new Date(raw);
         return Number.isFinite(parsed.getTime())
           ? `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`
           : '';
       };
+      const scheduleTimeLabel = value => timeLabel(value) || '—';
       const requestTypeLabel = type => type === 'LEAVE' ? 'Nghỉ' : 'Tăng ca';
       const approvedRequests = () => requests
         .filter(request => request.status === 'APPROVED' && localDate(request.date))
@@ -1461,7 +1470,7 @@
           const day = index - offset + 1;
           if (day < 1 || day > daysInMonth) return '<div class="calendar-day is-outside" aria-hidden="true"></div>';
           const dayEvents = eventsByDate.get(day) || [];
-          const markup = dayEvents.map(request => `<span class="calendar-event${request.type === 'OVERTIME' ? ' is-overtime' : ''}" title="${escapeHtml(request.teacher)} · ${escapeHtml(request.reason)}${request.reviewNote ? ` · Ghi chú duyệt: ${escapeHtml(request.reviewNote)}` : ''}">${escapeHtml(request.type === 'LEAVE' ? 'Nghỉ' : 'Tăng ca')} · ${escapeHtml(request.teacher)} ${escapeHtml(request.startTime)}–${escapeHtml(request.endTime)}</span>`).join('');
+          const markup = dayEvents.map(request => `<span class="calendar-event${request.type === 'OVERTIME' ? ' is-overtime' : ''}" title="${escapeHtml(request.teacher)} · ${escapeHtml(request.reason)}${request.reviewNote ? ` · Ghi chú duyệt: ${escapeHtml(request.reviewNote)}` : ''}">${escapeHtml(request.type === 'LEAVE' ? 'Nghỉ' : 'Tăng ca')} · ${escapeHtml(request.teacher)} ${escapeHtml(scheduleTimeLabel(request.startTime))}–${escapeHtml(scheduleTimeLabel(request.endTime))}</span>`).join('');
           return `<div class="calendar-day"><span class="calendar-day-number">${day}</span>${markup}</div>`;
         }).join('');
         $('approved-calendar-grid').innerHTML = weekdays + dayCells;
@@ -1469,7 +1478,7 @@
         $('approved-calendar-agenda').innerHTML = monthEvents.length
           ? [...eventsByDate.entries()].map(([day, dayEvents]) => {
             const date = new Date(year, month, day);
-            return `<div class="agenda-day"><div class="agenda-date">${date.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</div>${dayEvents.map(request => `<div class="agenda-event"><span class="status-pill ${request.type === 'OVERTIME' ? 'priority-2' : 'priority-3'}">${requestTypeLabel(request.type)}</span><div><strong>${escapeHtml(request.teacher)}</strong><div class="calendar-note"><strong>Thời gian:</strong> ${escapeHtml(request.startTime)}–${escapeHtml(request.endTime)}</div><div class="calendar-note"><strong>Nội dung đơn:</strong> ${escapeHtml(request.reason || '—')}</div>${request.reviewNote ? `<div class="calendar-note"><strong>Ghi chú duyệt:</strong> ${escapeHtml(request.reviewNote)}</div>` : ''}</div></div>`).join('')}</div>`;
+            return `<div class="agenda-day"><div class="agenda-date">${scheduleDateLabel(date)}</div>${dayEvents.map(request => `<div class="agenda-event"><span class="status-pill ${request.type === 'OVERTIME' ? 'priority-2' : 'priority-3'}">${requestTypeLabel(request.type)}</span><div><strong>${escapeHtml(request.teacher)}</strong><div class="calendar-note"><strong>Thời gian:</strong> ${escapeHtml(scheduleTimeLabel(request.startTime))}–${escapeHtml(scheduleTimeLabel(request.endTime))}</div><div class="calendar-note"><strong>Nội dung đơn:</strong> ${escapeHtml(request.reason || '—')}</div>${request.reviewNote ? `<div class="calendar-note"><strong>Ghi chú duyệt:</strong> ${escapeHtml(request.reviewNote)}</div>` : ''}</div></div>`).join('')}</div>`;
           }).join('')
           : '<div class="calendar-empty">Không có đơn nghỉ hoặc tăng ca nào được duyệt trong tháng này.</div>';
       }
@@ -1647,7 +1656,7 @@
               <td data-label="Loại"><span class="priority priority-4">${type}</span></td>
               <td data-label="Nội dung"><div class="task-title">${escapeHtml(request.reason)}</div>${request.reviewNote ? `<div class="muted">Phản hồi: ${escapeHtml(request.reviewNote)}</div>` : ''}</td>
               <td data-label="Trợ giảng">${escapeHtml(request.teacher)}</td>
-              <td data-label="Thời gian"><strong>${dateLabel(request.date)}</strong><div class="muted">${escapeHtml(request.startTime)}–${escapeHtml(request.endTime)}</div></td>
+              <td data-label="Thời gian"><strong>${scheduleDateLabel(request.date)}</strong><div class="muted">${escapeHtml(scheduleTimeLabel(request.startTime))}–${escapeHtml(scheduleTimeLabel(request.endTime))}</div></td>
               <td data-label="Trạng thái"><span class="status-pill status-${escapeHtml(request.status)}">${statusLabel(request.status)}</span></td>
               <td data-label="Thao tác">${actions}</td>
             </tr>`;
@@ -1660,7 +1669,7 @@
             <td data-label="Loại đơn"><span class="priority priority-4">${request.type === 'LEAVE' ? 'Đơn xin nghỉ' : 'Đơn tăng ca'}</span></td>
             <td data-label="Nội dung">${escapeHtml(request.reason)}</td>
             <td data-label="Trợ giảng">${escapeHtml(request.teacher)}</td>
-            <td data-label="Thời gian"><strong>${dateLabel(request.date)}</strong><div class="muted">${escapeHtml(request.startTime)}–${escapeHtml(request.endTime)}</div></td>
+            <td data-label="Thời gian"><strong>${scheduleDateLabel(request.date)}</strong><div class="muted">${escapeHtml(scheduleTimeLabel(request.startTime))}–${escapeHtml(scheduleTimeLabel(request.endTime))}</div></td>
             <td data-label="Trạng thái"><span class="status-pill status-${escapeHtml(request.status)}">${statusLabel(request.status)}</span></td>
             <td data-label="Ghi chú duyệt">${escapeHtml(request.reviewNote || '—')}</td>
           </tr>`).join('')
@@ -1726,7 +1735,7 @@
           .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
         $('teacher-request-cards').innerHTML = teacherRequests.length ? teacherRequests.map(request => `<article class="teacher-request-card">
           <span class="priority ${request.type === 'OVERTIME' ? 'priority-2' : 'priority-3'}">${requestTypeLabel(request.type)}</span>
-          <div class="teacher-request-content"><strong>${dateLabel(request.date)} · ${escapeHtml(request.startTime)}–${escapeHtml(request.endTime)}</strong>${escapeHtml(request.reason)}${request.reviewNote ? `<div class="muted">Ghi chú duyệt: ${escapeHtml(request.reviewNote)}</div>` : ''}</div>
+          <div class="teacher-request-content"><strong>${scheduleDateLabel(request.date)} · ${escapeHtml(scheduleTimeLabel(request.startTime))}–${escapeHtml(scheduleTimeLabel(request.endTime))}</strong>${escapeHtml(request.reason)}${request.reviewNote ? `<div class="muted">Ghi chú duyệt: ${escapeHtml(request.reviewNote)}</div>` : ''}</div>
           <span class="status-pill status-${escapeHtml(request.status)} teacher-request-status">${statusLabel(request.status)}</span>
         </article>`).join('') : '<div class="empty-state"><strong>Bạn chưa gửi đơn nghỉ / tăng ca</strong>Dùng nút đăng ký phía trên để gửi đơn khi cần.</div>';
         decorateTrackerIcons($('tracker-screen'));
@@ -2281,8 +2290,8 @@
             'Trợ giảng': item.teacher,
             'Loại đăng ký': item.type === 'LEAVE' ? 'Nghỉ' : 'Tăng ca',
             'Ngày': dateLabel(item.date),
-            'Giờ bắt đầu': item.startTime,
-            'Giờ kết thúc': item.endTime,
+            'Giờ bắt đầu': scheduleTimeLabel(item.startTime),
+            'Giờ kết thúc': scheduleTimeLabel(item.endTime),
             'Ghi chú / lý do': item.reason,
             'Trạng thái': statusLabel(item.status),
             'Người duyệt': item.reviewer,
@@ -2309,8 +2318,8 @@
             'Trợ giảng': item.teacher,
             'Loại đăng ký': requestTypeLabel(item.type),
             'Ngày': dateLabel(item.date),
-            'Giờ bắt đầu': item.startTime,
-            'Giờ kết thúc': item.endTime,
+            'Giờ bắt đầu': scheduleTimeLabel(item.startTime),
+            'Giờ kết thúc': scheduleTimeLabel(item.endTime),
             'Lý do / nội dung': item.reason,
             'Trạng thái': statusLabel(item.status),
             'Người duyệt': item.reviewer,

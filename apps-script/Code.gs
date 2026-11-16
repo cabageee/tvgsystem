@@ -1396,6 +1396,7 @@ function trackerTaskRecords_() {
 function trackerRequestRecords_() {
   const sheet = requireSheet_(TAB.TRACKER_REQUESTS);
   if (sheet.getLastRow() < 2) return [];
+  const timezone = getSpreadsheet().getSpreadsheetTimeZone();
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues()
     .map((row, index) => ({ row, rowNumber: index + 2 }))
     .filter(record => String(record.row[0] || '').trim())
@@ -1405,8 +1406,8 @@ function trackerRequestRecords_() {
         teacher: String(row[1] || ''),
         type: String(row[2] || ''),
         date: String(row[3] || ''),
-        startTime: String(row[4] || ''),
-        endTime: String(row[5] || ''),
+        startTime: trackerTaskTime_(row[4], timezone),
+        endTime: trackerTaskTime_(row[5], timezone),
         reason: String(row[6] || ''),
         status: String(row[7] || 'PENDING'),
         reviewer: String(row[8] || ''),
