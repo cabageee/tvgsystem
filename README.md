@@ -129,6 +129,12 @@ Khi có nhiều người dùng trên các thiết bị khác nhau, mỗi trình 
 
 Không đổi tên sheet hoặc sửa thứ tự cột nếu chưa cập nhật các hàm đọc/ghi tương ứng trong Apps Script. Hãy sao lưu Spreadsheet trước khi thay đổi cấu trúc hoặc triển khai backend mới.
 
+### Lưu trữ và phục hồi dữ liệu học viên
+
+- Thao tác **Nghỉ học** trên website chuyển hồ sơ khỏi `ThongTinHocSinh` sang `HocVienNghiHoc`; không xóa hồ sơ nghỉ học. Dòng điểm danh trong `DiemDanh` được giữ nguyên để khôi phục đủ lịch sử khi học viên quay lại.
+- `initDatabase` bảo vệ toàn bộ sheet `DiemDanh`: người chỉnh sửa Spreadsheet không thể sửa/xóa trực tiếp dữ liệu trong tab này; cập nhật điểm danh qua website vẫn hoạt động vì Apps Script chạy bằng tài khoản triển khai. Chạy lại `initDatabase` sau khi cập nhật backend để bật bảo vệ.
+- Chỉ tài khoản sở hữu Spreadsheet mới có thể gỡ bảo vệ. Không gỡ bảo vệ hoặc xóa tab `DiemDanh`; nếu dữ liệu đã bị xóa trước khi bật bảo vệ, cần kiểm tra **File → Version history** để phục hồi.
+
 ## Triển khai website và PWA
 
 Đưa các tệp giao diện và tài nguyên cần thiết lên hosting tĩnh có HTTPS, ví dụ GitHub Pages hoặc hosting nội bộ hỗ trợ HTTPS. Sau khi triển khai, kiểm tra trang đăng nhập, các URL HTML riêng và kết nối Apps Script.

@@ -206,6 +206,42 @@ assert.strictEqual(
   'Teacher accounts using the default password must not require a password-change redirect.'
 );
 assert.strictEqual(teacherPassword, '123456', 'Existing teacher hashes must migrate to plain text on successful login.');
+
+const protectionCalls = [];
+const attendanceProtection = {
+  getDescription: () => 'TVG: chỉ cập nhật điểm danh qua ứng dụng',
+  setDescription: value => protectionCalls.push(['description', value]),
+  setWarningOnly: value => protectionCalls.push(['warningOnly', value]),
+  getEditors: () => ['editor@example.com'],
+  removeEditors: editors => protectionCalls.push(['removeEditors', editors]),
+  canDomainEdit: () => true,
+  setDomainEdit: value => protectionCalls.push(['domainEdit', value])
+};
+const protectedAttendanceSheet = {
+  getProtections: type => {
+    assert.strictEqual(type, 'SHEET');
+    return [attendanceProtection];
+  },
+  protect: () => {
+    throw new Error('An existing TVG attendance protection should be reused.');
+  }
+};
+context.SpreadsheetApp.ProtectionType = { SHEET: 'SHEET' };
+context.protectAttendanceSheet_(protectedAttendanceSheet);
+assert(protectionCalls.some(([action, value]) => action === 'warningOnly' && value === false), 'Attendance protection must block edits, not only show a warning.');
+assert(protectionCalls.some(([action]) => action === 'removeEditors'), 'Attendance protection must prevent direct edits by sheet editors.');
+assert(protectionCalls.some(([action, value]) => action === 'domainEdit' && value === false), 'Attendance protection must disable inherited domain-wide editing.');
+
+const appJs = fs.readFileSync('app.js', 'utf8');
+const dateFormatterSource = appJs.match(/function formatDateInputValue\(value, includeYear = true\) \{[\s\S]*?\n    \}/);
+assert(dateFormatterSource, 'Date input formatter must be present in app.js.');
+const formatDateInputValue = new Function(`${dateFormatterSource[0]}\nreturn formatDateInputValue;`)();
+assert.strictEqual(formatDateInputValue('12'), '12/', 'The day separator must appear without manually typing a slash.');
+assert.strictEqual(formatDateInputValue('120'), '12/0');
+assert.strictEqual(formatDateInputValue('1203'), '12/03/', 'The month separator must appear when the month is complete.');
+assert.strictEqual(formatDateInputValue('12032026'), '12/03/2026');
+assert.strictEqual(formatDateInputValue('1203', false), '12/03');
+
 const originalSessionSpreadsheet = context.getSpreadsheet;
 context.getSpreadsheet = () => ({
   getSheetByName: () => ({})
@@ -364,11 +400,11 @@ function makeSheet(rows) {
 const activeStudent = ['HV001', 'A', '2000-01-01', 'F', 'L1', '2026-01-01', 'P', '0900', 'Address', 'Đã đóng', 'Note', 'Avatar', 'An'];
 const moveSheets = {
   ThongTinHocSinh: makeSheet([['ID'], activeStudent]),
-  DiemDanh: makeSheet([['ID'], ['HV001', 'A', '2026-01-01', ...Array(40).fill('')]]),
+  DiemDanh: makeSheet([['ID'], ['HV001', 'A', '2026-01-01', '01/01/2026', ...Array(39).fill('')]]),
   HocVienNghiHoc: makeSheet([['ID']])
 };
 context.requireSheet_ = name => moveSheets[name];
-moveSheets.DiemDanh.failNextDelete = true;
+moveSheets.ThongTinHocSinh.failNextDelete = true;
 assert.throws(
   () => context.moveToInactive('HV001', 'reason'),
   /simulated delete failure/,
@@ -389,6 +425,7 @@ const inactiveRow = moveSuccessSheets.HocVienNghiHoc.rows[1];
 assert.strictEqual(inactiveRow[8], 'Đã đóng', 'Inactive sheet must preserve fee status in the correct column.');
 assert.strictEqual(inactiveRow[9], 'Dia chi C', 'Inactive sheet must preserve address in the correct column.');
 assert.strictEqual(inactiveRow[13], 'Nghỉ do chuyển nhà', 'Inactive sheet must preserve the inactive reason.');
+assert.strictEqual(moveSuccessSheets.DiemDanh.rows.filter(row => row[0] === 'HV003').length, 1, 'Moving a student inactive must preserve the attendance row.');
 
 const restoreSheets = {
   ThongTinHocSinh: makeSheet([['ID']]),
@@ -408,7 +445,7 @@ assert.strictEqual(restoreSheets.HocVienNghiHoc.rows.filter(row => row[0] === 'H
 
 const restoreSuccessSheets = {
   ThongTinHocSinh: makeSheet([['ID']]),
-  DiemDanh: makeSheet([['ID']]),
+  DiemDanh: makeSheet([['ID'], ['HV004', 'D', '2026-01-01', '07/01/2026', ...Array(39).fill('')]]),
   HocVienNghiHoc: makeSheet([['ID'], [
     'HV004', 'D', '2001-01-01', 'F', 'L3', '2026-01-01',
     'PH D', '0988', 'Đã đóng', 'Dia chi D', 'Ghi chu D', 'Avatar D', 'An', 'Ly do'
@@ -421,6 +458,8 @@ assert.strictEqual(restoredRow[1], 'D');
 assert.strictEqual(restoredRow[8], 'Dia chi D');
 assert.strictEqual(restoredRow[9], 'Đã đóng');
 assert.strictEqual(restoredRow[12], 'An');
+assert.strictEqual(restoreSuccessSheets.DiemDanh.rows.length, 2, 'Restoring a student must reuse the preserved attendance row.');
+assert.strictEqual(restoreSuccessSheets.DiemDanh.rows[1][3], '07/01/2026', 'Restoring a student must preserve attendance data.');
 assert.strictEqual(restoreSuccessSheets.HocVienNghiHoc.rows.some(row => row[0] === 'HV004'), false);
 
 context.readStudents = () => [

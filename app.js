@@ -1,5 +1,5 @@
 // ================= CONFIG & GLOBALS =================
-    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwpw9ESSS08dXR6xMTXinbwL7l14Q6fgrLjo2tHpbE2n11QAR0z2Svwe-ptN3jJzov1/exec';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzDB9LAJoAqhl1j9PH8D-4VJG5-3M9ahPCjqL3zbQ7S_GeUYv1OrHxV2rMWdhS6YrfB/exec';
     const OPTIONAL_LIBRARY_URLS = {
       html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
@@ -1287,20 +1287,25 @@
     function formatDateForInput(value) {
       return formatDisplayDate(value);
     }
+    function formatDateInputValue(value, includeYear = true) {
+      const digits = String(value || '').replace(/\D/g, '').slice(0, includeYear ? 8 : 4);
+      if (digits.length < 2) return digits;
+
+      const day = digits.slice(0, 2);
+      if (digits.length < 4) return `${day}/${digits.slice(2)}`;
+
+      const month = digits.slice(2, 4);
+      return includeYear
+        ? `${day}/${month}/${digits.slice(4)}`
+        : `${day}/${month}`;
+    }
+
     function setupDateInput(id, includeYear = true) {
       const input = document.getElementById(id);
       if (!input) return;
 
       input.addEventListener('input', () => {
-        let value = input.value.replace(/\D/g, '').slice(0, includeYear ? 8 : 4);
-
-        if (includeYear && value.length > 4) {
-          value = `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4)}`;
-        } else if (value.length > 2) {
-          value = `${value.slice(0, 2)}/${value.slice(2)}`;
-        }
-
-        input.value = value;
+        input.value = formatDateInputValue(input.value, includeYear);
       });
     }
 
@@ -1336,7 +1341,7 @@
     }
 
     function setupAllDateInputs() {
-      ['add_dob', 'add_regDate', 'edit_dob', 'edit_regDate', 'director-attendance-date']
+      ['add_dob', 'add_regDate', 'edit_dob', 'edit_regDate', 'director-attendance-date', 'session-editor-date']
         .forEach(id => setupDateInput(id, id !== 'director-attendance-date'));
     }
     function formatShortDate(value) {

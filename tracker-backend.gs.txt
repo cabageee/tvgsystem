@@ -395,10 +395,28 @@ function initDatabase() {
     sheet.setFrozenRows(1);
   });
 
+  protectAttendanceSheet_(ss.getSheetByName(TAB.ATTENDANCE));
+
   return {
     status: 'success',
     message: 'Đã tạo đầy đủ các sheet hệ thống'
   };
+}
+
+function protectAttendanceSheet_(sheet) {
+  if (!sheet) throw new Error('Không tìm thấy sheet DiemDanh để bảo vệ.');
+
+  const description = 'TVG: chỉ cập nhật điểm danh qua ứng dụng';
+  const protection = sheet
+    .getProtections(SpreadsheetApp.ProtectionType.SHEET)
+    .find(item => item.getDescription() === description)
+    || sheet.protect();
+
+  protection.setDescription(description);
+  protection.setWarningOnly(false);
+  const editors = protection.getEditors();
+  if (editors.length) protection.removeEditors(editors);
+  if (protection.canDomainEdit()) protection.setDomainEdit(false);
 }
 
 
@@ -2425,7 +2443,6 @@ function updateStudentInfo(student) {
  */
 function moveToInactive(studentId, reason) {
   const sheetStudents = requireSheet_(TAB.STUDENTS);
-  const sheetAttendance = requireSheet_(TAB.ATTENDANCE);
   const sheetInactive = requireSheet_(TAB.INACTIVE);
   const id = String(studentId || '').trim();
   if (!id) {
@@ -2450,8 +2467,6 @@ function moveToInactive(studentId, reason) {
     return { status: 'error', message: 'Học viên đã tồn tại trong danh sách nghỉ học' };
   }
 
-  const attData = sheetAttendance.getDataRange().getValues();
-  const attendanceInfo = attData.slice(1).find(row => String(row[0] || '').trim() === id);
   let inactiveRow = null;
   try {
     sheetInactive.appendRow([
@@ -2472,13 +2487,6 @@ function moveToInactive(studentId, reason) {
     ]);
     inactiveRow = sheetInactive.getLastRow();
     sheetStudents.deleteRow(targetRowIndex);
-    if (attendanceInfo) {
-      const currentAttendance = sheetAttendance.getDataRange().getValues();
-      const attendanceIndex = currentAttendance.findIndex((row, index) =>
-        index > 0 && String(row[0] || '').trim() === id
-      );
-      if (attendanceIndex !== -1) sheetAttendance.deleteRow(attendanceIndex + 1);
-    }
   } catch (error) {
     const rollbackErrors = [];
     if (!findRowById(sheetStudents, id)) {
@@ -2486,17 +2494,6 @@ function moveToInactive(studentId, reason) {
         sheetStudents.appendRow(studentInfo);
       } catch (rollbackError) {
         rollbackErrors.push('Không khôi phục được hồ sơ học viên.');
-      }
-    }
-    if (attendanceInfo) {
-      const currentAttendance = sheetAttendance.getDataRange().getValues();
-      const attendanceExists = currentAttendance.slice(1).some(row => String(row[0] || '').trim() === id);
-      if (!attendanceExists) {
-        try {
-          sheetAttendance.appendRow(attendanceInfo);
-        } catch (rollbackError) {
-          rollbackErrors.push('Không khôi phục được điểm danh.');
-        }
       }
     }
     if (inactiveRow) {
