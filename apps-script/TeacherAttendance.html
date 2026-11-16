@@ -195,8 +195,13 @@
         <p id="session-editor-student" class="text-sm font-bold text-slate-800">...</p>
         <p id="session-editor-session" class="text-xs text-slate-500">...</p>
         <div>
-          <label for="session-editor-date" class="block text-xs font-bold text-slate-700 uppercase mb-1">Ngày điểm danh</label>
-          <input id="session-editor-date" type="text" inputmode="numeric" placeholder="dd/mm hoặc dd/mm/yyyy" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+          <label for="session-editor-day" class="block text-xs font-bold text-slate-700 uppercase mb-1">Ngày điểm danh</label>
+          <div class="w-full flex items-center gap-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm focus-within:ring-2 focus-within:ring-emerald-500">
+            <input id="session-editor-day" type="text" inputmode="numeric" maxlength="2" placeholder="dd" aria-label="Ngày" autocomplete="off" class="w-8 bg-transparent text-center outline-none">
+            <span aria-hidden="true" class="text-slate-500">/</span>
+            <input id="session-editor-month" type="text" inputmode="numeric" maxlength="2" placeholder="mm" aria-label="Tháng" autocomplete="off" class="w-8 bg-transparent text-center outline-none">
+          </div>
+          <input id="session-editor-date" type="hidden">
         </div>
         <div>
           <label for="session-editor-note" class="block text-xs font-bold text-slate-700 uppercase mb-1">Ghi chú</label>

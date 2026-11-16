@@ -1309,6 +1309,43 @@
       });
     }
 
+    function setSessionEditorDateInput(value) {
+      const dayInput = document.getElementById('session-editor-day');
+      const monthInput = document.getElementById('session-editor-month');
+      const dateInput = document.getElementById('session-editor-date');
+      if (!dayInput || !monthInput || !dateInput) return;
+
+      const normalized = normalizeAttendanceDate(value);
+      const match = normalized.match(/^(\d{2})\/(\d{2})$/);
+      dayInput.value = match ? match[1] : '';
+      monthInput.value = match ? match[2] : '';
+      dateInput.value = normalized || String(value || '').trim();
+    }
+
+    function setupSessionEditorDateInput() {
+      const dayInput = document.getElementById('session-editor-day');
+      const monthInput = document.getElementById('session-editor-month');
+      const dateInput = document.getElementById('session-editor-date');
+      if (!dayInput || !monthInput || !dateInput) return;
+
+      const syncValue = () => {
+        dayInput.value = dayInput.value.replace(/\D/g, '').slice(0, 2);
+        monthInput.value = monthInput.value.replace(/\D/g, '').slice(0, 2);
+        dateInput.value = dayInput.value || monthInput.value
+          ? `${dayInput.value}/${monthInput.value}`
+          : '';
+      };
+
+      dayInput.addEventListener('input', () => {
+        syncValue();
+        if (dayInput.value.length === 2) monthInput.focus();
+      });
+      monthInput.addEventListener('input', syncValue);
+      monthInput.addEventListener('keydown', event => {
+        if (event.key === 'Backspace' && !monthInput.value) dayInput.focus();
+      });
+    }
+
     function isValidDateDMY(value) {
       const match = String(value || '').match(
         /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/(\d{4})$/
@@ -1341,8 +1378,9 @@
     }
 
     function setupAllDateInputs() {
-      ['add_dob', 'add_regDate', 'edit_dob', 'edit_regDate', 'director-attendance-date', 'session-editor-date']
+      ['add_dob', 'add_regDate', 'edit_dob', 'edit_regDate', 'director-attendance-date']
         .forEach(id => setupDateInput(id, id !== 'director-attendance-date'));
+      setupSessionEditorDateInput();
     }
     function formatShortDate(value) {
       return formatDisplayDate(value);
@@ -2435,7 +2473,7 @@
       activeSessionEditor = { studentIdx, sessionIdx };
       document.getElementById('session-editor-student').textContent = student.name || student.id || 'Học viên';
       document.getElementById('session-editor-session').textContent = `Buổi ${sessionIdx + 1} · ${student.level || 'Chưa xếp lớp'}`;
-      document.getElementById('session-editor-date').value = normalizeAttendanceDate(entry.date) || entry.date;
+      setSessionEditorDateInput(entry.date);
       document.getElementById('session-editor-note').value = entry.note;
       const errorMessage = document.getElementById('session-editor-error');
       errorMessage.textContent = '';
@@ -2452,9 +2490,9 @@
       const normalizedDate = normalizeAttendanceDate(dateValue);
       const errorMessage = document.getElementById('session-editor-error');
       if (dateValue && !normalizedDate) {
-        errorMessage.textContent = 'Ngày không hợp lệ. Nhập theo định dạng dd/mm hoặc dd/mm/yyyy.';
+        errorMessage.textContent = 'Ngày không hợp lệ. Nhập theo định dạng dd/mm.';
         errorMessage.classList.remove('hidden');
-        dateInput.focus();
+        document.getElementById('session-editor-day').focus();
         return;
       }
 

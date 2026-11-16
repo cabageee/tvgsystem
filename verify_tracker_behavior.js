@@ -242,6 +242,12 @@ assert.strictEqual(formatDateInputValue('1203'), '12/03/', 'The month separator 
 assert.strictEqual(formatDateInputValue('12032026'), '12/03/2026');
 assert.strictEqual(formatDateInputValue('1203', false), '12/03');
 
+const indexHtml = fs.readFileSync('index.html', 'utf8');
+assert.match(indexHtml, /id="session-editor-day"[^>]*maxlength="2"/);
+assert.match(indexHtml, /<span aria-hidden="true"[^>]*>\/<\/span>/, 'The attendance date separator must be present before entering digits.');
+assert.match(indexHtml, /id="session-editor-month"[^>]*maxlength="2"/);
+assert.match(indexHtml, /id="session-editor-date" type="hidden"/);
+
 const trackerHtml = fs.readFileSync('executive-tracker.html', 'utf8');
 const trackerDateHelpersSource = trackerHtml.match(/const localDate = value => \{[\s\S]*?const requestTypeLabel = type =>/);
 assert(trackerDateHelpersSource, 'Tracker date and time formatters must be present.');
