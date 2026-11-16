@@ -322,14 +322,34 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Mã học viên</label><input type="text" id="add_id" placeholder="HV001, TVG102... (Để trống để tạo tự động)" class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none"></div>
           <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Họ và tên *</label><input type="text" id="add_name" required placeholder="Nhập họ tên..." class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none"></div>
-          <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Ngày sinh</label><input  type="text"  id="add_dob"  placeholder="dd/mm/yyyy"  inputmode="numeric"  maxlength="10"  pattern="\d{2}/\d{2}/\d{4}"  class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none"></div>
+          <div>
+            <label id="add-dob-label" class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Ngày sinh</label>
+            <div role="group" aria-labelledby="add-dob-label" class="w-full flex items-center gap-1 px-3 py-2 bg-slate-50 border rounded-lg text-sm">
+              <input id="add_dob-day" type="text" inputmode="numeric" maxlength="2" placeholder="dd" aria-label="Ngày sinh - ngày" autocomplete="off" class="w-8 bg-transparent text-center outline-none">
+              <span aria-hidden="true" class="text-slate-500">/</span>
+              <input id="add_dob-month" type="text" inputmode="numeric" maxlength="2" placeholder="mm" aria-label="Ngày sinh - tháng" autocomplete="off" class="w-8 bg-transparent text-center outline-none">
+              <span aria-hidden="true" class="text-slate-500">/</span>
+              <input id="add_dob-year" type="text" inputmode="numeric" maxlength="4" placeholder="yyyy" aria-label="Ngày sinh - năm" autocomplete="off" class="w-12 bg-transparent text-center outline-none">
+            </div>
+            <input id="add_dob" type="hidden">
+          </div>
           <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Giới tính</label>
             <select id="add_gender" class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none">
               <option value="Nam">Nam</option>
               <option value="Nữ">Nữ</option>
             </select>
           </div>
-          <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Ngày đăng ký *</label><input  type="text"  id="add_regDate"  required  placeholder="dd/mm/yyyy"  inputmode="numeric"  maxlength="10"  pattern="\d{2}/\d{2}/\d{4}"  class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none"></div>
+          <div>
+            <label id="add-reg-date-label" class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Ngày đăng ký *</label>
+            <div role="group" aria-labelledby="add-reg-date-label" class="w-full flex items-center gap-1 px-3 py-2 bg-slate-50 border rounded-lg text-sm">
+              <input id="add_regDate-day" type="text" inputmode="numeric" maxlength="2" placeholder="dd" aria-label="Ngày đăng ký - ngày" autocomplete="off" class="w-8 bg-transparent text-center outline-none">
+              <span aria-hidden="true" class="text-slate-500">/</span>
+              <input id="add_regDate-month" type="text" inputmode="numeric" maxlength="2" placeholder="mm" aria-label="Ngày đăng ký - tháng" autocomplete="off" class="w-8 bg-transparent text-center outline-none">
+              <span aria-hidden="true" class="text-slate-500">/</span>
+              <input id="add_regDate-year" type="text" inputmode="numeric" maxlength="4" placeholder="yyyy" aria-label="Ngày đăng ký - năm" autocomplete="off" class="w-12 bg-transparent text-center outline-none">
+            </div>
+            <input id="add_regDate" type="hidden">
+          </div>
           <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Cấp độ / loại lớp *</label>
             <select id="add_level" required class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none"></select>
           </div>
@@ -377,14 +397,34 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Mã học viên (không thể chỉnh sửa)</label><input type="text" id="edit_id_display" disabled class="w-full px-3 py-2 bg-slate-200 border rounded-lg text-sm sm:text-xs font-bold font-mono"></div>
           <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Họ và tên *</label><input type="text" id="edit_name" required class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none"></div>
-          <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Ngày sinh</label><input  type="text"  id="edit_dob"  placeholder="dd/mm/yyyy"  inputmode="numeric"  maxlength="10"  pattern="\d{2}/\d{2}/\d{4}"  class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none"></div>
+          <div>
+            <label id="edit-dob-label" class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Ngày sinh</label>
+            <div role="group" aria-labelledby="edit-dob-label" class="w-full flex items-center gap-1 px-3 py-2 bg-slate-50 border rounded-lg text-sm">
+              <input id="edit_dob-day" type="text" inputmode="numeric" maxlength="2" placeholder="dd" aria-label="Ngày sinh - ngày" autocomplete="off" class="w-8 bg-transparent text-center outline-none">
+              <span aria-hidden="true" class="text-slate-500">/</span>
+              <input id="edit_dob-month" type="text" inputmode="numeric" maxlength="2" placeholder="mm" aria-label="Ngày sinh - tháng" autocomplete="off" class="w-8 bg-transparent text-center outline-none">
+              <span aria-hidden="true" class="text-slate-500">/</span>
+              <input id="edit_dob-year" type="text" inputmode="numeric" maxlength="4" placeholder="yyyy" aria-label="Ngày sinh - năm" autocomplete="off" class="w-12 bg-transparent text-center outline-none">
+            </div>
+            <input id="edit_dob" type="hidden">
+          </div>
           <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Giới tính</label>
             <select id="edit_gender" class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none">
               <option value="Nam">Nam</option>
               <option value="Nữ">Nữ</option>
             </select>
           </div>
-          <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Ngày đăng ký *</label><input  type="text"  id="edit_regDate"  required  placeholder="dd/mm/yyyy"  inputmode="numeric"  maxlength="10"  pattern="\d{2}/\d{2}/\d{4}"  class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none"></div>
+          <div>
+            <label id="edit-reg-date-label" class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Ngày đăng ký *</label>
+            <div role="group" aria-labelledby="edit-reg-date-label" class="w-full flex items-center gap-1 px-3 py-2 bg-slate-50 border rounded-lg text-sm">
+              <input id="edit_regDate-day" type="text" inputmode="numeric" maxlength="2" placeholder="dd" aria-label="Ngày đăng ký - ngày" autocomplete="off" class="w-8 bg-transparent text-center outline-none">
+              <span aria-hidden="true" class="text-slate-500">/</span>
+              <input id="edit_regDate-month" type="text" inputmode="numeric" maxlength="2" placeholder="mm" aria-label="Ngày đăng ký - tháng" autocomplete="off" class="w-8 bg-transparent text-center outline-none">
+              <span aria-hidden="true" class="text-slate-500">/</span>
+              <input id="edit_regDate-year" type="text" inputmode="numeric" maxlength="4" placeholder="yyyy" aria-label="Ngày đăng ký - năm" autocomplete="off" class="w-12 bg-transparent text-center outline-none">
+            </div>
+            <input id="edit_regDate" type="hidden">
+          </div>
           <div><label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Cấp độ / loại lớp *</label>
             <select id="edit_level" required class="w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm sm:text-xs outline-none"></select>
           </div>

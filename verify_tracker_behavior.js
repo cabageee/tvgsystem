@@ -248,6 +248,53 @@ assert.match(indexHtml, /<span aria-hidden="true"[^>]*>\/<\/span>/, 'The attenda
 assert.match(indexHtml, /id="session-editor-month"[^>]*maxlength="2"/);
 assert.match(indexHtml, /id="session-editor-date" type="hidden"/);
 
+const dateSetterSource = appJs.match(/function setStudentDateInputValue\(id, value\) \{[\s\S]*?\n    \}/);
+const segmentedDateSetupSource = appJs.match(/function setupStudentDateInput\(id\) \{[\s\S]*?\n    \}/);
+assert(dateSetterSource && segmentedDateSetupSource, 'Student date fields must support fixed separators.');
+const dateInputs = new Map();
+const createDateInput = maxLength => ({
+  value: '',
+  maxLength,
+  listeners: {},
+  addEventListener(type, handler) {
+    this.listeners[type] = handler;
+  },
+  focus() {
+    this.focused = true;
+  }
+});
+['date', 'date-day', 'date-month', 'date-year'].forEach((id, index) => {
+  dateInputs.set(id, createDateInput(index === 3 ? 4 : 2));
+});
+const studentDateHelpers = new Function(
+  'document',
+  'formatDateForInput',
+  'setupDateInput',
+  `${dateSetterSource[0]}\n${segmentedDateSetupSource[0]}\nreturn { setStudentDateInputValue, setupStudentDateInput };`
+)(
+  { getElementById: id => dateInputs.get(id) || null },
+  value => String(value || ''),
+  () => {}
+);
+studentDateHelpers.setStudentDateInputValue('date', '14/03/2026');
+assert.strictEqual(dateInputs.get('date-day').value, '14');
+assert.strictEqual(dateInputs.get('date-month').value, '03');
+assert.strictEqual(dateInputs.get('date-year').value, '2026');
+studentDateHelpers.setupStudentDateInput('date');
+dateInputs.get('date-day').value = '31';
+dateInputs.get('date-day').listeners.input();
+assert.strictEqual(dateInputs.get('date-month').focused, true);
+dateInputs.get('date-month').value = '12';
+dateInputs.get('date-month').listeners.input();
+dateInputs.get('date-year').value = '2026';
+dateInputs.get('date-year').listeners.input();
+assert.strictEqual(dateInputs.get('date').value, '31/12/2026');
+for (const id of ['add_dob', 'add_regDate', 'edit_dob', 'edit_regDate']) {
+  assert.match(indexHtml, new RegExp(`id="${id}-day"`));
+  assert.match(indexHtml, new RegExp(`id="${id}-month"`));
+  assert.match(indexHtml, new RegExp(`id="${id}-year"`));
+}
+
 const trackerHtml = fs.readFileSync('executive-tracker.html', 'utf8');
 const trackerDateHelpersSource = trackerHtml.match(/const localDate = value => \{[\s\S]*?const requestTypeLabel = type =>/);
 assert(trackerDateHelpersSource, 'Tracker date and time formatters must be present.');

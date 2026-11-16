@@ -1309,6 +1309,70 @@
       });
     }
 
+    function setStudentDateInputValue(id, value) {
+      const input = document.getElementById(id);
+      if (!input) return;
+
+      const formatted = formatDateForInput(value);
+      const match = formatted.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      const dayInput = document.getElementById(`${id}-day`);
+      const monthInput = document.getElementById(`${id}-month`);
+      const yearInput = document.getElementById(`${id}-year`);
+
+      input.value = formatted;
+      if (!dayInput || !monthInput || !yearInput) return;
+
+      dayInput.value = match ? match[1] : '';
+      monthInput.value = match ? match[2] : '';
+      yearInput.value = match ? match[3] : '';
+    }
+
+    function setupStudentDateInput(id) {
+      const input = document.getElementById(id);
+      const parts = ['day', 'month', 'year']
+        .map(part => document.getElementById(`${id}-${part}`));
+      if (!input || parts.some(part => !part)) {
+        setupDateInput(id);
+        return;
+      }
+
+      const syncValue = () => {
+        parts.forEach((part, index) => {
+          part.value = part.value.replace(/\D/g, '').slice(0, index === 2 ? 4 : 2);
+        });
+        input.value = parts.some(part => part.value)
+          ? `${parts[0].value}/${parts[1].value}/${parts[2].value}`
+          : '';
+      };
+
+      parts.forEach((part, index) => {
+        part.addEventListener('input', () => {
+          syncValue();
+          if (part.value.length === part.maxLength && parts[index + 1]) {
+            parts[index + 1].focus();
+          }
+        });
+        part.addEventListener('keydown', event => {
+          if (event.key === 'Backspace' && !part.value && parts[index - 1]) {
+            parts[index - 1].focus();
+          }
+        });
+        part.addEventListener('paste', event => {
+          const pasted = event.clipboardData?.getData('text') || '';
+          const digits = pasted.replace(/\D/g, '');
+          const match = pasted.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+          if (match || digits.length === 8) {
+            event.preventDefault();
+            const dateValue = match
+              ? `${match[1]}/${match[2]}/${match[3]}`
+              : `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+            setStudentDateInputValue(id, dateValue);
+            parts[2].focus();
+          }
+        });
+      });
+    }
+
     function setSessionEditorDateInput(value) {
       const dayInput = document.getElementById('session-editor-day');
       const monthInput = document.getElementById('session-editor-month');
@@ -1378,8 +1442,9 @@
     }
 
     function setupAllDateInputs() {
-      ['add_dob', 'add_regDate', 'edit_dob', 'edit_regDate', 'director-attendance-date']
-        .forEach(id => setupDateInput(id, id !== 'director-attendance-date'));
+      ['add_dob', 'add_regDate', 'edit_dob', 'edit_regDate']
+        .forEach(setupStudentDateInput);
+      setupDateInput('director-attendance-date', false);
       setupSessionEditorDateInput();
     }
     function formatShortDate(value) {
@@ -3000,12 +3065,12 @@
       const nextStudentId = generateNextStudentId();
       document.getElementById('add_id').value = nextStudentId;
       document.getElementById('add_name').value = '';
-      document.getElementById('add_dob').value = '';
+      setStudentDateInputValue('add_dob', '');
       const today = new Date();
-      document.getElementById('add_regDate').value =
+      setStudentDateInputValue('add_regDate',
         `${String(today.getDate()).padStart(2, '0')}/` +
         `${String(today.getMonth() + 1).padStart(2, '0')}/` +
-        `${today.getFullYear()}`;
+        `${today.getFullYear()}`);
       document.getElementById('add_parentName').value = '';
       document.getElementById('add_parentPhone').value = '';
       document.getElementById('add_address').value = '';
@@ -3070,10 +3135,10 @@
       document.getElementById('edit_id').value = student.id;
       document.getElementById('edit_id_display').value = student.id;
       document.getElementById('edit_name').value = student.name;
-      document.getElementById('edit_dob').value =  formatDateForInput(student.dob);
+      setStudentDateInputValue('edit_dob', student.dob);
       document.getElementById('edit_gender').value = student.gender || 'Nam';
       document.getElementById('edit_level').value = student.level || '';
-      document.getElementById('edit_regDate').value = formatDateForInput(student.regDate);
+      setStudentDateInputValue('edit_regDate', student.regDate);
       document.getElementById('edit_parentName').value = student.parentName || '';
       document.getElementById('edit_parentPhone').value = student.parentPhone || student.phone || '';
       document.getElementById('edit_feeStatus').value = student.feeStatus || 'Chưa đóng';
